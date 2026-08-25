@@ -1,7 +1,7 @@
 ﻿# Script Pengujian Transaksi Midtrans QRIS
 # Cara menjalankan di PowerShell: .\create_test_payment.ps1
 
-$serverKey = "Mid-server-OAsfK1-Okq6idNPy00No2DhQ:"
+$serverKey = "Mid-server-YOUR_SERVER_KEY_HERE:"
 $base64Auth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($serverKey))
 
 $randomId = Get-Random -Minimum 1000 -Maximum 9999
