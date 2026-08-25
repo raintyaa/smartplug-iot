@@ -1,0 +1,26 @@
+﻿# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment / Secret Keys
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Hardware & IDE Builds
+.pio/
+.vscode/
+.idea/
+*.hex
+*.bin
+*.elf
+build/
+dist/
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
