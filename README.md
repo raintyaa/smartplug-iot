@@ -1,20 +1,51 @@
 ﻿# ⚡ Sistem Smart Plug Berbasis ESP32 Terintegrasi QRIS Payment Gateway dan Monitoring Daya Listrik
 
-Proyek akhir mata kuliah Internet of Things (Semester 5) untuk otomatisasi dan monetisasi stop kontak listrik menggunakan pembayaran QRIS berbasis mikrokontroler ESP32, sensor daya listrik, sensor suhu keselamatan, dan web dashboard monitoring realtime.
+Proyek akhir mata kuliah Internet of Things (Semester 5) & Ubiquitous Computing untuk otomatisasi dan monetisasi stop kontak listrik menggunakan pembayaran QRIS berbasis mikrokontroler ESP32, sensor daya listrik, sensor suhu keselamatan, protokol komunikasi terstandar, dan web dashboard monitoring realtime.
 
 ---
 
 ## 📌 Gambaran Umum Sistem
 
-Sistem ini dirancang untuk menyediakan akses daya listrik berbayar (seperti fasilitas *charging station* atau *coworking space*):
+Sistem ini dirancang untuk menyediakan akses daya listrik berbayar mandiri (*self-service charging station*):
 1. **Pengguna** memilih stop kontak dengan menekan tombol metal berlampu pada slot yang diinginkan.
 2. **Pengguna** melakukan pembayaran melalui stiker QRIS pada panel alat (nominal menentukan durasi).
-3. **Payment Gateway (Midtrans)** memvalidasi pembayaran secara otomatis.
+3. **Sistem Pembayaran** memvalidasi transaksi secara otomatis via HTTPS REST API & Webhook.
 4. **Cloud Database (Firebase)** menerima status pembayaran dan mengaktifkan timer proporsional sesuai nominal bayar.
 5. **ESP32** menyalakan relay stop kontak yang dipilih, menyalakan lampu LED ring pada tombol, dan mengukur beban daya listrik via sensor.
 6. **Sensor PZEM-004T** memantau konsumsi daya (Watt/kWh) untuk analisis biaya dan deteksi perangkat idle.
 7. **Sensor DHT22** memantau suhu internal casing untuk proteksi keselamatan terhadap overheating.
 8. **Web Dashboard** menampilkan status realtime, konsumsi daya, suhu internal, serta histori transaksi.
+
+---
+
+## 💳 3 Strategi Integrasi Pembayaran QRIS
+
+Sistem dirancang modular untuk mendukung 3 strategi pembayaran:
+
+### 1. Payment Gateway Resmi Nasional (Midtrans / Mayar)
+* **Alur:** Pengguna scan QRIS resmi -> Bayar via E-Wallet/M-Banking -> Server Gateway kirim Webhook HTTP POST otomatis ke Backend/Firebase -> ESP32 aktif.
+* **Status:** Midtrans Sandbox aktif & siap; Pengajuan akun Production dalam proses review.
+
+### 2. Self-Hosted Interactive Web Payment Portal & Mock Gateway (HTTPS REST API / Webhook) ⭐
+* **Alur:** Pengguna scan QR code pada box fisik menggunakan kamera HP -> Halaman Web Pembayaran RANOVA terbuka di browser HP -> Pengguna memilih slot dan nominal -> Klik "Konfirmasi Bayar" -> Web App mengirim request HTTPS REST API (`POST/PATCH`) ke Cloud Endpoint/Firebase -> Sinkronisasi Realtime -> ESP32 menyalakan relay.
+* **Kelebihan:** 100% interaktif nyata di HP penguji/dosen, handal, dan menerapkan protokol HTTPS, REST API, Webhook, serta WebSocket/MQTT secara nyata tanpa ketergantungan pihak ketiga.
+
+### 3. DANA Bisnis QRIS Notification Forwarder
+* **Alur:** Menggunakan stiker QRIS Nasional resmi dari akun DANA Bisnis -> Notifikasi push pembayaran masuk ke HP -> Aplikasi MacroDroid menangkap notifikasi dan mengirim HTTP POST ke Firebase -> ESP32 aktif.
+
+---
+
+## 🌐 Pemetaan Protokol Komunikasi (Ubiquitous Computing & IoT)
+
+| Lapisan (Layer) | Protokol | Implementasi pada Sistem |
+|---|---|---|
+| **Hardware Bus** | **UART (Serial2)** | Komunikasi serial data PZEM-004T (GPIO 16/17, 9600 bps) |
+| | **I2C (Wire)** | Komunikasi display LCD 16x2 (GPIO 21 SDA, GPIO 22 SCL) |
+| | **1-Wire Digital** | Komunikasi pembacaan sensor suhu DHT22 (GPIO 4) |
+| **Wireless LAN** | **IEEE 802.11 b/g/n** | Koneksi nirkabel Wi-Fi 2.4 GHz ESP32 ke Internet |
+| **Cloud & API** | **HTTPS (TLS/SSL)** | Enkripsi data komunikasi web pembayaran dan dashboard |
+| | **REST API & Webhook**| Transmisi status pembayaran ke backend / Firebase |
+| | **WebSocket / MQTT** | Sinkronisasi data realtime dua arah ke ESP32 dan Dashboard |
 
 ---
 
@@ -26,26 +57,20 @@ Sistem ini dirancang untuk menyediakan akses daya listrik berbayar (seperti fasi
 * **Sensor 1 (Daya Listrik):** **PZEM-004T V3.0 100A** dengan Koil CT (Pin Header V3)
   * Mengukur: Tegangan (V), Arus (A), Daya (W), Energi (kWh), Frekuensi (Hz), Power Factor
   * Fungsi: Monitoring konsumsi daya, analisis biaya listrik, dan deteksi idle (auto-shutdown jika tidak ada perangkat dicolokkan)
-* **Sensor 2 (Suhu & Kelembaban):** **DHT22**
+* **Sensor 2 (Suhu & Kelembaban):** **DHT22 Modul 3-Pin**
   * Mengukur: Suhu (°C) dan Kelembaban (%)
-  * Fungsi: Proteksi keselamatan terhadap overheating di dalam casing (emergency shutdown jika suhu melebihi batas aman)
+  * Fungsi: Proteksi keselamatan terhadap overheating di dalam casing (emergency shutdown jika suhu > 60°C)
 * **Antarmuka Tombol & Indikator:** 3 unit **Metal Push Button 16mm Self-Reset (Momentary) 5V LED Ring** (Tombol fisik dan lampu status terintegrasi menjadi satu unit per stop kontak)
 * **Display Lokal:** Modul LCD 16x2 Karakter dengan I2C Backpack tersolder
 * **Catu Daya DC:** Switching Power Supply 5V (3A - 5A)
 * **Kelistrikan AC 220V:**
   * 3 unit Stop Kontak AC 1-Lubang (Broco / Panasonic)
-  * Kabel NYMHY/NYYHY 2x1.5mm
-  * Steker AC Arde Male
+  * Kabel NYMHY 3x1.5mm / 2x1.5mm (Serabut fleksibel)
+  * Steker Arde AC Male
   * Fuse Holder Panel + Sekring AC 5A/10A (Pengaman arus)
   * Terminal Block Sambungan Kabel
 * **Casing:** Box Panel ABS (IP65) atau Custom 3D Print (Filamen ABS/PETG)
 * **Prototyping:** Breadboard 830 titik, Kabel Jumper Dupont (M-M, M-F, F-F), Kabel Micro USB Data
-
-### Software & Cloud Stack
-* **Payment Gateway:** Midtrans (Snap API & Webhook Notification)
-* **Database & Realtime Sync:** Firebase Realtime Database
-* **Firmware ESP32:** C++ (Arduino IDE / PlatformIO)
-* **Web Dashboard:** Web App (Monitoring Status, Timer, Log Transaksi, Grafik Daya & Suhu)
 
 ---
 
@@ -60,7 +85,7 @@ Sistem ini dirancang untuk menyediakan akses daya listrik berbayar (seperti fasi
 | | IN3 (Slot 3) | `GPIO 18` | Kontrol Relay Stop Kontak 3 |
 | **Sensor PZEM-004T** | RX | `GPIO 17` (TX2) | Komunikasi Serial UART |
 | | TX | `GPIO 16` (RX2) | Komunikasi Serial UART |
-| **Sensor DHT22** | DATA | `GPIO 4` | Data Suhu & Kelembaban (Pull-up 4.7kΩ) |
+| **Sensor DHT22** | DATA | `GPIO 4` | Data Suhu & Kelembaban |
 | **Tombol Metal 16mm** | Tombol 1 (NO) | `GPIO 27` | Input Tombol Slot 1 (Internal Pull-Up) |
 | | Tombol 2 (NO) | `GPIO 14` | Input Tombol Slot 2 (Internal Pull-Up) |
 | | Tombol 3 (NO) | `GPIO 12` | Input Tombol Slot 3 (Internal Pull-Up) |
@@ -72,36 +97,11 @@ Sistem ini dirancang untuk menyediakan akses daya listrik berbayar (seperti fasi
 
 ---
 
-## 📐 Arsitektur Sistem
-
-```
-[ Pengguna ] ───(Scan QRIS)───> [ Midtrans Payment Gateway ]
-                                             │
-                                     (Webhook HTTP POST)
-                                             ▼
-                                  [ Backend / Cloud Function ]
-                                             │
-                                       (Update Data)
-                                             ▼
-                               [ Firebase Realtime Database ]
-                                             │
-                        ┌────────────────────┴────────────────────┐
-                        ▼                                         ▼
-                [ Perangkat ESP32 ]                      [ Web Dashboard ]
-         - Aktifkan Relay & Timer                 - Status Stop Kontak Realtime
-         - Nyalakan Ring LED Tombol               - Countdown Timer Sisa Waktu
-         - Baca Sensor PZEM (Watt/kWh)            - Log Transaksi & Konsumsi Daya
-         - Baca Sensor DHT22 (Suhu °C)            - Monitoring Suhu Internal Casing
-         - Auto-Shutdown: Idle & Overheat         - Grafik Daya & Suhu Historis
-```
-
----
-
-## 🔒 Sistem Proteksi Otomatis (3 Skenario Relay OFF)
+## 🔒 Sistem Proteksi Otomatis (Closed-Loop Safety)
 
 | Skenario | Pemicu | Sensor Terlibat |
 |---|---|---|
-| **Timer Habis** | Durasi waktu yang dibeli pengguna sudah berakhir | Logika timer ESP32 |
+| **Timer Habis** | Durasi waktu yang dibeli pengguna sudah berakhir | Logika timer ESP32 (`millis()`) |
 | **Auto-Shutdown Idle** | Tidak ada perangkat dicolokkan selama 5 menit (arus ≈ 0A) | **Sensor PZEM-004T** |
 | **Emergency Shutdown Suhu** | Suhu internal casing melebihi 60°C | **Sensor DHT22** |
 
@@ -111,74 +111,38 @@ Sistem ini dirancang untuk menyediakan akses daya listrik berbayar (seperti fasi
 
 Sensor PZEM-004T mengukur kWh secara akumulatif, sehingga sistem dapat menghitung:
 * **Biaya Listrik PLN:** `kWh terpakai x Rp 1.444/kWh`
-* **Total Pendapatan QRIS:** Jumlah seluruh transaksi masuk
+* **Total Pendapatan:** Jumlah seluruh transaksi masuk
 * **Laba Bersih:** `Total Pendapatan - Total Biaya Listrik`
-
----
-
-## 🔑 Panduan Setup Midtrans Sandbox
-
-### 1. Registrasi Akun
-1. Daftar akun merchant di [Midtrans Dashboard](https://dashboard.midtrans.com/register).
-2. Pastikan lingkungan berada di mode **SANDBOX**.
-
-### 2. Kredensial API
-Buka menu **Settings** -> **Access Keys**:
-* **Merchant ID:** Simpan ID merchant kalian.
-* **Client Key:** `Mid-client-YOUR_CLIENT_KEY`
-* **Server Key:** `Mid-server-YOUR_SERVER_KEY`
-
-### 3. Mengaktifkan Channel Pembayaran
-1. Buka menu **Settings** -> **Snap Preferences** -> Tab **Payment Channels**.
-2. Pastikan channel **GoPay / QRIS** aktif di posisi paling atas.
-
-### 4. Membuat Tagihan Transaksi via API (Snap Token)
-```json
-POST https://app.sandbox.midtrans.com/snap/v1/transactions
-Header: Authorization: Basic <Base64(ServerKey:)>
-
-{
-  "transaction_details": {
-    "order_id": "ORDER-001",
-    "gross_amount": 2000
-  }
-}
-```
 
 ---
 
 ## 📋 Roadmap Progres (14 Minggu)
 
-- [x] **Fase 1: Riset, Desain Sistem & Setup Payment Gateway (SELESAI)**
-  - [x] Brainstorming ide & penentuan arsitektur sistem.
+- [x] **Fase 1: Riset, Desain Sistem & Pemetaan Protokol (SELESAI)**
+  - [x] Finalisasi arsitektur sistem & 3 opsi integrasi pembayaran QRIS.
   - [x] Finalisasi spesifikasi hardware: 2 sensor (PZEM-004T + DHT22), relay 4-ch, 3 tombol metal 16mm LED ring.
-  - [x] Keputusan casing: Box Panel ABS (IP65) atau Custom 3D Print (ABS/PETG).
-  - [x] Registrasi & konfigurasi akun Midtrans Sandbox.
-  - [x] Pengujian transaksi API & simulasi pembayaran QRIS berhasil (Settlement).
-  - [x] Pengajuan aktivasi akun Midtrans Production (Proses Review).
-  - [x] Konsultasi dengan asisten dosen: validasi aktuator (relay), penambahan sensor kedua (DHT22), dan fitur auto-shutdown.
+  - [x] Pemetaan 6 protokol komunikasi untuk MK IoT & Ubiquitous Computing.
+  - [x] Landing page portofolio & registrasi merchant aktif (`https://raintyaa.github.io/smartplug-iot/`).
 - [ ] **Fase 2: Setup Cloud Database (Firebase) & Pengadaan Komponen**
-  - [ ] Pembelian komponen online sesuai Bill of Materials.
-  - [ ] Setup Firebase Realtime Database project & security rules.
-  - [ ] Desain CAD casing (jika 3D Print) atau pembelian Box Panel ABS.
+  - [ ] Pembelian komponen hardware online sesuai BOM.
+  - [ ] Setup project Firebase Realtime Database & skema data JSON.
+  - [ ] Rancang interactive web payment portal (Opsi 2).
 - [ ] **Fase 3: Perakitan & Pengujian Hardware di Breadboard**
-  - [ ] Wiring & coding relay 3-channel + countdown timer millis().
+  - [ ] Wiring & coding relay 3-channel + countdown timer `millis()`.
   - [ ] Integrasi display LCD 16x2 I2C & 3 tombol metal berlampu.
-  - [ ] Kalibrasi pembacaan tegangan, arus, dan daya dari sensor PZEM-004T.
-  - [ ] Integrasi sensor DHT22 & logika proteksi suhu.
-- [ ] **Fase 4: Integrasi ESP32 ke Firebase & Payment Webhook**
-  - [ ] ESP32 membaca trigger status ON/OFF dan durasi dari Firebase.
-  - [ ] Webhook backend untuk sinkronisasi otomatis Midtrans -> Firebase.
+  - [ ] Kalibrasi pembacaan tegangan, arus, dan daya dari sensor PZEM-004T via UART.
+  - [ ] Integrasi sensor DHT22 via 1-Wire & logika proteksi suhu.
+- [ ] **Fase 4: Integrasi ESP32 ke Cloud & Payment Trigger**
+  - [ ] ESP32 membaca trigger status ON/OFF dan durasi dari Firebase secara realtime.
   - [ ] Implementasi logika auto-shutdown idle (arus 0A selama 5 menit).
   - [ ] Implementasi logika emergency shutdown (suhu > 60°C).
-- [ ] **Fase 5: Pembuatan Web Dashboard**
-  - [ ] UI Realtime Status Stop Kontak & Sisa Waktu.
-  - [ ] Halaman Log Transaksi & Riwayat Penggunaan Listrik (Watt/kWh).
-  - [ ] Panel Monitoring Suhu Internal & Status Keselamatan.
-  - [ ] Grafik Analisis Biaya Listrik & Keuntungan.
+- [ ] **Fase 5: Pembuatan Realtime Hardware Web Dashboard**
+  - [ ] UI Realtime Telemetri Stop Kontak, Sensor PZEM & Sensor DHT22.
+  - [ ] Panel Log Transaksi, Countdown Timer, dan Grafik Laba Bersih.
 - [ ] **Fase 6: Fabrikasi Casing & Final Assembly**
-  - [ ] Fabrikasi casing (3D print atau Box Panel ABS) & pemasangan stop kontak AC 220V + sekring.
+  - [ ] Perakitan komponen ke dalam casing (Box Panel ABS / 3D Print).
+  - [ ] Wiring jalur AC 220V + sekring pengaman 5A/10A.
   - [ ] Full system stress test & debugging.
-- [ ] **Fase 7: Dokumentasi Akhir & Persiapan Pameran Dies Natalis**
-  - [ ] Penyusunan laporan akhir.
+- [ ] **Fase 7: Dokumentasi Akhir & Pameran Dies Natalis**
+  - [ ] Penyusunan laporan akhir untuk MK IoT & Ubiquitous Computing.
   - [ ] Persiapan materi presentasi & demo stan pameran.
