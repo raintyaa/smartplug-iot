@@ -1,4 +1,4 @@
-﻿# ⚡ Sistem Smart Plug Berbasis ESP32 Terintegrasi QRIS Payment Gateway dan Monitoring Daya Listrik
+# ⚡ Sistem Smart Plug Berbasis ESP32 Terintegrasi QRIS Payment Gateway dan Monitoring Daya Listrik
 
 Proyek akhir mata kuliah Internet of Things (Semester 5) & Ubiquitous Computing untuk otomatisasi dan monetisasi stop kontak listrik menggunakan pembayaran QRIS berbasis mikrokontroler ESP32, sensor daya listrik, sensor suhu keselamatan, protokol komunikasi terstandar, dan web dashboard monitoring realtime.
 
@@ -49,28 +49,46 @@ Sistem dirancang modular untuk mendukung 3 strategi pembayaran:
 
 ---
 
-## 🛠️ Spesifikasi Komponen (Final Bill of Materials)
+## 🛠️ Spesifikasi Komponen (Final Bill of Materials & Enclosure)
 
 ### Hardware Utama
 * **Mikrokontroler:** ESP32 DevKit V1 30-Pin (WiFi 2.4 GHz)
 * **Aktuator:** Modul Relay 4-Channel 5V Optocoupler (Active LOW)
-* **Sensor 1 (Daya Listrik):** **PZEM-004T V3.0 100A** dengan Koil CT (Pin Header V3)
+* **Sensor 1 (Daya Listrik):** **PZEM-004T V3.0 / V4.0 100A** dengan Koil CT (Pin Header 4-Pin, Modbus RTU via UART)
   * Mengukur: Tegangan (V), Arus (A), Daya (W), Energi (kWh), Frekuensi (Hz), Power Factor
-  * Fungsi: Monitoring konsumsi daya, analisis biaya listrik, dan deteksi idle (auto-shutdown jika tidak ada perangkat dicolokkan)
-* **Sensor 2 (Suhu & Kelembaban):** **DHT22 Modul 3-Pin**
+  * Fungsi: Monitoring konsumsi daya, analisis biaya listrik, dan deteksi idle (auto-shutdown jika arus ≈ 0A selama 5 menit)
+* **Sensor 2 (Suhu & Kelembaban):** **DHT22 Modul 3-Pin** (Built-in Pull-Up Resistor)
   * Mengukur: Suhu (°C) dan Kelembaban (%)
   * Fungsi: Proteksi keselamatan terhadap overheating di dalam casing (emergency shutdown jika suhu > 60°C)
 * **Antarmuka Tombol & Indikator:** 3 unit **Metal Push Button 16mm Self-Reset (Momentary) 5V LED Ring** (Tombol fisik dan lampu status terintegrasi menjadi satu unit per stop kontak)
-* **Display Lokal:** Modul LCD 16x2 Karakter dengan I2C Backpack tersolder
+* **Display Lokal:** Modul LCD 16x2 Karakter dengan I2C Backpack tersolder (PCFL8574)
 * **Catu Daya DC:** Switching Power Supply 5V (3A - 5A)
-* **Kelistrikan AC 220V:**
-  * 3 unit Stop Kontak AC 1-Lubang (Broco / Panasonic)
-  * Kabel NYMHY 3x1.5mm / 2x1.5mm (Serabut fleksibel)
-  * Steker Arde AC Male
-  * Fuse Holder Panel + Sekring AC 5A/10A (Pengaman arus)
-  * Terminal Block Sambungan Kabel
-* **Casing:** Box Panel ABS (IP65) atau Custom 3D Print (Filamen ABS/PETG)
-* **Prototyping:** Breadboard 830 titik, Kabel Jumper Dupont (M-M, M-F, F-F), Kabel Micro USB Data
+
+### Kelistrikan AC 220V & Pengaman
+* **Stop Kontak:** 3 unit **Broco Alleg C154-11 Inbow Flush-Mount (80 x 80 mm)** dengan pin Arde/Ground
+* **Steker Listrik:** 1 unit **Steker Arde Bulat Dutron DV-SAB-01 (10A/16A 250V SNI)**
+* **Kabel Daya AC:** **NYMHY 3x1.5mm²** (3-Core Serabut: Fasa/Coklat, Netral/Biru, Ground/Kuning-Hijau)
+* **Pengaman:** Fuse Holder Panel Mount + Sekring Kaca AC 5A/10A
+* **Distribusi:** Terminal Block Sambungan Kabel AC / Wago Connector
+* **Cable Gland:** PG13.5 (Pengunci kabel masuk pada sisi bawah box)
+
+### Spesifikasi Casing & Desain Enclosure
+* **Tipe Casing:** Box Panel Listrik ABS (IP65 Dustproof & Waterproof)
+* **Dimensi Box:** **~220 x 300 x 100 mm** (Orientasi **Vertikal**)
+* **Desain Ergonomi & Maintenance:**
+  * **Sisi Belakang Box (Dinding Rata):** Difungsikan sebagai **Panel Depan (User-facing)** untuk pemasangan LCD, 3x tombol, 3x stop kontak Broco, dan stiker QRIS.
+  * **Sisi Pintu Box (Berkunci):** Difungsikan sebagai **Panel Belakang (Maintenance access)** untuk teknisi/pengembang membuka akses debugging ESP32, fuse, dan wiring internal tanpa membongkar panel utama.
+* **Layout Panel Depan (Vertikal):**
+  * **Kolom Kiri:** LCD 16x2 I2C (atas) ➔ 3x Tombol Metal 16mm (tengah) ➔ Stiker QRIS (bawah).
+  * **Kolom Kanan:** 3x Stop Kontak Broco 80x80mm tersusun vertikal dari Slot 1, Slot 2, hingga Slot 3.
+* **Metode Mounting Komponen Internal:**
+  * **Relay 4-Ch:** Spacer Kuningan M3 x 10mm (4 lubang bor di dasar box) untuk isolasi jalur tembaga PCB.
+  * **ESP32 DevKit:** Mini Breadboard (170 titik, 47x35mm) dengan perekat stiker busa bawaan / Expansion Shield.
+  * **Power Supply 5V:** Spacer M3 atau Double Tape 3M VHB.
+  * **Sensor PZEM-004T & DHT22:** Double Tape 3M VHB (DHT22 ditempatkan dekat lubang ventilasi).
+  * **LCD 16x2:** Cutout panel 71x26mm + 4x baut M3.
+  * **Tombol Metal:** 3x lubang bor Ø16mm.
+  * **Stop Kontak Broco:** 3x lubang bor/cutout bulat Ø60mm untuk body inbow.
 
 ---
 
@@ -123,9 +141,10 @@ Sensor PZEM-004T mengukur kWh secara akumulatif, sehingga sistem dapat menghitun
   - [x] Finalisasi spesifikasi hardware: 2 sensor (PZEM-004T + DHT22), relay 4-ch, 3 tombol metal 16mm LED ring.
   - [x] Pemetaan 6 protokol komunikasi untuk MK IoT & Ubiquitous Computing.
   - [x] Landing page portofolio & registrasi merchant aktif (`https://raintyaa.github.io/smartplug-iot/`).
-- [ ] **Fase 2: Setup Cloud Database (Firebase) & Pengadaan Komponen**
-  - [ ] Pembelian komponen hardware online sesuai BOM.
+- [ ] **Fase 2: Setup Cloud Database (Firebase), Simulasi Wokwi & Pengadaan Komponen**
+  - [ ] Pembelian komponen hardware online sesuai BOM & Enclosure.
   - [ ] Setup project Firebase Realtime Database & skema data JSON.
+  - [ ] Pembuatan virtual prototype firmware di simulator Wokwi (ESP32 + WiFi + LCD + Relay + DHT22).
   - [ ] Rancang interactive web payment portal (Opsi 2).
 - [ ] **Fase 3: Perakitan & Pengujian Hardware di Breadboard**
   - [ ] Wiring & coding relay 3-channel + countdown timer `millis()`.
