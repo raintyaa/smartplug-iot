@@ -4,17 +4,22 @@ Proyek akhir mata kuliah Internet of Things (Semester 5) & Ubiquitous Computing 
 
 ---
 
-## 📌 Gambaran Umum Sistem
+## 📌 Gambaran Umum Sistem & Alur Interaksi Pengguna
 
-Sistem ini dirancang untuk menyediakan akses daya listrik berbayar mandiri (*self-service charging station*):
-1. **Pengguna** memilih stop kontak dengan menekan tombol metal berlampu pada slot yang diinginkan.
-2. **Pengguna** melakukan pembayaran melalui stiker QRIS pada panel alat (nominal menentukan durasi).
-3. **Sistem Pembayaran** memvalidasi transaksi secara otomatis via HTTPS REST API & Webhook.
-4. **Cloud Database (Firebase)** menerima status pembayaran dan mengaktifkan timer proporsional sesuai nominal bayar.
-5. **ESP32** menyalakan relay stop kontak yang dipilih, menyalakan lampu LED ring pada tombol, dan mengukur beban daya listrik via sensor.
-6. **Sensor PZEM-004T** memantau konsumsi daya (Watt/kWh) untuk analisis biaya dan deteksi perangkat idle.
-7. **Sensor DHT22** memantau suhu internal casing untuk proteksi keselamatan terhadap overheating.
-8. **Web Dashboard** menampilkan status realtime, konsumsi daya, suhu internal, serta histori transaksi.
+Sistem dirancang dengan alur interaksi fisik ke digital (*Physical-to-Digital Seamless Flow*):
+1. **Pilih Slot (Tombol Fisik):** Pengguna menekan salah satu dari 3 tombol metal di alat (Slot 1, 2, atau 3).
+2. **Indikasi Lokal:** ESP32 mendeteksi tombol yang ditekan:
+   * Lampu LED ring pada tombol yang dipilih mulai **berkedip (*blinking*)**.
+   * Layar LCD 16x2 menampilkan teks: `"SLOT X TERPILIH"` dan `"SILAKAN SCAN QR"`.
+   * ESP32 mencatat status sementara di Firebase (`active_selection: { slot: X, status: "WAITING_PAYMENT" }`).
+3. **Scan QR Code:** Pengguna melakukan scan stiker QR code pada box alat menggunakan kamera HP.
+4. **Halaman Pembayaran Terbuka:** Halaman Web Pembayaran (`pay.html`) otomatis membaca slot yang sedang dipilih pengguna secara *realtime*.
+5. **Input Nominal Mandiri:** Pengguna mengetikkan nominal penggunaan yang diinginkan (misal: Rp 2.000, Rp 5.000, dll.). Sistem otomatis mengonversi nominal tersebut menjadi durasi waktu pemakaian (proporsional per Rp 1.000 = 15 menit).
+6. **Konfirmasi Bayar:** Pengguna menekan tombol "Bayar Sekarang".
+7. **Aktivasi Otomatis (Relay & LED):**
+   * Web mengirimkan data via HTTPS REST API ke Firebase.
+   * ESP32 menerima data: Relay stop kontak terpilih otomatis **ON**, lampu LED ring tombol berubah dari berkedip menjadi **menyala solid**, dan LCD mulai menghitung mundur sisa durasi pemakaian (*countdown timer*).
+8. **Proteksi & Monitoring:** Selama aktif, sensor PZEM-004T memantau konsumsi daya listrik (Watt/kWh) dan sensor DHT22 memantau suhu internal box demi keselamatan (*closed-loop safety*).
 
 ---
 
@@ -23,15 +28,20 @@ Sistem ini dirancang untuk menyediakan akses daya listrik berbayar mandiri (*sel
 Sistem dirancang modular untuk mendukung 3 strategi pembayaran:
 
 ### 1. Payment Gateway Resmi Nasional (Midtrans / Mayar)
-* **Alur:** Pengguna scan QRIS resmi -> Bayar via E-Wallet/M-Banking -> Server Gateway kirim Webhook HTTP POST otomatis ke Backend/Firebase -> ESP32 aktif.
+* **Alur:** Tekan tombol fisik -> Scan QRIS resmi -> Bayar via E-Wallet/M-Banking -> Server Gateway kirim Webhook HTTP POST otomatis ke Backend/Firebase -> ESP32 aktif.
 * **Status:** Midtrans Sandbox aktif & siap; Pengajuan akun Production dalam proses review.
 
 ### 2. Self-Hosted Interactive Web Payment Portal & Mock Gateway (HTTPS REST API / Webhook) ⭐
-* **Alur:** Pengguna scan QR code pada box fisik menggunakan kamera HP -> Halaman Web Pembayaran RANOVA terbuka di browser HP -> Pengguna memilih slot dan nominal -> Klik "Konfirmasi Bayar" -> Web App mengirim request HTTPS REST API (`POST/PATCH`) ke Cloud Endpoint/Firebase -> Sinkronisasi Realtime -> ESP32 menyalakan relay.
+* **Alur:**
+  1. Pengguna menekan tombol fisik slot yang ingin dipakai pada box alat.
+  2. Pengguna scan QR code stiker alat dengan kamera HP -> Web Pembayaran RANOVA (`pay.html`) terbuka.
+  3. Web secara cerdas menampilkan slot yang telah ditekan, dan pengguna memasukkan nominal durasi yang diinginkan.
+  4. Pengguna klik "Konfirmasi Pembayaran" -> Web mengirimkan `HTTPS REST API` (`PATCH/POST`) ke Firebase Realtime Database.
+  5. ESP32 merespons perubahan data secara instan: Relay aktif, LED tombol menyala solid, timer berjalan.
 * **Kelebihan:** 100% interaktif nyata di HP penguji/dosen, handal, dan menerapkan protokol HTTPS, REST API, Webhook, serta WebSocket/MQTT secara nyata tanpa ketergantungan pihak ketiga.
 
 ### 3. DANA Bisnis QRIS Notification Forwarder
-* **Alur:** Menggunakan stiker QRIS Nasional resmi dari akun DANA Bisnis -> Notifikasi push pembayaran masuk ke HP -> Aplikasi MacroDroid menangkap notifikasi dan mengirim HTTP POST ke Firebase -> ESP32 aktif.
+* **Alur:** Tekan tombol fisik -> Scan stiker QRIS Nasional DANA Bisnis -> Notifikasi push pembayaran masuk ke HP -> MacroDroid meneruskan via HTTP POST ke Firebase -> ESP32 aktif.
 
 ---
 
@@ -73,11 +83,11 @@ Sistem dirancang modular untuk mendukung 3 strategi pembayaran:
 * **Cable Gland:** PG13.5 (Pengunci kabel masuk pada sisi bawah box)
 
 ### Spesifikasi Casing & Desain Enclosure
-* **Tipe Casing:** Box Panel Listrik ABS (IP65 Dustproof & Waterproof)
+* **Tipe Casing:** Kayu Triplek / Plywood Tebal 9mm – 12mm (Finishing Amplas, Cat/Pernis, atau Lapisan HPL)
 * **Dimensi Box:** **~220 x 300 x 100 mm** (Orientasi **Vertikal**)
 * **Desain Ergonomi & Maintenance:**
-  * **Sisi Belakang Box (Dinding Rata):** Difungsikan sebagai **Panel Depan (User-facing)** untuk pemasangan LCD, 3x tombol, 3x stop kontak Broco, dan stiker QRIS.
-  * **Sisi Pintu Box (Berkunci):** Difungsikan sebagai **Panel Belakang (Maintenance access)** untuk teknisi/pengembang membuka akses debugging ESP32, fuse, dan wiring internal tanpa membongkar panel utama.
+  * **Panel Depan:** Dinding kayu rata untuk pemasangan LCD 16x2, 3x tombol metal 16mm, 3x stop kontak Broco Inbow, dan stiker QRIS.
+  * **Panel Belakang (Engsel/Pintu):** Pintu belakang berengsel atau sekrup lepas-pasang untuk akses teknisi membuka/maintenance sirkuit ESP32, kabel 220V, dan sekring tanpa merusak panel depan.
 * **Layout Panel Depan (Vertikal):**
   * **Kolom Kiri:** LCD 16x2 I2C (atas) ➔ 3x Tombol Metal 16mm (tengah) ➔ Stiker QRIS (bawah).
   * **Kolom Kanan:** 3x Stop Kontak Broco 80x80mm tersusun vertikal dari Slot 1, Slot 2, hingga Slot 3.
