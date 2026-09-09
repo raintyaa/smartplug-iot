@@ -1,4 +1,4 @@
-﻿# Dependencies
+# Dependencies
 node_modules/
 .pnp
 .pnp.js
@@ -9,6 +9,14 @@ node_modules/
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Firebase Service Account (RAHASIA - JANGAN DICOMMIT)
+*-adminsdk-*.json
+serviceAccountKey.json
+firebase-service-account.json
+
+# Vercel
+.vercel
 
 # Hardware & IDE Builds
 .pio/
