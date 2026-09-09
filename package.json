@@ -1,0 +1,11 @@
+﻿{
+  "name": "ranova-smartplug",
+  "version": "1.0.0",
+  "description": "RANOVA Smart Plug IoT System - Webhook Handler",
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
