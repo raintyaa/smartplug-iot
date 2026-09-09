@@ -1,6 +1,1 @@
-﻿{
-  "buildCommand": "echo ok",
-  "outputDirectory": "web",
-  "installCommand": "npm install",
-  "framework": null
-}
+﻿{"buildCommand":"echo ok","outputDirectory":"web","installCommand":"npm install"}
