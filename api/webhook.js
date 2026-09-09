@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // RANOVA Smart Plug - Mayar QRIS Webhook Handler
 // Vercel Serverless Function
 // ============================================================
@@ -85,7 +85,7 @@ module.exports = async (req, res) => {
 
     console.log("Active selection di Firebase:", selection);
 
-    if (!selection || selection.status !== "WAITING_PAYMENT") {
+    if (!selection || selection.status !== "WAITING_PAYMENT" || !selection.slot || selection.slot === "none") {
       console.log("Tidak ada slot yang sedang menunggu pembayaran.");
       return res.status(200).json({
         message: "Tidak ada slot yang menunggu",
