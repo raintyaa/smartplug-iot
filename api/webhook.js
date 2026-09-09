@@ -47,7 +47,6 @@ module.exports = async (req, res) => {
     console.log(JSON.stringify(payload, null, 2));
 
     // --- PARSING PAYLOAD MAYAR ---
-    // Coba berbagai kemungkinan field name dari Mayar
     const event  = payload.event  || payload.type  || payload.eventType || "";
     const status = (payload.data?.status || payload.status || "").toLowerCase();
     const amount = parseInt(
@@ -58,16 +57,22 @@ module.exports = async (req, res) => {
       10
     );
 
-    console.log(`Event: ${event} | Status: ${status} | Amount: Rp ${amount}`);
+    // Log lengkap untuk debugging
+    console.log(`Event: "${event}" | Status: "${status}" | Amount: Rp ${amount}`);
 
-    // Hanya proses jika event adalah purchase DAN sudah paid/success
-    const isPurchasePaid =
-      event.toLowerCase().includes("purchase") &&
-      (status === "paid" || status === "success" || status === "completed");
+    // Abaikan event testing dari Mayar
+    if (event === "testing") {
+      return res.status(200).json({ message: "Testing event diabaikan" });
+    }
 
-    if (!isPurchasePaid) {
-      console.log("Bukan event pembayaran sukses, diabaikan.");
-      return res.status(200).json({ message: "Event diabaikan", event, status });
+    // Proses jika status SUCCESS dan ada amount (berlaku untuk semua jenis event Mayar)
+    const isPaymentSuccess =
+      (status === "success" || status === "paid" || status === "completed") &&
+      amount > 0;
+
+    if (!isPaymentSuccess) {
+      console.log(`Bukan pembayaran sukses. Event: "${event}", Status: "${status}", Amount: ${amount}`);
+      return res.status(200).json({ message: "Bukan pembayaran sukses", event, status, amount });
     }
 
     if (amount <= 0) {
