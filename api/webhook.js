@@ -98,14 +98,15 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Cek apakah sudah timeout (tombol ditekan terlalu lama yang lalu)
+    // Cek timeout — lewati jika timestamp = 0 (mode testing manual)
     const sekarang = Date.now();
-    const selisihDetik = (sekarang - (selection.timestamp || 0)) / 1000;
-
-    if (selisihDetik > TIMEOUT_MENUNGGU_DETIK) {
-      console.log(`Slot sudah timeout (${Math.round(selisihDetik)} detik yang lalu)`);
-      await db.ref("system/active_selection").update({ status: "IDLE", slot: null });
-      return res.status(200).json({ message: "Slot timeout, pembayaran terlambat" });
+    if (selection.timestamp > 0) {
+      const selisihDetik = (sekarang - selection.timestamp) / 1000;
+      if (selisihDetik > TIMEOUT_MENUNGGU_DETIK) {
+        console.log(`Slot sudah timeout (${Math.round(selisihDetik)} detik yang lalu)`);
+        await db.ref("system/active_selection").update({ status: "IDLE", slot: null });
+        return res.status(200).json({ message: "Slot timeout, pembayaran terlambat" });
+      }
     }
 
     const slotKey = selection.slot; // "slot1", "slot2", atau "slot3"
