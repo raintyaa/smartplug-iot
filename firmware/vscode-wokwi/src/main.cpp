@@ -210,6 +210,8 @@ void pollFirebase() {
       slots[i].startMs  = millis();
       slots[i].tracking = true;
       if (selSlot == i) selSlot = -1;
+      successSlot = i;
+      tSuccessMsg = millis();
       Serial.printf("[SLOT %d] AKTIF! %.1f menit\n", i+1, newDur/60.0);
     }
 
@@ -271,35 +273,40 @@ void updateHardware() {
   setRelay(3, false);
 }
 
+// --- STATE TAMPILAN NOTIFIKASI SUKSES ---
+int      successSlot   = -1;       // Slot yang baru saja berhasil dibayar
+uint32_t tSuccessMsg   = 0;        // Waktu mulai pesan sukses tampil
+const uint32_t I_SUCCESS_MSG = 4000; // Tampilkan selama 4 detik lalu kembali ke IDLE
+
 // ============================================================
 // FUNGSI: Update LCD 16x2
 // ============================================================
 void updateLCD() {
-  int show = -1;
-  for (int i = 0; i < 3; i++)
-    if (slots[i].tracking && slots[i].cntDown > 0) { show = i; break; }
-  if (show == -1 && selSlot != -1) show = selSlot;
-
+  uint32_t now = millis();
   char r1[17], r2[17];
-  if (show == -1) {
-    // Idle: tampilkan tegangan dari PZEM
-    snprintf(r1, 17, "  RANOVA PLUG   ");
-    if (pwr.voltage > 100)
-      snprintf(r2, 17, "%.0fV %.0fHz Siap", pwr.voltage, pwr.freq);
-    else
-      snprintf(r2, 17, " Tekan Tombol...");
 
-  } else if (slots[show].tracking) {
-    // ACTIVE: countdown + daya aktif
-    uint32_t m = slots[show].cntDown / 60;
-    uint32_t s = slots[show].cntDown % 60;
-    snprintf(r1, 17, "SLOT %d %02d:%02d     ", show+1, m, s);
-    snprintf(r2, 17, "%.0fW  %.1fA  OK  ", pwr.power, pwr.current);
+  // 1. Prioritas Utama: Tampilkan notifikasi "BAYAR BERHASIL" selama 4 detik
+  if (successSlot != -1) {
+    if (now - tSuccessMsg < I_SUCCESS_MSG) {
+      snprintf(r1, 17, " BAYAR BERHASIL ");
+      snprintf(r2, 17, "  SLOT %d AKTIF  ", successSlot + 1);
+      lcd.setCursor(0, 0); lcd.print(r1);
+      lcd.setCursor(0, 1); lcd.print(r2);
+      return;
+    } else {
+      successSlot = -1; // Selesai 4 detik, reset kembali ke normal
+    }
+  }
 
-  } else {
-    // WAITING_PAYMENT
-    snprintf(r1, 17, "SLOT %d TERPILIH ", show+1);
+  // 2. Prioritas Kedua: Ada pengguna yang sedang memilih slot (menunggu pembayaran)
+  if (selSlot != -1) {
+    snprintf(r1, 17, "SLOT %d TERPILIH ", selSlot + 1);
     snprintf(r2, 17, "Scan QRIS >Bayar");
+  } 
+  // 3. Standby / Idle: Siap digunakan oleh pengguna berikutnya
+  else {
+    snprintf(r1, 17, "  RANOVA PLUG   ");
+    snprintf(r2, 17, " Tekan Tombol...");
   }
 
   lcd.setCursor(0, 0); lcd.print(r1);
