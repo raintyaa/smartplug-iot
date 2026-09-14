@@ -17,8 +17,10 @@ Sistem dirancang dengan alur interaksi fisik ke digital (*Physical-to-Digital Se
 5. **Input Nominal Mandiri:** Pengguna mengetikkan nominal penggunaan yang diinginkan (misal: Rp 2.000, Rp 5.000, dll.). Sistem otomatis mengonversi nominal tersebut menjadi durasi waktu pemakaian (proporsional per Rp 1.000 = 15 menit).
 6. **Konfirmasi Bayar:** Pengguna menekan tombol "Bayar Sekarang".
 7. **Aktivasi Otomatis (Relay & LED):**
-   * Web mengirimkan data via HTTPS REST API ke Firebase.
-   * ESP32 menerima data: Relay stop kontak terpilih otomatis **ON**, lampu LED ring tombol berubah dari berkedip menjadi **menyala solid**, dan LCD mulai menghitung mundur sisa durasi pemakaian (*countdown timer*).
+   * Webhook Mayar otomatis mengupdate status Firebase ke `ACTIVE`.
+   * ESP32 merespons instan: Relay stop kontak terpilih otomatis **ON** dan lampu LED ring tombol berubah dari berkedip menjadi **menyala solid**.
+   * Layar LCD 16x2 menampilkan konfirmasi visual: `"BAYAR BERHASIL"` dan `"SLOT X AKTIF"` selama 4 detik, lalu otomatis kembali ke mode **Standby** (`"RANOVA PLUG / Tekan Tombol..."`) agar pengguna lain dapat langsung menyewa slot berikutnya tanpa terganggu.
+   * Sisa durasi waktu pemakaian (*countdown timer*) dan telemetri daya (*Watt, kWh, Rupiah*) untuk ketiga stop kontak dipantau secara terpusat melalui **Web Dashboard Realtime**.
 8. **Proteksi & Monitoring:** Selama aktif, sensor PZEM-004T memantau konsumsi daya listrik (Watt/kWh) dan sensor DHT22 memantau suhu internal box demi keselamatan (*closed-loop safety*).
 
 ---
@@ -102,18 +104,20 @@ Sistem dirancang modular untuk mendukung 3 strategi pembayaran:
 
 ---
 
-## 🔌 Pemetaan Pin GPIO ESP32
+## 🔌 Pemetaan Pin GPIO ESP32 & Panduan Wiring Fisik (Pin-to-Pin)
 
+### Tabel Pin ESP32 DevKit V1 (30-Pin)
 | Komponen | Pin Modul | Pin ESP32 | Keterangan |
 |---|---|---|---|
 | **LCD 16x2 I2C** | SDA | `GPIO 21` | Jalur Data I2C |
 | | SCL | `GPIO 22` | Jalur Clock I2C |
-| **Relay 4-Channel** | IN1 (Slot 1) | `GPIO 23` | Kontrol Relay Stop Kontak 1 |
-| | IN2 (Slot 2) | `GPIO 19` | Kontrol Relay Stop Kontak 2 |
-| | IN3 (Slot 3) | `GPIO 18` | Kontrol Relay Stop Kontak 3 |
-| **Sensor PZEM-004T** | RX | `GPIO 17` (TX2) | Komunikasi Serial UART |
-| | TX | `GPIO 16` (RX2) | Komunikasi Serial UART |
-| **Sensor DHT22** | DATA | `GPIO 4` | Data Suhu & Kelembaban |
+| **Relay 4-Channel** | IN1 (Slot 1) | `GPIO 23` | Kontrol Relay Stop Kontak 1 (Active-LOW) |
+| | IN2 (Slot 2) | `GPIO 19` | Kontrol Relay Stop Kontak 2 (Active-LOW) |
+| | IN3 (Slot 3) | `GPIO 18` | Kontrol Relay Stop Kontak 3 (Active-LOW) |
+| | IN4 (Spare) | `GPIO 26` | Cadangan Channel 4 (Active-LOW) |
+| **Sensor PZEM-004T** | RX | `GPIO 17` (TX2) | Komunikasi Serial UART (PZEM RX <- ESP32 TX2) |
+| | TX | `GPIO 16` (RX2) | Komunikasi Serial UART (PZEM TX -> ESP32 RX2) |
+| **Sensor DHT22** | DATA / OUT | `GPIO 4` | 1-Wire Digital Suhu & Kelembaban |
 | **Tombol Metal 16mm** | Tombol 1 (NO) | `GPIO 27` | Input Tombol Slot 1 (Internal Pull-Up) |
 | | Tombol 2 (NO) | `GPIO 14` | Input Tombol Slot 2 (Internal Pull-Up) |
 | | Tombol 3 (NO) | `GPIO 12` | Input Tombol Slot 3 (Internal Pull-Up) |
@@ -121,7 +125,76 @@ Sistem dirancang modular untuk mendukung 3 strategi pembayaran:
 | | LED Ring 2 (+) | `GPIO 33` | Indikator Lampu Slot 2 Aktif |
 | | LED Ring 3 (+) | `GPIO 25` | Indikator Lampu Slot 3 Aktif |
 
-**Total Pin Terpakai: 14 pin** dari 25+ pin GPIO tersedia.
+*Total Pin Terpakai: 15 pin dari 25+ pin GPIO tersedia.*
+
+---
+
+### 📋 Detail Wiring Setiap Komponen Fisik
+
+#### 1. Tombol Metal 16mm dengan LED Ring (5 Kaki / Terminal per Tombol)
+Setiap tombol memiliki 5 kaki di bagian belakang: `+` (Anoda LED), `-` (Katoda LED), `C / COM` (Common), `NO` (Normally Open), dan `NC` (Normally Closed, kosong).
+* **Tombol Slot 1:**
+  * `NO` ➔ **ESP32 GPIO 27**
+  * `C / COM` ➔ **GND Bersama**
+  * `+ (LED+)` ➔ **ESP32 GPIO 32**
+  * `- (LED-)` ➔ **GND Bersama**
+  * `NC` ➔ *Kosong*
+* **Tombol Slot 2:**
+  * `NO` ➔ **ESP32 GPIO 14**
+  * `C / COM` ➔ **GND Bersama**
+  * `+ (LED+)` ➔ **ESP32 GPIO 33**
+  * `- (LED-)` ➔ **GND Bersama**
+  * `NC` ➔ *Kosong*
+* **Tombol Slot 3:**
+  * `NO` ➔ **ESP32 GPIO 12**
+  * `C / COM` ➔ **GND Bersama**
+  * `+ (LED+)` ➔ **ESP32 GPIO 25**
+  * `- (LED-)` ➔ **GND Bersama**
+  * `NC` ➔ *Kosong*
+
+#### 2. Modul LCD 16x2 I2C (4 Pin)
+* `GND` ➔ **ESP32 GND**
+* `VCC` ➔ **PSU 5V / VIN**
+* `SDA` ➔ **ESP32 GPIO 21**
+* `SCL` ➔ **ESP32 GPIO 22**
+
+#### 3. Modul DHT22 Suhu & Kelembaban (3 Pin)
+* `VCC (+)` ➔ **ESP32 3.3V**
+* `GND (-)` ➔ **ESP32 GND**
+* `DATA / OUT` ➔ **ESP32 GPIO 4**
+
+#### 4. Sensor Daya PZEM-004T V3.0 (Logika DC & AC 220V)
+* **Sisi Logika DC (Pin Header 4-Pin):**
+  * `5V` ➔ **PSU 5V** (wajib 5V stabil untuk optocoupler internal)
+  * `GND` ➔ **ESP32 GND**
+  * `TX` ➔ **ESP32 GPIO 16 (RX2)**
+  * `RX` ➔ **ESP32 GPIO 17 (TX2)**
+* **Sisi AC 220V:**
+  * `L & N` ➔ Paralel ke Fasa & Netral PLN AC 220V
+  * `CT Port` ➔ 2 kabel dari koil donat CT (kabel Fasa PLN dimasukkan menembus lubang koil)
+
+#### 5. Modul Relay 4-Channel 5V Optocoupler (Active-LOW)
+* **Sisi Kontrol DC:**
+  * `VCC` ➔ **PSU 5V**
+  * `GND` ➔ **GND Bersama (PSU & ESP32)**
+  * `IN1` ➔ **ESP32 GPIO 23** (Slot 1)
+  * `IN2` ➔ **ESP32 GPIO 19** (Slot 2)
+  * `IN3` ➔ **ESP32 GPIO 18** (Slot 3)
+  * `IN4` ➔ **ESP32 GPIO 26** (Spare / Cadangan)
+* **Sisi Terminal AC 220V (Pemutus Beban Listrik):**
+  * `COM` Channel 1, 2, 3 ➔ Kabel Fasa (Coklat) dari PLN (setelah sekring & CT PZEM)
+  * `NO` Channel 1 ➔ Lubang Fasa Stop Kontak Broco Slot 1
+  * `NO` Channel 2 ➔ Lubang Fasa Stop Kontak Broco Slot 2
+  * `NO` Channel 3 ➔ Lubang Fasa Stop Kontak Broco Slot 3
+  * `NC` ➔ *Kosongkan*
+
+---
+
+### 💻 Simulasi Firmware (Wokwi & PlatformIO VS Code)
+Firmware telah diuji dan siap disimulasikan:
+* **Wokwi Simulator (Web / VS Code):** Tersedia di folder [`firmware/wokwi/`](firmware/wokwi/) (`sketch.ino`, `diagram.json`, `libraries.txt`).
+* **PlatformIO Project (Lokal VS Code):** Tersedia di folder [`firmware/vscode-wokwi/`](firmware/vscode-wokwi/) lengkap dengan `platformio.ini`, `wokwi.toml`, dan `src/main.cpp`.
+* **Kompabilitas Hardware Fisik:** Cukup komentari baris `#define WOKWI_SIM` di kode saat mengunggah ke board fisik ESP32 nyata.
 
 ---
 
@@ -151,11 +224,12 @@ Sensor PZEM-004T mengukur kWh secara akumulatif, sehingga sistem dapat menghitun
   - [x] Finalisasi spesifikasi hardware: 2 sensor (PZEM-004T + DHT22), relay 4-ch, 3 tombol metal 16mm LED ring.
   - [x] Pemetaan 6 protokol komunikasi untuk MK IoT & Ubiquitous Computing.
   - [x] Landing page portofolio & registrasi merchant aktif (`https://raintyaa.github.io/smartplug-iot/`).
-- [ ] **Fase 2: Setup Cloud Database (Firebase), Simulasi Wokwi & Pengadaan Komponen**
+- [x] **Fase 2: Setup Cloud Database (Firebase), Simulasi Wokwi & Integrasi Webhook (SELESAI)**
+  - [x] Setup project Firebase Realtime Database & skema data JSON.
+  - [x] Integrasi Webhook Mayar QRIS -> Vercel Serverless Function -> Firebase (teruji sukses end-to-end).
+  - [x] Pembuatan virtual prototype firmware di simulator Wokwi & PlatformIO VS Code (ESP32 + WiFi + LCD + Relay 4-ch + DHT22 + PZEM-004T).
+  - [x] Finalisasi UX LCD: notifikasi transaksi sukses transien (4 detik) lalu kembali Standby, countdown & telemetri multi-slot terpusat ke Web Dashboard.
   - [ ] Pembelian komponen hardware online sesuai BOM & Enclosure.
-  - [ ] Setup project Firebase Realtime Database & skema data JSON.
-  - [ ] Pembuatan virtual prototype firmware di simulator Wokwi (ESP32 + WiFi + LCD + Relay + DHT22).
-  - [ ] Rancang interactive web payment portal (Opsi 2).
 - [ ] **Fase 3: Perakitan & Pengujian Hardware di Breadboard**
   - [ ] Wiring & coding relay 3-channel + countdown timer `millis()`.
   - [ ] Integrasi display LCD 16x2 I2C & 3 tombol metal berlampu.
