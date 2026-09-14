@@ -6,91 +6,202 @@
     {
       "type": "board-esp32-devkit-c-v4",
       "id": "esp32",
-      "top": 130,
-      "left": 220,
+      "top": 170,
+      "left": 250,
       "attrs": {}
     },
+
     {
       "type": "wokwi-lcd1602",
       "id": "lcd",
-      "top": -50,
-      "left": 490,
+      "top": 0,
+      "left": 500,
       "attrs": { "pins": "i2c", "i2cAddress": "0x27" }
     },
+
     {
       "type": "wokwi-dht22",
       "id": "dht",
-      "top": 420,
-      "left": 60,
+      "top": 470,
+      "left": 90,
       "attrs": {}
     },
-    { "type": "wokwi-pushbutton", "id": "btn1", "top": 130, "left": 30,
-      "attrs": { "color": "green" } },
-    { "type": "wokwi-pushbutton", "id": "btn2", "top": 210, "left": 30,
-      "attrs": { "color": "blue" } },
-    { "type": "wokwi-pushbutton", "id": "btn3", "top": 290, "left": 30,
-      "attrs": { "color": "red" } },
-    { "type": "wokwi-resistor", "id": "r_l1", "top": 138, "left": 490,
-      "attrs": { "value": "220" }, "rotate": 90 },
-    { "type": "wokwi-led",      "id": "led1", "top": 110, "left": 570,
-      "attrs": { "color": "blue" } },
-    { "type": "wokwi-resistor", "id": "r_l2", "top": 218, "left": 490,
-      "attrs": { "value": "220" }, "rotate": 90 },
-    { "type": "wokwi-led",      "id": "led2", "top": 190, "left": 570,
-      "attrs": { "color": "blue" } },
-    { "type": "wokwi-resistor", "id": "r_l3", "top": 298, "left": 490,
-      "attrs": { "value": "220" }, "rotate": 90 },
-    { "type": "wokwi-led",      "id": "led3", "top": 270, "left": 570,
-      "attrs": { "color": "blue" } },
-    { "type": "wokwi-resistor", "id": "r_r1", "top": 138, "left": 640,
-      "attrs": { "value": "220" }, "rotate": 90 },
-    { "type": "wokwi-led",      "id": "rly1", "top": 110, "left": 720,
-      "attrs": { "color": "green" } },
-    { "type": "wokwi-resistor", "id": "r_r2", "top": 218, "left": 640,
-      "attrs": { "value": "220" }, "rotate": 90 },
-    { "type": "wokwi-led",      "id": "rly2", "top": 190, "left": 720,
-      "attrs": { "color": "green" } },
-    { "type": "wokwi-resistor", "id": "r_r3", "top": 298, "left": 640,
-      "attrs": { "value": "220" }, "rotate": 90 },
-    { "type": "wokwi-led",      "id": "rly3", "top": 270, "left": 720,
-      "attrs": { "color": "green" } }
+
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn1",
+      "top": 180,
+      "left": 60,
+      "attrs": { "color": "green", "label": "SLOT 1" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ring1",
+      "top": 148,
+      "left": 60,
+      "attrs": { "color": "blue", "label": "Ring 1" }
+    },
+
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn2",
+      "top": 270,
+      "left": 60,
+      "attrs": { "color": "green", "label": "SLOT 2" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ring2",
+      "top": 238,
+      "left": 60,
+      "attrs": { "color": "blue", "label": "Ring 2" }
+    },
+
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn3",
+      "top": 360,
+      "left": 60,
+      "attrs": { "color": "green", "label": "SLOT 3" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ring3",
+      "top": 328,
+      "left": 60,
+      "attrs": { "color": "blue", "label": "Ring 3" }
+    },
+
+    {
+      "type": "wokwi-resistor",
+      "id": "r_ring1",
+      "top": 158,
+      "left": 130,
+      "attrs": { "value": "220" },
+      "rotate": 90
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_ring2",
+      "top": 248,
+      "left": 130,
+      "attrs": { "value": "220" },
+      "rotate": 90
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_ring3",
+      "top": 338,
+      "left": 130,
+      "attrs": { "value": "220" },
+      "rotate": 90
+    },
+
+    {
+      "type": "wokwi-resistor",
+      "id": "r_rly1",
+      "top": 200,
+      "left": 650,
+      "attrs": { "value": "220" },
+      "rotate": 90
+    },
+    {
+      "type": "wokwi-led",
+      "id": "rly1",
+      "top": 170,
+      "left": 730,
+      "attrs": { "color": "green", "label": "CH1-Slot1" }
+    },
+
+    {
+      "type": "wokwi-resistor",
+      "id": "r_rly2",
+      "top": 270,
+      "left": 650,
+      "attrs": { "value": "220" },
+      "rotate": 90
+    },
+    {
+      "type": "wokwi-led",
+      "id": "rly2",
+      "top": 240,
+      "left": 730,
+      "attrs": { "color": "green", "label": "CH2-Slot2" }
+    },
+
+    {
+      "type": "wokwi-resistor",
+      "id": "r_rly3",
+      "top": 340,
+      "left": 650,
+      "attrs": { "value": "220" },
+      "rotate": 90
+    },
+    {
+      "type": "wokwi-led",
+      "id": "rly3",
+      "top": 310,
+      "left": 730,
+      "attrs": { "color": "green", "label": "CH3-Slot3" }
+    },
+
+    {
+      "type": "wokwi-resistor",
+      "id": "r_rly4",
+      "top": 410,
+      "left": 650,
+      "attrs": { "value": "220" },
+      "rotate": 90
+    },
+    {
+      "type": "wokwi-led",
+      "id": "rly4",
+      "top": 380,
+      "left": 730,
+      "attrs": { "color": "red", "label": "CH4-Spare" }
+    }
   ],
+
   "connections": [
-    ["esp32:D21",  "lcd:SDA",  "blue",  []],
-    ["esp32:D22",  "lcd:SCL",  "green", []],
-    ["esp32:3V3",  "lcd:VCC",  "red",   []],
-    ["esp32:GND.1","lcd:GND",  "black", []],
+    ["esp32:D21",   "lcd:SDA",   "blue",   []],
+    ["esp32:D22",   "lcd:SCL",   "green",  []],
+    ["esp32:3V3",   "lcd:VCC",   "red",    []],
+    ["esp32:GND.1", "lcd:GND",   "black",  []],
 
-    ["esp32:D4",   "dht:SDA",  "orange",[]],
-    ["esp32:3V3",  "dht:VCC",  "red",   []],
-    ["esp32:GND.1","dht:GND",  "black", []],
+    ["esp32:D4",    "dht:SDA",   "orange", []],
+    ["esp32:3V3",   "dht:VCC",   "red",    []],
+    ["esp32:GND.1", "dht:GND",   "black",  []],
 
-    ["esp32:D27",  "btn1:1.l", "green", []],
-    ["esp32:GND.2","btn1:2.l", "black", []],
-    ["esp32:D14",  "btn2:1.l", "blue",  []],
-    ["esp32:GND.2","btn2:2.l", "black", []],
-    ["esp32:D12",  "btn3:1.l", "red",   []],
-    ["esp32:GND.2","btn3:2.l", "black", []],
+    ["esp32:D27",   "btn1:1.l",  "lime",   []],
+    ["esp32:GND.2", "btn1:2.l",  "black",  []],
+    ["esp32:D14",   "btn2:1.l",  "lime",   []],
+    ["esp32:GND.2", "btn2:2.l",  "black",  []],
+    ["esp32:D12",   "btn3:1.l",  "lime",   []],
+    ["esp32:GND.2", "btn3:2.l",  "black",  []],
 
-    ["esp32:D32",  "r_l1:1",   "blue",  []],
-    ["r_l1:2",     "led1:A",   "blue",  []],
-    ["led1:C",     "esp32:GND.1","black",[]],
-    ["esp32:D33",  "r_l2:1",   "blue",  []],
-    ["r_l2:2",     "led2:A",   "blue",  []],
-    ["led2:C",     "esp32:GND.1","black",[]],
-    ["esp32:D25",  "r_l3:1",   "blue",  []],
-    ["r_l3:2",     "led3:A",   "blue",  []],
-    ["led3:C",     "esp32:GND.1","black",[]],
+    ["esp32:D32",   "r_ring1:1", "blue",   []],
+    ["r_ring1:2",   "ring1:A",   "blue",   []],
+    ["ring1:C",     "esp32:GND.1","black", []],
+    ["esp32:D33",   "r_ring2:1", "blue",   []],
+    ["r_ring2:2",   "ring2:A",   "blue",   []],
+    ["ring2:C",     "esp32:GND.1","black", []],
+    ["esp32:D25",   "r_ring3:1", "blue",   []],
+    ["r_ring3:2",   "ring3:A",   "blue",   []],
+    ["ring3:C",     "esp32:GND.1","black", []],
 
-    ["esp32:D23",  "r_r1:1",   "green", []],
-    ["r_r1:2",     "rly1:A",   "green", []],
-    ["rly1:C",     "esp32:GND.1","black",[]],
-    ["esp32:D19",  "r_r2:1",   "green", []],
-    ["r_r2:2",     "rly2:A",   "green", []],
-    ["rly2:C",     "esp32:GND.1","black",[]],
-    ["esp32:D18",  "r_r3:1",   "green", []],
-    ["r_r3:2",     "rly3:A",   "green", []],
-    ["rly3:C",     "esp32:GND.1","black",[]]
+    ["esp32:D23",   "r_rly1:1",  "green",  []],
+    ["r_rly1:2",    "rly1:A",    "green",  []],
+    ["rly1:C",      "esp32:GND.1","black", []],
+    ["esp32:D19",   "r_rly2:1",  "green",  []],
+    ["r_rly2:2",    "rly2:A",    "green",  []],
+    ["rly2:C",      "esp32:GND.1","black", []],
+    ["esp32:D18",   "r_rly3:1",  "green",  []],
+    ["r_rly3:2",    "rly3:A",    "green",  []],
+    ["rly3:C",      "esp32:GND.1","black", []],
+    ["esp32:D26",   "r_rly4:1",  "red",    []],
+    ["r_rly4:2",    "rly4:A",    "red",    []],
+    ["rly4:C",      "esp32:GND.1","black", []]
   ],
+
   "dependencies": {}
 }
