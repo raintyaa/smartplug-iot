@@ -106,6 +106,8 @@ Sistem dirancang modular untuk mendukung 3 strategi pembayaran:
 
 ## 🔌 Pemetaan Pin GPIO ESP32 & Panduan Wiring Fisik (Pin-to-Pin)
 
+> 📖 **Panduan Lengkap & Terperinci:** Lihat dokumen khusus [**`docs/WIRING_GUIDE.md`**](docs/WIRING_GUIDE.md) untuk arsitektur Common Ground (WAGO), trik kabel estafet tombol metal, kelistrikan AC 220V, dan daftar komponen tambahan.
+
 ### Tabel Pin ESP32 DevKit V1 (30-Pin)
 | Komponen | Pin Modul | Pin ESP32 | Keterangan |
 |---|---|---|---|
