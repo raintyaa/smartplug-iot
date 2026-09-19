@@ -118,26 +118,61 @@ Tombol 3:  Kaki [ - ] ─── sambung ke ─── Kaki [ C ] ───► 1 K
 ## ⚡ Bagian 5: Wiring Listrik AC 220V (PLN ➔ Relay ➔ Stop Kontak Broco)
 
 Kabel AC menggunakan **NYMHY 3x1.5mm²**:
+* **Hitam / Coklat:** Fasa (Line / Setrum 220V)
+* **Biru:** Netral
+* **Kuning / Kuning-Hijau:** Arde (Grounding Pengaman)
 
-### 1. Jalur Netral (Kabel Biru PLN):
-Masuk ke terminal WAGO AC Netral, lalu dicabangkan langsung ke:
-* Lubang Netral Stop Kontak Broco 1
-* Lubang Netral Stop Kontak Broco 2
-* Lubang Netral Stop Kontak Broco 3
-* Input Netral (`N`) Power Supply 5V
-* Terminal Netral (`N`) Sensor PZEM-004T
+---
 
-### 2. Jalur Arde / Ground (Kabel Kuning-Hijau PLN):
-Dicabangkan ke semua pin Arde (besi jepit samping) pada ketiga Stop Kontak Broco.
+### 5.1 Panduan Merakit Kepala Steker Dutron DV-SAB-01 ke Kabel NYMHY
+Jika kabel rol NYMHY belum memiliki kepala colokan, rakit steker Dutron dengan langkah berikut:
+1. Buka sekrup pada bodi steker Dutron, pisahkan penutup plastiknya.
+   > ⚠️ **PENTING:** Masukkan selongsong bodi plastik steker ke dalam kabel NYMHY terlebih dahulu sebelum memasang baut terminal!
+2. Kupas kulit luar pembungkus kabel NYMHY sepanjang 3–4 cm, lalu kupas tembaga ketiga kawat sepanjang 0.8 cm.
+3. Pasang kawat ke terminal steker:
+   * **Kawat Kuning (Arde):** Pasang ke baut terminal **TENGAH** (yang menyambung ke plat besi jepit samping).
+   * **Kawat Hitam/Coklat (Fasa):** Pasang ke salah satu baut **kaki tusuk kuningan bulat**.
+   * **Kawat Biru (Netral):** Pasang ke baut **kaki tusuk kuningan bulat yang satunya lagi**.
+4. Kencangkan klem penjepit leher kabel steker, lalu tutup dan sekrup kembali bodi luar steker.
 
-### 3. Jalur Fasa / Setrum (Kabel Coklat PLN):
-* Dari colokan PLN ➔ Masuk ke **Fuse Holder (Sekring 5A/10A)**.
-* Keluar dari sekring ➔ Melewati lubang donat **Koil CT Sensor PZEM**.
-* Setelah menembus CT ➔ Masuk ke terminal sekrup **`COM` Channel 1, 2, dan 3 Relay**.
-* Terminal **`NO` (Normally Open)** masing-masing channel relay menuju ke lubang Fasa stop kontak:
-  * `NO Channel 1` ➔ Lubang Fasa Stop Kontak Broco 1
-  * `NO Channel 2` ➔ Lubang Fasa Stop Kontak Broco 2
-  * `NO Channel 3` ➔ Lubang Fasa Stop Kontak Broco 3
+---
+
+### 5.2 Panduan Pengujian 1 Stop Kontak AC 220V (Tahap 3 - Single Socket Test)
+Untuk menguji 1 Stop Kontak Broco Slot 1 secara terisolasi dan aman:
+
+```text
+Kabel Rol Steker PLN:
+─────────────────────
+Kabel Hitam (Fasa)   ───► Masuk ke baut [ COM ] Relay Channel 1
+                                │
+                          (saklar relay)
+                                │
+                              Baut [ NO ] Relay Channel 1
+                                │
+                        (kabel potongan pendek ~10-15 cm)
+                                │
+                                └─────────────────────► Masuk ke baut [ L ] Broco
+
+Kabel Biru (Netral)  ─────────────────────────────────► Masuk ke baut [ N ] Broco
+Kabel Kuning (Arde)  ─────────────────────────────────► Masuk ke baut [Arde] Broco
+```
+
+**4 Langkah Sambungan Baut Sederhana:**
+1. **Relay ke Broco:** Hubungkan baut `NO` Relay 1 ke baut `L` Broco Slot 1 menggunakan 1 helai kabel pendek (~10–15 cm).
+2. **Fasa PLN ke Relay:** Hubungkan kabel **Hitam/Coklat** dari kabel rol PLN ke baut `COM` Relay 1 (baut `NC` dikosongkan).
+3. **Netral PLN ke Broco:** Hubungkan kabel **Biru** dari kabel rol PLN langsung ke baut `N` Broco Slot 1.
+4. **Arde PLN ke Broco:** Hubungkan kabel **Kuning** dari kabel rol PLN langsung ke baut `Arde ⏚` Broco Slot 1.
+
+---
+
+### 5.3 Mengapa Rangkaian Multi-Stop Kontak Wajib PARALEL (Bukan Seri)?
+Secara fisik, kabel jumper dipasang bersambung dari Stop Kontak 1 ke 2 ke 3 (*Daisy-Chain*), namun secara topologi kelistrikan rangkaian ini adalah **PARALEL MURNI**:
+* **Keharusan Paralel:** Setiap stop kontak mendapatkan tegangan **220 Volt penuh** secara mandiri dari PLN. Jika Stop Kontak 1 mati atau dicabut, Stop Kontak 2 dan 3 tetap beroperasi normal.
+* **Bahaya Jika Seri:** Jika dirangkai secara seri, tegangan 220V akan terbagi tiga ($220 \div 3 = 73\text{ Volt}$ per stop kontak) sehingga peralatan listrik tidak akan menyala, dan jika satu beban dicabut maka seluruh stop kontak akan mati bersamaan.
+
+**Teknik Jumpering Paralel pada Terminal Baut:**
+* Dua kawat (misal: Netral PLN dan Netral jumper ke stop kontak berikutnya) dipelintir bersama lalu **dijepit bersamaan dalam 1 lubang baut `N`**. Cara yang sama berlaku untuk lubang baut `Arde` dan `COM` Relay.
+* Atau lebih rapi lagi, gunakan **WAGO Connector 5-Pin** sebagai terminal bus distribusi.
 
 ---
 
@@ -151,3 +186,6 @@ Dicabangkan ke semua pin Arde (besi jepit samping) pada ketiga Stop Kontak Broco
    * `GPIO 32` adalah output lampu **LED Ring Tombol 1**.
 3. **Catu Daya Relay Wajib 5V:**
    * Koil mekanik relay 4-channel membutuhkan 5V stabil agar kontak saklar tertarik dengan kuat (bunyi "KLIK" tajam). Jangan gunakan pin 3.3V untuk menyuplai VCC modul relay.
+4. **Keamanan Pengujian AC Tanpa Modul Power Supply 5V Internal:**
+   * Selama pengujian di meja kerja, ESP32 tetap aman dinyalakan via kabel USB laptop sementara beban 220V ditenagai dari steker dinding.
+   * Modul relay memiliki **Optocoupler** (isolasi optik/cahaya dengan ketahanan isolasi hingga 2.500V RMS) yang memisahkan total rangkaian DC logika ESP32 dari tegangan tinggi AC 220V. Laptop dan ESP32 terlindungi 100% dari sengatan listrik AC.
