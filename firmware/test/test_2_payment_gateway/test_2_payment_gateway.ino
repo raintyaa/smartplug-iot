@@ -111,7 +111,6 @@ bool fbPut(const String& path, const String& body) {
 // Kirim sinyal bahwa Tombol 1 ditekan & sedang menunggu pembayaran
 void triggerWaitingPayment() {
   currentState = STATE_WAITING_PAYMENT;
-  waitStartMs  = millis();
   setRelay(false);
 
   Serial.println("\n[ACTION] Tombol Slot 1 ditekan!");
@@ -131,11 +130,15 @@ void triggerWaitingPayment() {
   } else {
     Serial.println("[FIREBASE] Gagal menghubungi Firebase!");
   }
+
+  // Set waktu mulai menunggu SETELAH pengiriman Firebase selesai
+  waitStartMs = millis();
 }
 
 // Reset slot kembali ke Standby
 void resetToStandby() {
   currentState = STATE_STANDBY;
+  waitStartMs  = 0;
   setRelay(false);
   setLed(false);
 
@@ -278,7 +281,7 @@ void loop() {
     }
 
     // Timeout jika tidak dibayar dalam 5 menit
-    if (now - waitStartMs > WAIT_TIMEOUT) {
+    if (waitStartMs > 0 && (millis() - waitStartMs > WAIT_TIMEOUT)) {
       Serial.println("[TIMEOUT] Melebihi 5 menit tidak dibayar. Kembali ke Standby.");
       resetToStandby();
     }
