@@ -295,17 +295,20 @@ void loop() {
 
   // 4. Hitung mundur waktu saat ACTIVE
   if (currentState == STATE_ACTIVE) {
-    uint32_t elapsedSec = (now - activeStartMs) / 1000;
+    uint32_t curTime = millis();
+    if (curTime >= activeStartMs) {
+      uint32_t elapsedSec = (curTime - activeStartMs) / 1000;
 
-    if (elapsedSec >= activeDuration) {
-      // Durasi habis!
-      resetToStandby();
-    } else {
-      // Cetak sisa waktu ke Serial Monitor tiap 5 detik
-      if (now - lastPrintSecMs >= 5000) {
-        lastPrintSecMs = now;
-        uint32_t sisaSec = activeDuration - elapsedSec;
-        Serial.printf("[COUNTDOWN] Slot 1 Aktif | Sisa Waktu: %02d:%02d\n", sisaSec / 60, sisaSec % 60);
+      if (elapsedSec >= activeDuration) {
+        // Durasi habis!
+        resetToStandby();
+      } else {
+        // Cetak sisa waktu ke Serial Monitor tiap 5 detik
+        if (curTime - lastPrintSecMs >= 5000) {
+          lastPrintSecMs = curTime;
+          uint32_t sisaSec = activeDuration - elapsedSec;
+          Serial.printf("[COUNTDOWN] Slot 1 Aktif | Sisa Waktu: %02d:%02d\n", sisaSec / 60, sisaSec % 60);
+        }
       }
     }
   }
