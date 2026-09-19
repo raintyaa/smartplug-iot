@@ -237,7 +237,9 @@ Sensor PZEM-004T mengukur kWh secara akumulatif, sehingga sistem dapat menghitun
   - [x] **Tes 1B:** Tombol Metal 16mm & LED Ring Slot 1 (`GPIO 27` & `GPIO 32`) teruji sukses responsif 100%.
   - [x] **Tes 1C:** Modul Relay 4-Channel (Channel 1 `GPIO 23` Active-LOW) terintegrasi dengan Tombol 1 & LED Ring.
   - [x] Dokumentasi solusi isolasi pin `NC` tombol & arsitektur distribusi daya Common Ground (WAGO/Breadboard).
-  - [ ] **Tahap 2:** Uji End-to-End Single-Slot Fisik ke Cloud (ESP32 + WiFi + Firebase + Webhook QRIS Mayar).
+  - [x] **Tahap 2:** Uji End-to-End Single-Slot Fisik ke Cloud (ESP32 + WiFi + Firebase + Webhook QRIS Mayar) — **SUKSES 100%**!
+    * Tekan tombol fisik ➔ Firebase `WAITING_PAYMENT` ➔ LED kedip ➔ Webhook Mayar proses bayar ➔ Firebase `ACTIVE` ➔ Relay "KLIK" ON ➔ LED Solid ➔ Countdown timer otomatis.
+  - [ ] **Tahap 3:** Uji Kelistrikan AC 220V pada Stop Kontak Broco Slot 1 (Beban nyata: lampu/charger).
   - [ ] Integrasi sensor suhu DHT22 via 1-Wire & logika proteksi suhu.
   - [ ] Kalibrasi pembacaan sensor daya PZEM-004T via UART Serial2.
   - [ ] Replikasi pengujian untuk Tombol 2, Tombol 3, dan Relay Channel 2 & 3.
