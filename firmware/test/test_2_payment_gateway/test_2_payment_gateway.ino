@@ -29,8 +29,8 @@
 // ==============================================================================
 // 1. PENGATURAN WIFI (GANTI DENGAN HOTSPOT / WIFI KAMU)
 // ==============================================================================
-const char* WIFI_SSID = "NAMA_WIFI_ATAU_HOTSPOT_KAMU";
-const char* WIFI_PASS = "PASSWORD_WIFI_KAMU";
+const char* WIFI_SSID = "RedmiNote12";
+const char* WIFI_PASS = "012345678";
 
 // Firebase RTDB URL (Asia-Southeast1)
 const char* FIREBASE_HOST = "https://smartplug-4442d-default-rtdb.asia-southeast1.firebasedatabase.app";
@@ -218,6 +218,16 @@ void setup() {
 
   setRelay(false);
   setLed(false);
+
+  // TES AWAL LED: Kedipkan 3 kali agar tahu kabel LED terhubung benar
+  Serial.println("\n[TES FISIK] Menguji LED Ring (kedip 3x)...");
+  for (int i = 0; i < 3; i++) {
+    digitalWrite(PIN_LED, HIGH);
+    delay(200);
+    digitalWrite(PIN_LED, LOW);
+    delay(200);
+  }
+  Serial.println("[TES FISIK] Tes LED selesai.");
 
   // Sambungkan ke WiFi
   Serial.printf("[WiFi] Menghubungkan ke '%s'", WIFI_SSID);
