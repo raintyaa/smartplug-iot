@@ -230,12 +230,16 @@ Sensor PZEM-004T mengukur kWh secara akumulatif, sehingga sistem dapat menghitun
   - [x] Pembuatan virtual prototype firmware di simulator Wokwi & PlatformIO VS Code (ESP32 + WiFi + LCD + Relay 4-ch + DHT22 + PZEM-004T).
   - [x] Finalisasi UX LCD: notifikasi transaksi sukses transien (4 detik) lalu kembali Standby, countdown & telemetri multi-slot terpusat ke Web Dashboard.
   - [ ] Pembelian komponen hardware online sesuai BOM & Enclosure.
-- [ ] **Fase 3: Perakitan & Pengujian Hardware di Breadboard**
-  - [ ] Wiring & coding relay 3-channel + countdown timer `millis()`.
-  - [ ] Integrasi display LCD 16x2 I2C & 3 tombol metal berlampu.
-  - [ ] Kalibrasi pembacaan tegangan, arus, dan daya dari sensor PZEM-004T via UART.
-  - [ ] Integrasi sensor DHT22 via 1-Wire & logika proteksi suhu.
-- [ ] **Fase 4: Integrasi ESP32 ke Cloud & Payment Trigger**
+- [ ] **Fase 3: Pengujian Hardware Bertahap (Incremental Bring-up)**
+  - [x] **Tes 1A:** I2C Scanner & Kontrol Backlight LCD 16x2 terverifikasi pada alamat `0x27`.
+  - [x] **Tes 1B:** Tombol Metal 16mm & LED Ring Slot 1 (`GPIO 27` & `GPIO 32`) teruji sukses responsif 100%.
+  - [x] **Tes 1C:** Modul Relay 4-Channel (Channel 1 `GPIO 23` Active-LOW) terintegrasi dengan Tombol 1 & LED Ring.
+  - [x] Dokumentasi solusi isolasi pin `NC` tombol & arsitektur distribusi daya Common Ground (WAGO/Breadboard).
+  - [ ] **Tahap 2:** Uji End-to-End Single-Slot Fisik ke Cloud (ESP32 + WiFi + Firebase + Webhook QRIS Mayar).
+  - [ ] Integrasi sensor suhu DHT22 via 1-Wire & logika proteksi suhu.
+  - [ ] Kalibrasi pembacaan sensor daya PZEM-004T via UART Serial2.
+  - [ ] Replikasi pengujian untuk Tombol 2, Tombol 3, dan Relay Channel 2 & 3.
+- [ ] **Fase 4: Integrasi Full System ke Cloud & Payment Trigger**
   - [ ] ESP32 membaca trigger status ON/OFF dan durasi dari Firebase secara realtime.
   - [ ] Implementasi logika auto-shutdown idle (arus 0A selama 5 menit).
   - [ ] Implementasi logika emergency shutdown (suhu > 60°C).
