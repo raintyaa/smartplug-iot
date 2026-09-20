@@ -137,8 +137,8 @@ Jika kabel rol NYMHY belum memiliki kepala colokan, rakit steker Dutron dengan l
 
 ---
 
-### 5.2 Panduan Pengujian 1 Stop Kontak AC 220V (Tahap 3 - Single Socket Test)
-Untuk menguji 1 Stop Kontak Broco Slot 1 secara terisolasi dan aman:
+### 5.2 Panduan Pengujian 1 Stop Kontak AC 220V (Tahap 3 - Single Socket Test) — `[TERUJI SUKSES 100% ✅]`
+Skema ini telah diverifikasi menyalakan beban nyata (lampu meja/charger) secara otomatis saat transaksi sewa QRIS terkonfirmasi di cloud. Untuk menguji 1 Stop Kontak Broco Slot 1 secara terisolasi dan aman:
 
 ```text
 Kabel Rol Steker PLN:

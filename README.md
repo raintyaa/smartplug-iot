@@ -238,11 +238,10 @@ Sensor PZEM-004T mengukur kWh secara akumulatif, sehingga sistem dapat menghitun
   - [x] **Tes 1C:** Modul Relay 4-Channel (Channel 1 `GPIO 23` Active-LOW) terintegrasi dengan Tombol 1 & LED Ring.
   - [x] Dokumentasi solusi isolasi pin `NC` tombol & arsitektur distribusi daya Common Ground (WAGO/Breadboard).
   - [x] **Tahap 2:** Uji End-to-End Single-Slot Fisik ke Cloud (ESP32 + WiFi + Firebase + Webhook QRIS Mayar) — **SUKSES 100%**!
-    * Tekan tombol fisik ➔ Firebase `WAITING_PAYMENT` ➔ LED kedip ➔ Webhook Mayar proses bayar ➔ Firebase `ACTIVE` ➔ Relay "KLIK" ON ➔ LED Solid ➔ Countdown timer otomatis.
-  - [ ] **Tahap 3:** Uji Kelistrikan AC 220V pada Stop Kontak Broco Slot 1 (Beban nyata: lampu/charger).
-  - [ ] Integrasi sensor suhu DHT22 via 1-Wire & logika proteksi suhu.
-  - [ ] Kalibrasi pembacaan sensor daya PZEM-004T via UART Serial2.
-  - [ ] Replikasi pengujian untuk Tombol 2, Tombol 3, dan Relay Channel 2 & 3.
+  - [x] **Tahap 3:** Uji Kelistrikan AC 220V pada Stop Kontak Broco Slot 1 (Beban nyata: lampu/charger) — **SUKSES 100%**!
+    * Steker Dutron dirakit ke NYMHY ➔ Fasa PLN ke Relay COM ➔ Relay NO ke Broco L ➔ Netral PLN ke Broco N ➔ Arde ke Broco Arde. Beban nyata berhasil menyala otomatis saat transaksi sewa QRIS terkonfirmasi!
+  - [ ] **Tahap 4:** Pengujian Sensor Suhu DHT22 (GPIO 4) & Sensor Daya PZEM-004T (UART GPIO 16/17).
+  - [ ] **Tahap 5:** Replikasi pengujian untuk 3 Slot (3 Tombol, 3 Relay, 3 Stop Kontak via WAGO Connector).
 - [ ] **Fase 4: Integrasi Full System ke Cloud & Payment Trigger**
   - [ ] ESP32 membaca trigger status ON/OFF dan durasi dari Firebase secara realtime.
   - [ ] Implementasi logika auto-shutdown idle (arus 0A selama 5 menit).
