@@ -190,15 +190,7 @@ Setiap tombol memiliki 5 kaki di bagian belakang: `+` (Anoda LED), `-` (Katoda L
   * `NO` Channel 3 ➔ Lubang Fasa Stop Kontak Broco Slot 3
   * `NC` ➔ *Kosongkan*
 
----
 
-### 💻 Simulasi Firmware (Wokwi & PlatformIO VS Code)
-Firmware telah diuji dan siap disimulasikan:
-* **Wokwi Simulator (Web / VS Code):** Tersedia di folder [`firmware/wokwi/`](firmware/wokwi/) (`sketch.ino`, `diagram.json`, `libraries.txt`).
-* **PlatformIO Project (Lokal VS Code):** Tersedia di folder [`firmware/vscode-wokwi/`](firmware/vscode-wokwi/) lengkap dengan `platformio.ini`, `wokwi.toml`, dan `src/main.cpp`.
-* **Kompabilitas Hardware Fisik:** Cukup komentari baris `#define WOKWI_SIM` di kode saat mengunggah ke board fisik ESP32 nyata.
-
----
 
 ## 🔒 Sistem Proteksi Otomatis (Closed-Loop Safety)
 
