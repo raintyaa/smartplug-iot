@@ -54,6 +54,8 @@ class FirebaseService
     public function updateSlot(int $slotNumber, array $data): bool
     {
         try {
+            // Update kedua node untuk kompatibilitas penuh webhook & firmware
+            Http::timeout(4)->patch("{$this->databaseUrl}/slots/slot{$slotNumber}.json", $data);
             $response = Http::timeout(4)->patch("{$this->databaseUrl}/slot{$slotNumber}.json", $data);
             return $response->successful();
         } catch (\Exception $e) {
@@ -104,8 +106,12 @@ class FirebaseService
         return $this->updateSlot($slotNumber, [
             'status' => 'STANDBY',
             'active_duration' => 0,
+            'duration_seconds' => 0,
             'started_at' => 0,
             'nominal_paid' => 0,
+            'amount_paid' => 0,
+            'activated_at' => 0,
+            'expires_at' => 0,
         ]);
     }
 

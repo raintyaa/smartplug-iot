@@ -40,7 +40,7 @@ const char* FIREBASE_HOST = "https://smartplug-4442d-default-rtdb.asia-southeast
 #define LCD_ROWS        2
 
 #define OVERHEAT_LIMIT  60.0 // Batas Darurat Suhu Box (°C)
-#define QRIS_TIMEOUT_MS 60000 // Timeout 60 detik menunggu bayar
+#define QRIS_TIMEOUT_MS 180000 // Timeout 180 detik (3 menit) menunggu bayar
 
 // Inisialisasi Objek
 LiquidCrystal_I2C lcd(LCD_ADDR, LCD_COLS, LCD_ROWS);
@@ -213,11 +213,20 @@ void checkButton() {
         http.addHeader("Content-Type", "application/json");
         http.setTimeout(4000);
 
-        String payload = "{\"slot\":\"slot1\",\"status\":\"WAITING_PAYMENT\",\"timestamp\":" + String(millis()) + "}";
+        // WAJIB: timestamp = 0 agar bypass timeout di webhook Vercel
+        String payload = "{\"slot\":\"slot1\",\"status\":\"WAITING_PAYMENT\",\"timestamp\":0}";
         http.PUT(payload);
         http.end();
 
-        // Update slot1 state
+        // Update slots/slot1 state (node utama webhook)
+        url = String(FIREBASE_HOST) + "/slots/slot1.json";
+        http.begin(secureClient, url);
+        http.addHeader("Content-Type", "application/json");
+        http.setTimeout(4000);
+        http.PUT("{\"status\":\"WAITING_PAYMENT\",\"duration_seconds\":0,\"amount_paid\":0}");
+        http.end();
+
+        // Update slot1 state (kompatibilitas web dashboard)
         url = String(FIREBASE_HOST) + "/slot1.json";
         http.begin(secureClient, url);
         http.addHeader("Content-Type", "application/json");
@@ -228,6 +237,12 @@ void checkButton() {
         Serial.println("[FIREBASE] Status WAITING_PAYMENT terkirim. Silakan scan & bayar QRIS!");
 
         // Tunggu sampai tombol dilepas
+        while (digitalRead(PIN_BUTTON_1) == LOW) delay(10);
+      }
+      else if (currentState == WAITING_PAYMENT) {
+        // Refresh waktu tunggu jika tombol ditekan lagi saat menunggu pembayaran
+        waitStartMs = millis();
+        Serial.println("\n[EVENT] Tombol 1 Ditekan Lagi -> Waktu Tunggu Bayar Diperpanjang (180 Detik)!");
         while (digitalRead(PIN_BUTTON_1) == LOW) delay(10);
       }
       else if (currentState == ACTIVE) {
@@ -249,7 +264,8 @@ void pollFirebase() {
   if (WiFi.status() != WL_CONNECTED) return;
 
   HTTPClient http;
-  String url = String(FIREBASE_HOST) + "/slot1.json";
+  // Periksa node slots/slot1 yang diupdate oleh webhook Mayar
+  String url = String(FIREBASE_HOST) + "/slots/slot1.json";
   http.begin(secureClient, url);
   http.setTimeout(3000);
   int httpCode = http.GET();
@@ -261,11 +277,12 @@ void pollFirebase() {
 
     if (!error) {
       const char* status = doc["status"];
+      uint32_t durSec = doc["duration_seconds"] | doc["active_duration"] | 900;
 
       // Jika dari Webhook atau Web diubah menjadi ACTIVE
-      if (strcmp(status, "ACTIVE") == 0 && currentState != ACTIVE) {
+      if (status && strcmp(status, "ACTIVE") == 0 && currentState != ACTIVE) {
         currentState = ACTIVE;
-        activeDurationSec = doc["active_duration"] | 900; // default 15 menit
+        activeDurationSec = durSec;
         activeStartMs = millis(); // Set waktu mulai sekarang yang segar!
 
         // Nyalakan Relay 1 (Active-LOW: LOW) & LED Solid ON
@@ -275,12 +292,14 @@ void pollFirebase() {
         Serial.println("\n=================================================");
         Serial.println("  PEMBAYARAN DITERIMA! RELAY 1 DIAKTIFKAN!       ");
         Serial.print("  Durasi Sewa: ");
+        Serial.print(activeDurationSec);
+        Serial.print(" Detik (");
         Serial.print(activeDurationSec / 60);
-        Serial.println(" Menit");
+        Serial.println(" Menit)");
         Serial.println("=================================================");
       }
       // Jika dari Web Dashboard ditekan "Matikan Manual" (status kembali ke STANDBY)
-      else if (strcmp(status, "STANDBY") == 0 && currentState == ACTIVE) {
+      else if (status && strcmp(status, "STANDBY") == 0 && currentState == ACTIVE) {
         Serial.println("[REMOTE] Web Dashboard mematikan Slot 1 secara manual.");
         setSlotStandby();
       }
@@ -437,14 +456,24 @@ void setSlotStandby() {
 
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
-    String url = String(FIREBASE_HOST) + "/slot1.json";
+
+    // 1. Reset node slots/slot1 (node utama webhook Mayar)
+    String url = String(FIREBASE_HOST) + "/slots/slot1.json";
+    http.begin(secureClient, url);
+    http.addHeader("Content-Type", "application/json");
+    http.setTimeout(3000);
+    http.PUT("{\"status\":\"STANDBY\",\"duration_seconds\":0,\"amount_paid\":0,\"activated_at\":0,\"expires_at\":0}");
+    http.end();
+
+    // 2. Reset node slot1 (node kompatibilitas dashboard)
+    url = String(FIREBASE_HOST) + "/slot1.json";
     http.begin(secureClient, url);
     http.addHeader("Content-Type", "application/json");
     http.setTimeout(3000);
     http.PUT("{\"status\":\"STANDBY\",\"active_duration\":0,\"started_at\":0,\"nominal_paid\":0}");
     http.end();
 
-    // Reset active selection
+    // 3. Reset active selection ke IDLE
     url = String(FIREBASE_HOST) + "/system/active_selection.json";
     http.begin(secureClient, url);
     http.addHeader("Content-Type", "application/json");

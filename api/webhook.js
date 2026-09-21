@@ -129,13 +129,20 @@ module.exports = async (req, res) => {
 
     // --- AKTIFKAN SLOT DI FIREBASE ---
     const waktuAktif = Date.now();
-    await db.ref(`slots/${slotKey}`).update({
+    const slotUpdateData = {
       status:           "ACTIVE",
       duration_seconds: durasiDetik,
+      active_duration:  durasiDetik,
       amount_paid:      amount,
+      nominal_paid:     amount,
       activated_at:     waktuAktif,
+      started_at:       Math.floor(waktuAktif / 1000),
       expires_at:       waktuAktif + durasiDetik * 1000,
-    });
+    };
+
+    // Update node slots/slotX dan slotX untuk kompatibilitas penuh
+    await db.ref(`slots/${slotKey}`).update(slotUpdateData);
+    await db.ref(`${slotKey}`).update(slotUpdateData);
 
     // Tambahkan ke histori transaksi
     await db.ref("transactions").push({
