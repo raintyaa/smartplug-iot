@@ -20,8 +20,8 @@
 #include <PZEM004Tv30.h>
 
 // --- 1. KONFIGURASI WIFI & FIREBASE ---
-const char* WIFI_SSID     = "NAMA_WIFI_KAMU";        // Ganti dengan nama WiFi/Hotspot kamu
-const char* WIFI_PASSWORD = "PASSWORD_WIFI_KAMU";    // Ganti dengan password WiFi kamu
+const char* WIFI_SSID     = "RedmiNote12";        // Ganti dengan nama WiFi/Hotspot kamu
+const char* WIFI_PASSWORD = "012345678";    // Ganti dengan password WiFi kamu
 const char* FIREBASE_HOST = "https://smartplug-4442d-default-rtdb.asia-southeast1.firebasedatabase.app";
 
 // --- 2. PIN HARDWARE ESP32 ---
@@ -76,6 +76,8 @@ int lastButtonReading = HIGH;
 unsigned long lastDebounceTime = 0;
 const unsigned long DEBOUNCE_DELAY = 50;
 
+WiFiClientSecure secureClient;
+
 // Deklarasi Fungsi
 void connectWiFi();
 void checkButton();
@@ -117,9 +119,12 @@ void setup() {
   Serial.println("[INFO] Sensor DHT22 diinisialisasi pada GPIO 4.");
 
   // 4. Setup PZEM-004T
-  Serial.println("[INFO] Sensor PZEM-004T diinisialisasi pada HardwareSerial2 (RX=16, TX=17).");
+  Serial.println("[INFO] Sensor PZEM-004T diinisialisasi pada Serial2 (RX=16, TX=17).");
 
-  // 5. Hubungkan ke WiFi
+  // 5. Setup SSL Client (Bypass sertifikat agar cepat)
+  secureClient.setInsecure();
+
+  // 6. Hubungkan ke WiFi
   connectWiFi();
 
   // Bersihkan status awal slot di Firebase
@@ -130,7 +135,8 @@ void setup() {
   lcd.print("RANOVA PLUG 1");
   lcd.setCursor(0, 1);
   lcd.print("Tekan Tombol..");
-  Serial.println("[SIAP] Sistem dalam mode STANDBY. Silakan tekan tombol metal 1!");
+  Serial.println("\n[SIAP] Sistem dalam mode STANDBY.");
+  Serial.println(">> TEKAN TOMBOL METAL 1 UNTUK MEMULAI SEWA! <<\n");
 }
 
 void loop() {
@@ -140,10 +146,10 @@ void loop() {
   handleEmergencyOverheat();
   if (currentState == EMERGENCY_STOP) return;
 
-  // 2. Tangani Tombol Fisik
+  // 2. Tangani Tombol Fisik (Instant & Responsive)
   checkButton();
 
-  // 3. Tangani State LED
+  // 3. Tangani State LED saat Menunggu Bayar
   if (currentState == WAITING_PAYMENT) {
     if (now - lastBlinkMs >= 500) {
       lastBlinkMs = now;
@@ -153,15 +159,17 @@ void loop() {
 
     // Cek Timeout 60 Detik
     if (now - waitStartMs >= QRIS_TIMEOUT_MS) {
-      Serial.println("[TIMEOUT] Pembayaran tidak diterima dalam 60 detik. Kembali ke STANDBY.");
+      Serial.println("[TIMEOUT] Waktu 60 detik habis. Belum ada pembayaran. Kembali ke STANDBY.");
       setSlotStandby();
     }
   }
 
-  // 4. Polling Status Firebase (setiap 1.5 detik saat menunggu bayar atau aktif)
-  if (now - lastFirebasePollMs >= 1500) {
-    lastFirebasePollMs = now;
-    pollFirebase();
+  // 4. Polling Status Firebase (HANYA saat menunggu bayar atau sedang aktif)
+  if (currentState == WAITING_PAYMENT || currentState == ACTIVE) {
+    if (now - lastFirebasePollMs >= 1500) {
+      lastFirebasePollMs = now;
+      pollFirebase();
+    }
   }
 
   // 5. Update Pembacaan PZEM & Kirim Telemetri ke Firebase (setiap 3 detik)
@@ -187,18 +195,12 @@ void loop() {
 }
 
 // ============================================================
-// FUNGSI: Pembacaan Tombol & Debounce
+// FUNGSI: Pembacaan Tombol & Debounce Teruji
 // ============================================================
 void checkButton() {
-  int reading = digitalRead(PIN_BUTTON_1);
-
-  if (reading != lastButtonReading) {
-    lastDebounceTime = millis();
-  }
-
-  if ((millis() - lastDebounceTime) > DEBOUNCE_DELAY) {
-    // Tombol ditekan (Active-LOW: LOW)
-    if (reading == LOW && lastButtonReading == HIGH) {
+  if (digitalRead(PIN_BUTTON_1) == LOW) {
+    delay(40); // Debounce stabil
+    if (digitalRead(PIN_BUTTON_1) == LOW) {
       if (currentState == STANDBY) {
         Serial.println("\n[EVENT] Tombol 1 Ditekan -> Mengajukan Sewa QRIS...");
         currentState = WAITING_PAYMENT;
@@ -207,31 +209,37 @@ void checkButton() {
         // Update Firebase: minta QRIS untuk Slot 1
         HTTPClient http;
         String url = String(FIREBASE_HOST) + "/system/active_selection.json";
-        http.begin(url);
+        http.begin(secureClient, url);
         http.addHeader("Content-Type", "application/json");
+        http.setTimeout(4000);
 
         String payload = "{\"slot\":\"slot1\",\"status\":\"WAITING_PAYMENT\",\"timestamp\":" + String(millis()) + "}";
-        int httpCode = http.PUT(payload);
+        http.PUT(payload);
         http.end();
 
         // Update slot1 state
         url = String(FIREBASE_HOST) + "/slot1.json";
-        http.begin(url);
+        http.begin(secureClient, url);
         http.addHeader("Content-Type", "application/json");
+        http.setTimeout(4000);
         http.PUT("{\"status\":\"WAITING_PAYMENT\",\"active_duration\":0,\"started_at\":0}");
         http.end();
 
-        Serial.println("[INFO] Firebase di-update ke WAITING_PAYMENT. Silakan bayar via QRIS!");
+        Serial.println("[FIREBASE] Status WAITING_PAYMENT terkirim. Silakan scan & bayar QRIS!");
+
+        // Tunggu sampai tombol dilepas
+        while (digitalRead(PIN_BUTTON_1) == LOW) delay(10);
       }
       else if (currentState == ACTIVE) {
         // Fitur Early Stop: Tekan tombol saat aktif mematikan sewa seketika
         Serial.println("\n[EVENT] Early Stop: Pengguna menekan tombol untuk mematikan colokan lebih awal.");
         setSlotStandby();
+
+        // Tunggu sampai tombol dilepas
+        while (digitalRead(PIN_BUTTON_1) == LOW) delay(10);
       }
     }
   }
-
-  lastButtonReading = reading;
 }
 
 // ============================================================
@@ -242,7 +250,8 @@ void pollFirebase() {
 
   HTTPClient http;
   String url = String(FIREBASE_HOST) + "/slot1.json";
-  http.begin(url);
+  http.begin(secureClient, url);
+  http.setTimeout(3000);
   int httpCode = http.GET();
 
   if (httpCode == 200) {
@@ -318,8 +327,9 @@ void updateTelemetry() {
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
     String url = String(FIREBASE_HOST) + "/sensors.json";
-    http.begin(url);
+    http.begin(secureClient, url);
     http.addHeader("Content-Type", "application/json");
+    http.setTimeout(3000);
 
     String jsonPayload = "{";
     jsonPayload += "\"voltage\":" + String(currentVoltage, 1) + ",";
@@ -408,7 +418,8 @@ void handleEmergencyOverheat() {
       // Lapor ke Firebase
       if (WiFi.status() == WL_CONNECTED) {
         HTTPClient http;
-        http.begin(String(FIREBASE_HOST) + "/system/emergency_alert.json");
+        http.begin(secureClient, String(FIREBASE_HOST) + "/system/emergency_alert.json");
+        http.setTimeout(3000);
         http.PUT("true");
         http.end();
       }
@@ -427,15 +438,17 @@ void setSlotStandby() {
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
     String url = String(FIREBASE_HOST) + "/slot1.json";
-    http.begin(url);
+    http.begin(secureClient, url);
     http.addHeader("Content-Type", "application/json");
+    http.setTimeout(3000);
     http.PUT("{\"status\":\"STANDBY\",\"active_duration\":0,\"started_at\":0,\"nominal_paid\":0}");
     http.end();
 
     // Reset active selection
     url = String(FIREBASE_HOST) + "/system/active_selection.json";
-    http.begin(url);
+    http.begin(secureClient, url);
     http.addHeader("Content-Type", "application/json");
+    http.setTimeout(3000);
     http.PUT("{\"slot\":\"none\",\"status\":\"IDLE\",\"timestamp\":0}");
     http.end();
   }
