@@ -318,10 +318,13 @@ void updateTelemetry() {
   float p = pzem.power();
   float e = pzem.energy();
 
-  if (!isnan(v)) currentVoltage = v;
-  if (!isnan(i)) currentAmps    = i;
-  if (!isnan(p)) currentWatts   = p;
-  if (!isnan(e)) currentEnergy  = e;
+  bool pzemOk = !isnan(v);
+  if (pzemOk) {
+    currentVoltage = v;
+    if (!isnan(i)) currentAmps    = i;
+    if (!isnan(p)) currentWatts   = p;
+    if (!isnan(e)) currentEnergy  = e;
+  }
 
   // 2. Baca DHT22
   float t = dht.readTemperature();
@@ -330,17 +333,23 @@ void updateTelemetry() {
   if (!isnan(h)) currentHum  = h;
 
   // Log ke Serial Monitor
-  Serial.print("[PZEM] V: ");
-  Serial.print(currentVoltage, 1);
-  Serial.print("V | I: ");
-  Serial.print(currentAmps, 2);
-  Serial.print("A | P: ");
-  Serial.print(currentWatts, 1);
-  Serial.print("W | Energy: ");
-  Serial.print(currentEnergy, 4);
-  Serial.print(" kWh | Suhu: ");
-  Serial.print(currentTemp, 1);
-  Serial.println("°C");
+  if (pzemOk) {
+    Serial.print("[PZEM OK] V: ");
+    Serial.print(currentVoltage, 1);
+    Serial.print("V | I: ");
+    Serial.print(currentAmps, 2);
+    Serial.print("A | P: ");
+    Serial.print(currentWatts, 1);
+    Serial.print("W | Energy: ");
+    Serial.print(currentEnergy, 4);
+    Serial.print(" kWh | Suhu: ");
+    Serial.print(currentTemp, 1);
+    Serial.println("°C");
+  } else {
+    Serial.print("[PZEM ERROR] Tidak ada respons (NAN)! Cek Steker 220V & kabel TX/RX/5V | Suhu: ");
+    Serial.print(currentTemp, 1);
+    Serial.println("°C");
+  }
 
   // 3. Kirim Telemetri ke Firebase agar Dashboard Laravel ikut ter-update
   if (WiFi.status() == WL_CONNECTED) {
