@@ -80,9 +80,25 @@ module.exports = async (req, res) => {
       return res.status(200).json({ message: "Amount tidak valid" });
     }
 
-    // --- HITUNG DURASI SEWA ---
-    const durasiDetik = Math.floor((amount / 1000) * DETIK_PER_SERIBU);
-    console.log(`Durasi dihitung: ${durasiDetik} detik (${durasiDetik / 60} menit)`);
+    // --- HITUNG DURASI SEWA (DINAMIS DARI FIREBASE / DASHBOARD) ---
+    let basePrice = 1000;
+    let baseDurationSeconds = DETIK_PER_SERIBU; // default 900 detik (15 menit)
+
+    try {
+      const pricingSnap = await db.ref("config/pricing").once("value");
+      const pricingConfig = pricingSnap.val();
+      if (pricingConfig && pricingConfig.base_price > 0 && pricingConfig.base_duration_seconds > 0) {
+        basePrice = parseInt(pricingConfig.base_price, 10);
+        baseDurationSeconds = parseInt(pricingConfig.base_duration_seconds, 10);
+        console.log(`Menggunakan tarif dinamis dari Dashboard: Rp ${basePrice} = ${baseDurationSeconds} detik (${baseDurationSeconds / 60} menit)`);
+      }
+    } catch (errConfig) {
+      console.log("Menggunakan fallback tarif default:", errConfig.message);
+    }
+
+    // Hitung durasi proporsional berdasarkan kelipatan nominal pembayaran
+    const durasiDetik = Math.floor((amount / basePrice) * baseDurationSeconds);
+    console.log(`Durasi akhir dihitung: ${durasiDetik} detik (${durasiDetik / 60} menit)`);
 
     // --- BACA SLOT YANG SEDANG MENUNGGU DARI FIREBASE ---
     const selectionSnap = await db.ref("system/active_selection").once("value");

@@ -63,6 +63,40 @@ class FirebaseService
     }
 
     /**
+     * Update konfigurasi tarif sewa dinamis ke Firebase RTDB
+     */
+    public function updatePricingConfig(int $basePrice, int $baseDurationSeconds): bool
+    {
+        try {
+            $response = Http::timeout(4)->patch("{$this->databaseUrl}/config/pricing.json", [
+                'base_price' => $basePrice,
+                'base_duration_seconds' => $baseDurationSeconds,
+                'updated_at' => now()->timestamp,
+            ]);
+            return $response->successful();
+        } catch (\Exception $e) {
+            Log::error("Firebase updatePricingConfig error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Ambil konfigurasi tarif sewa dari Firebase RTDB
+     */
+    public function getPricingConfig(): array
+    {
+        try {
+            $response = Http::timeout(3)->get("{$this->databaseUrl}/config/pricing.json");
+            if ($response->successful()) {
+                return $response->json() ?? [];
+            }
+        } catch (\Exception $e) {
+            Log::warning("Firebase getPricingConfig error: " . $e->getMessage());
+        }
+        return ['base_price' => 1000, 'base_duration_seconds' => 900];
+    }
+
+    /**
      * Force Stop slot (matikan sewa lebih awal oleh admin)
      */
     public function forceStopSlot(int $slotNumber): bool
