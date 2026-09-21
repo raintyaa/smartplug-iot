@@ -152,27 +152,7 @@
             <span>Telemetri Sensor Fisik (Stasiun Utama)</span>
         </h2>
 
-        <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
-            <!-- Suhu Box DHT22 -->
-            <div class="glass-card rounded-xl p-4 text-center relative">
-                <p class="text-xs text-slate-400 mb-1">Suhu Internal Box</p>
-                <p class="text-2xl font-bold text-amber-400" id="sensor-temp">{{ number_format($latestTemp->temperature ?? 29.0, 1) }}°C</p>
-                <p class="text-[10px] text-slate-500 mt-1">Maks {{ $overheatThreshold }}°C</p>
-                <div class="mt-2" id="temp-badge">
-                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400">Normal</span>
-                </div>
-            </div>
-
-            <!-- Kelembaban DHT22 -->
-            <div class="glass-card rounded-xl p-4 text-center">
-                <p class="text-xs text-slate-400 mb-1">Kelembaban Udara</p>
-                <p class="text-2xl font-bold text-blue-400" id="sensor-hum">{{ number_format($latestTemp->humidity ?? 65.0, 0) }}%</p>
-                <p class="text-[10px] text-slate-500 mt-1">Sensor DHT22</p>
-                <div class="mt-2">
-                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400">Stabil</span>
-                </div>
-            </div>
-
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <!-- Tegangan AC PZEM -->
             <div class="glass-card rounded-xl p-4 text-center">
                 <p class="text-xs text-slate-400 mb-1">Tegangan Listrik</p>
@@ -282,22 +262,13 @@
                     }
                 }
 
-                // 2. Update Sensor
+                // 2. Update Sensor PZEM-004T
                 if (data.sensors) {
-                    const temp = parseFloat(data.sensors.temperature || 0);
-                    document.getElementById('sensor-temp').innerText = temp.toFixed(1) + '°C';
-                    document.getElementById('sensor-hum').innerText = Math.round(data.sensors.humidity || 0) + '%';
-                    document.getElementById('sensor-volt').innerHTML = parseFloat(data.sensors.voltage || 0).toFixed(1) + ' <span class="text-xs text-slate-400 font-normal">V</span>';
-                    document.getElementById('sensor-curr').innerHTML = parseFloat(data.sensors.current || 0).toFixed(2) + ' <span class="text-xs text-slate-400 font-normal">A</span>';
-                    document.getElementById('sensor-power').innerHTML = parseFloat(data.sensors.power || 0).toFixed(1) + ' <span class="text-xs text-slate-400 font-normal">W</span>';
-                    document.getElementById('sensor-energy').innerText = parseFloat(data.sensors.energy || 0).toFixed(4);
-
-                    // Warning overheat badge
-                    const tempBadge = document.getElementById('temp-badge');
-                    if (temp >= OVERHEAT_LIMIT) {
-                        tempBadge.innerHTML = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 animate-bounce">OVERHEAT!</span>';
-                    } else {
-                        tempBadge.innerHTML = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400">Normal</span>';
+                    if (document.getElementById('sensor-volt')) {
+                        document.getElementById('sensor-volt').innerHTML = parseFloat(data.sensors.voltage || 0).toFixed(1) + ' <span class="text-xs text-slate-400 font-normal">V</span>';
+                        document.getElementById('sensor-curr').innerHTML = parseFloat(data.sensors.current || 0).toFixed(2) + ' <span class="text-xs text-slate-400 font-normal">A</span>';
+                        document.getElementById('sensor-power').innerHTML = parseFloat(data.sensors.power || 0).toFixed(1) + ' <span class="text-xs text-slate-400 font-normal">W</span>';
+                        document.getElementById('sensor-energy').innerText = parseFloat(data.sensors.energy || 0).toFixed(4);
                     }
                 }
             })
