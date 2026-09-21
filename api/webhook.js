@@ -106,26 +106,36 @@ module.exports = async (req, res) => {
 
     console.log("Active selection di Firebase:", selection);
 
-    if (!selection || selection.status !== "WAITING_PAYMENT" || !selection.slot || selection.slot === "none") {
+    let slotKey = null;
+    if (selection && selection.status === "WAITING_PAYMENT" && selection.slot && selection.slot !== "none") {
+      slotKey = selection.slot;
+    } else {
+      // Fallback cerdas: cari slot mana yang sedang berstatus WAITING_PAYMENT di Firebase
+      for (const s of ["slot1", "slot2", "slot3"]) {
+        const snap = await db.ref(s).once("value");
+        const val = snap.val();
+        if (val && val.status === "WAITING_PAYMENT") {
+          slotKey = s;
+          console.log(`Fallback mendeteksi ${s} berstatus WAITING_PAYMENT`);
+          break;
+        }
+        const snap2 = await db.ref(`slots/${s}`).once("value");
+        const val2 = snap2.val();
+        if (val2 && val2.status === "WAITING_PAYMENT") {
+          slotKey = s;
+          console.log(`Fallback mendeteksi slots/${s} berstatus WAITING_PAYMENT`);
+          break;
+        }
+      }
+    }
+
+    if (!slotKey) {
       console.log("Tidak ada slot yang sedang menunggu pembayaran.");
       return res.status(200).json({
         message: "Tidak ada slot yang menunggu",
         selection,
       });
     }
-
-    // Cek timeout — lewati jika timestamp = 0 (mode testing manual)
-    const sekarang = Date.now();
-    if (selection.timestamp > 0) {
-      const selisihDetik = (sekarang - selection.timestamp) / 1000;
-      if (selisihDetik > TIMEOUT_MENUNGGU_DETIK) {
-        console.log(`Slot sudah timeout (${Math.round(selisihDetik)} detik yang lalu)`);
-        await db.ref("system/active_selection").update({ status: "IDLE", slot: null });
-        return res.status(200).json({ message: "Slot timeout, pembayaran terlambat" });
-      }
-    }
-
-    const slotKey = selection.slot; // "slot1", "slot2", atau "slot3"
 
     // --- AKTIFKAN SLOT DI FIREBASE ---
     const waktuAktif = Date.now();
