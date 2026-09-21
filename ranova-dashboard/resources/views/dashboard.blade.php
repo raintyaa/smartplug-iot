@@ -152,14 +152,34 @@
             <span>Telemetri Sensor Fisik (Stasiun Utama)</span>
         </h2>
 
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
+            <!-- Suhu Box DHT22 -->
+            <div class="glass-card rounded-xl p-4 text-center relative">
+                <p class="text-xs text-slate-400 mb-1">Suhu Internal Box</p>
+                <p class="text-2xl font-bold text-amber-400" id="sensor-temp">{{ number_format($latestTemp->temperature ?? 0.0, 1) }}°C</p>
+                <p class="text-[10px] text-slate-500 mt-1">Maks {{ $overheatThreshold }}°C</p>
+                <div class="mt-2" id="temp-badge">
+                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-400">Standby</span>
+                </div>
+            </div>
+
+            <!-- Kelembaban DHT22 -->
+            <div class="glass-card rounded-xl p-4 text-center">
+                <p class="text-xs text-slate-400 mb-1">Kelembaban Udara</p>
+                <p class="text-2xl font-bold text-blue-400" id="sensor-hum">{{ number_format($latestTemp->humidity ?? 0.0, 0) }}%</p>
+                <p class="text-[10px] text-slate-500 mt-1">Sensor DHT22</p>
+                <div class="mt-2">
+                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-400">Standby</span>
+                </div>
+            </div>
+
             <!-- Tegangan AC PZEM -->
             <div class="glass-card rounded-xl p-4 text-center">
                 <p class="text-xs text-slate-400 mb-1">Tegangan Listrik</p>
-                <p class="text-2xl font-bold text-slate-100" id="sensor-volt">{{ number_format($latestPower->voltage ?? 220.0, 1) }} <span class="text-xs text-slate-400 font-normal">V</span></p>
+                <p class="text-2xl font-bold text-slate-100" id="sensor-volt">{{ number_format($latestPower->voltage ?? 0.0, 1) }} <span class="text-xs text-slate-400 font-normal">V</span></p>
                 <p class="text-[10px] text-slate-500 mt-1">PLN 220V 50Hz</p>
                 <div class="mt-2">
-                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-300">AC Mains</span>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-400">Standby</span>
                 </div>
             </div>
 
@@ -262,13 +282,27 @@
                     }
                 }
 
-                // 2. Update Sensor PZEM-004T
+                // 2. Update Seluruh Sensor Fisik (DHT22 & PZEM-004T)
                 if (data.sensors) {
-                    if (document.getElementById('sensor-volt')) {
+                    const temp = parseFloat(data.sensors.temperature || 0);
+                    const hum = parseFloat(data.sensors.humidity || 0);
+
+                    if (document.getElementById('sensor-temp')) {
+                        document.getElementById('sensor-temp').innerText = temp.toFixed(1) + '°C';
+                        document.getElementById('sensor-hum').innerText = Math.round(hum) + '%';
                         document.getElementById('sensor-volt').innerHTML = parseFloat(data.sensors.voltage || 0).toFixed(1) + ' <span class="text-xs text-slate-400 font-normal">V</span>';
                         document.getElementById('sensor-curr').innerHTML = parseFloat(data.sensors.current || 0).toFixed(2) + ' <span class="text-xs text-slate-400 font-normal">A</span>';
                         document.getElementById('sensor-power').innerHTML = parseFloat(data.sensors.power || 0).toFixed(1) + ' <span class="text-xs text-slate-400 font-normal">W</span>';
                         document.getElementById('sensor-energy').innerText = parseFloat(data.sensors.energy || 0).toFixed(4);
+
+                        const tempBadge = document.getElementById('temp-badge');
+                        if (temp >= OVERHEAT_LIMIT && OVERHEAT_LIMIT > 0) {
+                            tempBadge.innerHTML = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 animate-bounce">OVERHEAT!</span>';
+                        } else if (temp > 0) {
+                            tempBadge.innerHTML = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400">Normal</span>';
+                        } else {
+                            tempBadge.innerHTML = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-400">Standby</span>';
+                        }
                     }
                 }
             })

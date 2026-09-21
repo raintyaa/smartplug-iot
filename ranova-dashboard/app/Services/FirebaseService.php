@@ -140,12 +140,12 @@ class FirebaseService
             'slot3' => ['status' => 'STANDBY', 'active_duration' => 0, 'started_at' => 0],
             'active_selection' => 'IDLE',
             'sensors' => [
-                'temperature' => 29.5,
-                'humidity' => 65.0,
-                'voltage' => 220.0,
+                'temperature' => 0.0,
+                'humidity' => 0.0,
+                'voltage' => 0.0,
                 'current' => 0.0,
                 'power' => 0.0,
-                'energy' => 0.125,
+                'energy' => 0.0,
             ]
         ];
     }

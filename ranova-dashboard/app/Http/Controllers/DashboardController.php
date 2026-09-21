@@ -81,9 +81,9 @@ class DashboardController extends Controller
             ],
             'active_selection' => $data['active_selection'] ?? 'IDLE',
             'sensors' => [
-                'temperature' => $data['sensors']['temperature'] ?? ($latestTemp->temperature ?? 29.0),
-                'humidity' => $data['sensors']['humidity'] ?? ($latestTemp->humidity ?? 65.0),
-                'voltage' => $data['sensors']['voltage'] ?? ($latestPower->voltage ?? 220.0),
+                'temperature' => $data['sensors']['temperature'] ?? ($latestTemp->temperature ?? 0.0),
+                'humidity' => $data['sensors']['humidity'] ?? ($latestTemp->humidity ?? 0.0),
+                'voltage' => $data['sensors']['voltage'] ?? ($latestPower->voltage ?? 0.0),
                 'current' => $data['sensors']['current'] ?? ($latestPower->current ?? 0.0),
                 'power' => $data['sensors']['power'] ?? ($latestPower->power ?? 0.0),
                 'energy' => $data['sensors']['energy'] ?? ($latestPower->energy ?? 0.0),
