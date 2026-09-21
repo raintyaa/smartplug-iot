@@ -151,14 +151,14 @@ void loop() {
 
   // 3. Tangani State LED saat Menunggu Bayar
   if (currentState == WAITING_PAYMENT) {
-    if (now - lastBlinkMs >= 500) {
-      lastBlinkMs = now;
+    if (millis() - lastBlinkMs >= 500) {
+      lastBlinkMs = millis();
       ledBlinkState = !ledBlinkState;
       digitalWrite(PIN_LED_1, ledBlinkState ? HIGH : LOW);
     }
 
-    // Cek Timeout 60 Detik
-    if (now - waitStartMs >= QRIS_TIMEOUT_MS) {
+    // Cek Timeout 60 Detik (Gunakan millis() segar agar tidak terjadi underflow!)
+    if (millis() - waitStartMs >= QRIS_TIMEOUT_MS) {
       Serial.println("[TIMEOUT] Waktu 60 detik habis. Belum ada pembayaran. Kembali ke STANDBY.");
       setSlotStandby();
     }
