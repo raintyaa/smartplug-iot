@@ -232,15 +232,18 @@ Sensor PZEM-004T mengukur kWh secara akumulatif, sehingga sistem dapat menghitun
   - [x] **Tahap 2:** Uji End-to-End Single-Slot Fisik ke Cloud (ESP32 + WiFi + Firebase + Webhook QRIS Mayar) — **SUKSES 100%**!
   - [x] **Tahap 3:** Uji Kelistrikan AC 220V pada Stop Kontak Broco Slot 1 (Beban nyata: lampu/charger) — **SUKSES 100%**!
     * Steker Dutron dirakit ke NYMHY ➔ Fasa PLN ke Relay COM ➔ Relay NO ke Broco L ➔ Netral PLN ke Broco N ➔ Arde ke Broco Arde. Beban nyata berhasil menyala otomatis saat transaksi sewa QRIS terkonfirmasi!
-  - [ ] **Tahap 4:** Pengujian Sensor Suhu DHT22 (GPIO 4) & Sensor Daya PZEM-004T (UART GPIO 16/17).
+  - [x] **Tahap 4:** Pengujian Sensor Suhu DHT22 (GPIO 4) & Sensor Daya PZEM-004T (UART GPIO 16/17) [SELESAI 100%].
+  - [x] **Tahap 4B:** Uji Terpadu 1 Slot + PZEM + DHT22 + LCD 16x2 + Relay + Tombol Metal + Mayar Webhook (Tes 3) [SELESAI 100%].
   - [ ] **Tahap 5:** Replikasi pengujian untuk 3 Slot (3 Tombol, 3 Relay, 3 Stop Kontak via WAGO Connector).
-- [ ] **Fase 4: Integrasi Full System ke Cloud & Payment Trigger**
-  - [ ] ESP32 membaca trigger status ON/OFF dan durasi dari Firebase secara realtime.
-  - [ ] Implementasi logika auto-shutdown idle (arus 0A selama 5 menit).
-  - [ ] Implementasi logika emergency shutdown (suhu > 60°C).
-- [ ] **Fase 5: Pembuatan Realtime Hardware Web Dashboard**
-  - [ ] UI Realtime Telemetri Stop Kontak, Sensor PZEM & Sensor DHT22.
-  - [ ] Panel Log Transaksi, Countdown Timer, dan Grafik Laba Bersih.
+- [x] **Fase 4: Integrasi Full System ke Cloud & Payment Trigger**
+  - [x] ESP32 membaca trigger status ON/OFF dan durasi dari Firebase secara realtime (Dual-Node sync).
+  - [x] Implementasi logika early stop (matikan manual via tombol fisik).
+  - [x] Implementasi logika emergency shutdown (suhu > 60°C).
+- [x] **Fase 5: Pembuatan Realtime Hardware Web Dashboard (Laravel Operator)**
+  - [x] Web Dashboard Operator Laravel (`ranova-dashboard`) dengan MySQL + Firebase RTDB.
+  - [x] UI Realtime Telemetri Stop Kontak, Sensor PZEM & Sensor DHT22.
+  - [x] Panel Log Transaksi, Countdown Timer, Kontrol Manual Stop, Emergency Cutoff, dan Laporan Laba Bersih.
+  - [x] Sinkronisasi Dynamic Rental Pricing ke Firebase dan Webhook Vercel.
 - [ ] **Fase 6: Fabrikasi Casing & Final Assembly**
   - [ ] Perakitan komponen ke dalam casing (Box Panel ABS / 3D Print).
   - [ ] Wiring jalur AC 220V + sekring pengaman 5A/10A.
