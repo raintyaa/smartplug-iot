@@ -119,6 +119,7 @@ void setup() {
   Serial.println("[INFO] Sensor DHT22 diinisialisasi pada GPIO 4.");
 
   // 4. Setup PZEM-004T
+  Serial2.begin(9600, SERIAL_8N1, PZEM_RX_PIN, PZEM_TX_PIN);
   Serial.println("[INFO] Sensor PZEM-004T diinisialisasi pada Serial2 (RX=16, TX=17).");
 
   // 5. Setup SSL Client (Bypass sertifikat agar cepat)
