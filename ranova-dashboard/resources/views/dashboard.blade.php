@@ -222,6 +222,54 @@
 <script>
     // Polling Realtime Engine (setiap 2 detik sinkron dengan Firebase & Database)
     const OVERHEAT_LIMIT = {{ $overheatThreshold }};
+    const ESP32_OFFLINE_THRESHOLD_MS = 10000; // 10 detik tanpa update = offline
+
+    // Menyimpan Unix timestamp (seconds) dari updated_at terakhir yang diterima
+    let lastSensorUpdatedAt = 0;
+
+    // Elemen badge status ESP32 (dibuat dinamis di bawah)
+    function getOrCreateEsp32Badge() {
+        let badge = document.getElementById('esp32-status-badge');
+        if (!badge) {
+            const container = document.getElementById('sensor-temp')?.closest('.glass-card')?.parentElement;
+            if (container) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'col-span-full flex justify-end mb-1';
+                wrapper.innerHTML = '<span id="esp32-status-badge" class="px-2.5 py-1 rounded-full text-xs font-bold tracking-wide"></span>';
+                container.prepend(wrapper);
+            }
+        }
+        return document.getElementById('esp32-status-badge');
+    }
+
+    function setEsp32Online() {
+        const badge = getOrCreateEsp32Badge();
+        if (badge) {
+            badge.className = 'px-2.5 py-1 rounded-full text-xs font-bold tracking-wide bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+            badge.innerText = '🟢 ESP32 Online';
+        }
+    }
+
+    function setEsp32Offline() {
+        const badge = getOrCreateEsp32Badge();
+        if (badge) {
+            badge.className = 'px-2.5 py-1 rounded-full text-xs font-bold tracking-wide bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse';
+            badge.innerText = '🔴 ESP32 Offline / Terputus';
+        }
+        // Nol-kan semua nilai sensor
+        if (document.getElementById('sensor-temp')) {
+            document.getElementById('sensor-temp').innerText = '0.0°C';
+            document.getElementById('sensor-hum').innerText = '0%';
+            document.getElementById('sensor-volt').innerHTML = '0.0 <span class="text-xs text-slate-400 font-normal">V</span>';
+            document.getElementById('sensor-curr').innerHTML = '0.00 <span class="text-xs text-slate-400 font-normal">A</span>';
+            document.getElementById('sensor-power').innerHTML = '0.0 <span class="text-xs text-slate-400 font-normal">W</span>';
+            document.getElementById('sensor-energy').innerText = '0.0000';
+            const tempBadge = document.getElementById('temp-badge');
+            if (tempBadge) {
+                tempBadge.innerHTML = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-400">Offline</span>';
+            }
+        }
+    }
 
     function updateDashboard() {
         fetch('{{ route('dashboard.realtime') }}')
@@ -282,26 +330,45 @@
                     }
                 }
 
-                // 2. Update Seluruh Sensor Fisik (DHT22 & PZEM-004T)
+                // 2. Update Sensor Fisik (dengan Deteksi Offline ESP32)
                 if (data.sensors) {
-                    const temp = parseFloat(data.sensors.temperature || 0);
-                    const hum = parseFloat(data.sensors.humidity || 0);
+                    const incomingUpdatedAt = parseInt(data.sensors.updated_at) || 0;
 
-                    if (document.getElementById('sensor-temp')) {
-                        document.getElementById('sensor-temp').innerText = temp.toFixed(1) + '°C';
-                        document.getElementById('sensor-hum').innerText = Math.round(hum) + '%';
-                        document.getElementById('sensor-volt').innerHTML = parseFloat(data.sensors.voltage || 0).toFixed(1) + ' <span class="text-xs text-slate-400 font-normal">V</span>';
-                        document.getElementById('sensor-curr').innerHTML = parseFloat(data.sensors.current || 0).toFixed(2) + ' <span class="text-xs text-slate-400 font-normal">A</span>';
-                        document.getElementById('sensor-power').innerHTML = parseFloat(data.sensors.power || 0).toFixed(1) + ' <span class="text-xs text-slate-400 font-normal">W</span>';
-                        document.getElementById('sensor-energy').innerText = parseFloat(data.sensors.energy || 0).toFixed(4);
+                    // Cek apakah ada data baru dari ESP32 (updated_at berubah atau lebih baru)
+                    if (incomingUpdatedAt > lastSensorUpdatedAt) {
+                        lastSensorUpdatedAt = incomingUpdatedAt;
+                    }
 
-                        const tempBadge = document.getElementById('temp-badge');
-                        if (temp >= OVERHEAT_LIMIT && OVERHEAT_LIMIT > 0) {
-                            tempBadge.innerHTML = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 animate-bounce">OVERHEAT!</span>';
-                        } else if (temp > 0) {
-                            tempBadge.innerHTML = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400">Normal</span>';
-                        } else {
-                            tempBadge.innerHTML = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-400">Standby</span>';
+                    // Hitung selisih waktu sejak update terakhir
+                    const nowUnix = Math.floor(Date.now() / 1000);
+                    const secondsSinceUpdate = (lastSensorUpdatedAt > 0) ? (nowUnix - lastSensorUpdatedAt) : 9999;
+
+                    if (lastSensorUpdatedAt === 0 || secondsSinceUpdate > 10) {
+                        // ESP32 offline atau belum pernah kirim data
+                        setEsp32Offline();
+                    } else {
+                        // ESP32 online — update semua nilai sensor normal
+                        setEsp32Online();
+
+                        if (document.getElementById('sensor-temp')) {
+                            const temp = parseFloat(data.sensors.temperature || 0);
+                            const hum = parseFloat(data.sensors.humidity || 0);
+
+                            document.getElementById('sensor-temp').innerText = temp.toFixed(1) + '°C';
+                            document.getElementById('sensor-hum').innerText = Math.round(hum) + '%';
+                            document.getElementById('sensor-volt').innerHTML = parseFloat(data.sensors.voltage || 0).toFixed(1) + ' <span class="text-xs text-slate-400 font-normal">V</span>';
+                            document.getElementById('sensor-curr').innerHTML = parseFloat(data.sensors.current || 0).toFixed(2) + ' <span class="text-xs text-slate-400 font-normal">A</span>';
+                            document.getElementById('sensor-power').innerHTML = parseFloat(data.sensors.power || 0).toFixed(1) + ' <span class="text-xs text-slate-400 font-normal">W</span>';
+                            document.getElementById('sensor-energy').innerText = parseFloat(data.sensors.energy || 0).toFixed(4);
+
+                            const tempBadge = document.getElementById('temp-badge');
+                            if (temp >= OVERHEAT_LIMIT && OVERHEAT_LIMIT > 0) {
+                                tempBadge.innerHTML = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 animate-bounce">OVERHEAT!</span>';
+                            } else if (temp > 0) {
+                                tempBadge.innerHTML = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400">Normal</span>';
+                            } else {
+                                tempBadge.innerHTML = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-400">Standby</span>';
+                            }
                         }
                     }
                 }
@@ -319,3 +386,4 @@
     });
 </script>
 @endpush
+

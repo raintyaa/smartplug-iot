@@ -11,6 +11,7 @@
 // ============================================================
 
 #include <WiFi.h>
+#include <time.h>         // Untuk NTP → Unix Timestamp updated_at
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
@@ -367,7 +368,7 @@ void updateTelemetry() {
     jsonPayload += "\"energy\":" + String(currentEnergy, 4) + ",";
     jsonPayload += "\"temperature\":" + String(currentTemp, 1) + ",";
     jsonPayload += "\"humidity\":" + String(currentHum, 1) + ",";
-    jsonPayload += "\"updated_at\":" + String(millis());
+    jsonPayload += "\"updated_at\":" + String((unsigned long)time(nullptr));
     jsonPayload += "}";
 
     http.PUT(jsonPayload);
@@ -512,6 +513,22 @@ void connectWiFi() {
     Serial.println("\n[WIFI] Berhasil terhubung!");
     Serial.print("[WIFI] Alamat IP ESP32: ");
     Serial.println(WiFi.localIP());
+
+    // Sinkronisasi waktu via NTP (untuk updated_at yang akurat di Firebase)
+    configTime(7 * 3600, 0, "pool.ntp.org", "time.nist.gov"); // WIB = UTC+7
+    Serial.print("[NTP] Sinkronisasi waktu");
+    struct tm timeinfo;
+    int ntpRetry = 0;
+    while (!getLocalTime(&timeinfo) && ntpRetry < 10) {
+      delay(500);
+      Serial.print(".");
+      ntpRetry++;
+    }
+    if (ntpRetry < 10) {
+      Serial.println("\n[NTP] Waktu berhasil disinkronkan!");
+    } else {
+      Serial.println("\n[WARN] NTP timeout, updated_at mungkin tidak akurat.");
+    }
   } else {
     Serial.println("\n[WARN] WiFi gagal terhubung! Sistem tetap berjalan offline.");
   }
