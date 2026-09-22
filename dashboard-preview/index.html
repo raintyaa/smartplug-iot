@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0A0A0D" />
+  <title>RANOVA — Smart Plug IoT Station</title>
+
+  <!-- Tailwind CSS (v3) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide icons (minimal, functional) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+          colors: {
+            base: '#0A0A0D',
+            surface: '#141418',
+            'surface-2': '#18181E',
+            hairline: '#26262E',
+            emerald: { DEFAULT: '#10B981' },
+            amber: { DEFAULT: '#F59E0B' },
+            crimson: { DEFAULT: '#EF4444' },
+          },
+          keyframes: {
+            'pulse-soft': {
+              '0%, 100%': { opacity: '1' },
+              '50%': { opacity: '0.45' },
+            },
+          },
+          animation: {
+            'pulse-soft': 'pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    body { background-color: #0A0A0D; }
+    /* crisp hairline dividers */
+    .hair { border-color: rgba(255, 255, 255, 0.07); }
+    /* faint dotted grid texture, no blur */
+    .grid-texture {
+      background-image: radial-gradient(rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 22px 22px;
+    }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: #0A0A0D; }
+    ::-webkit-scrollbar-thumb { background: #26262E; border-radius: 6px; }
+  </style>
+</head>
+
+<body class="min-h-screen bg-base font-sans text-neutral-200 antialiased selection:bg-emerald/30 selection:text-white">
+
+  <main class="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 lg:px-8">
+
+    <!-- ================= HEADER & GLOBAL STATUS ================= -->
+    <header class="flex flex-col gap-4 border-b border-white/[0.07] pb-5 lg:flex-row lg:items-center lg:justify-between">
+      <div class="flex items-center gap-3.5">
+        <div class="flex h-11 w-11 items-center justify-center rounded-xl border border-white/[0.07] bg-surface">
+          <i data-lucide="zap" class="h-5 w-5 text-emerald"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold leading-none tracking-tight text-white">RANOVA</h1>
+          <p class="mt-1 text-xs font-medium text-neutral-500">Smart Plug IoT Station</p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2.5">
+        <!-- ESP32 heartbeat -->
+        <span class="inline-flex items-center gap-2 rounded-lg border border-emerald/25 bg-emerald/10 px-3 py-2 text-xs font-semibold text-emerald">
+          <span class="relative flex h-2 w-2">
+            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald opacity-60"></span>
+            <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald"></span>
+          </span>
+          ESP32 Online
+        </span>
+
+        <!-- Firebase realtime -->
+        <span class="inline-flex items-center gap-2 rounded-lg border border-white/[0.07] bg-surface px-3 py-2 text-xs font-semibold text-neutral-300">
+          <span class="h-2 w-2 rounded-full bg-emerald"></span>
+          Firebase Realtime
+        </span>
+
+        <!-- Last sync -->
+        <span class="hidden items-center gap-1.5 rounded-lg border border-white/[0.07] bg-surface px-3 py-2 font-mono text-xs text-neutral-500 sm:inline-flex">
+          <i data-lucide="refresh-cw" class="h-3.5 w-3.5"></i>
+          14:32:08
+        </span>
+
+        <!-- Emergency cutoff -->
+        <button type="button"
+          class="inline-flex items-center gap-2 rounded-lg border border-crimson/40 bg-crimson/10 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-crimson transition-colors hover:bg-crimson/20 focus:outline-none focus:ring-2 focus:ring-crimson/40">
+          <i data-lucide="power-off" class="h-4 w-4"></i>
+          Emergency Cutoff
+        </button>
+      </div>
+    </header>
+
+    <!-- ================= FINANCIAL & METRICS ROW ================= -->
+    <section class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Ringkasan finansial">
+
+      <!-- QRIS revenue -->
+      <article class="rounded-xl border border-white/[0.07] bg-surface p-5">
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-medium text-neutral-400">Pendapatan QRIS Hari Ini</p>
+          <i data-lucide="qr-code" class="h-4 w-4 text-neutral-500"></i>
+        </div>
+        <p class="mt-3 font-mono text-3xl font-semibold tracking-tight text-white">Rp 45.000</p>
+        <p class="mt-2 text-xs text-neutral-500">Total keseluruhan: <span class="font-mono text-neutral-400">Rp 120.000</span></p>
+      </article>
+
+      <!-- Energy consumption -->
+      <article class="rounded-xl border border-white/[0.07] bg-surface p-5">
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-medium text-neutral-400">Total Konsumsi Energi</p>
+          <i data-lucide="activity" class="h-4 w-4 text-neutral-500"></i>
+        </div>
+        <p class="mt-3 font-mono text-3xl font-semibold tracking-tight text-white">2.415 <span class="text-base font-normal text-neutral-500">kWh</span></p>
+        <div class="mt-2 flex items-center gap-2">
+          <span class="inline-flex items-center gap-1 rounded-md border border-emerald/20 bg-emerald/10 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-emerald">
+            <i data-lucide="trending-up" class="h-3 w-3"></i> +4.2%
+          </span>
+          <span class="text-xs text-neutral-500">vs kemarin</span>
+        </div>
+      </article>
+
+      <!-- PLN grid cost -->
+      <article class="rounded-xl border border-white/[0.07] bg-surface p-5">
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-medium text-neutral-400">Biaya Grid PLN</p>
+          <i data-lucide="receipt" class="h-4 w-4 text-neutral-500"></i>
+        </div>
+        <p class="mt-3 font-mono text-3xl font-semibold tracking-tight text-white">Rp 3.489</p>
+        <p class="mt-2 text-xs text-neutral-500">Tarif <span class="font-mono text-neutral-400">Rp 1.444,70</span> / kWh</p>
+      </article>
+
+      <!-- Net profit -->
+      <article class="rounded-xl border border-white/[0.07] bg-surface p-5">
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-medium text-neutral-400">Laba Bersih (Margin)</p>
+          <i data-lucide="wallet" class="h-4 w-4 text-neutral-500"></i>
+        </div>
+        <p class="mt-3 font-mono text-3xl font-semibold tracking-tight text-emerald">Rp 41.511</p>
+        <p class="mt-2 text-xs text-neutral-500">Pendapatan &minus; Biaya PLN</p>
+      </article>
+    </section>
+
+    <!-- ================= RELAY SOCKET CARDS ================= -->
+    <section class="mt-8" aria-label="Status stop kontak">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-neutral-400">
+          <i data-lucide="plug" class="h-4 w-4 text-neutral-500"></i>
+          Kontrol Relay &mdash; Broco Inbow
+        </h2>
+        <span class="font-mono text-xs text-neutral-600">3 / 3 socket</span>
+      </div>
+
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+
+        <!-- ---------- SLOT 1 : STANDBY ---------- -->
+        <article class="relative overflow-hidden rounded-xl border border-white/[0.07] bg-surface">
+          <div class="grid-texture pointer-events-none absolute inset-0 opacity-40"></div>
+          <div class="relative flex items-center justify-between border-b border-white/[0.07] px-5 py-4">
+            <div class="flex items-center gap-3">
+              <div class="flex h-9 w-9 items-center justify-center rounded-lg border border-white/[0.07] bg-surface-2 font-mono text-sm font-bold text-neutral-400">01</div>
+              <div>
+                <h3 class="text-sm font-semibold text-neutral-200">Slot 1</h3>
+                <p class="text-[11px] text-neutral-500">Broco Inbow Socket</p>
+              </div>
+            </div>
+            <span class="inline-flex items-center gap-1.5 rounded-md border border-white/[0.07] bg-surface-2 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
+              <span class="h-1.5 w-1.5 rounded-full bg-neutral-500"></span> Siap
+            </span>
+          </div>
+
+          <div class="relative px-5 py-6">
+            <p class="text-center text-[11px] font-medium uppercase tracking-widest text-neutral-600">Sisa Waktu</p>
+            <p class="mt-2 text-center font-mono text-5xl font-bold tracking-tight text-neutral-700">&mdash;&mdash;:&mdash;&mdash;</p>
+
+            <dl class="mt-6 space-y-2.5 border-t border-white/[0.07] pt-4 text-xs">
+              <div class="flex items-center justify-between">
+                <dt class="text-neutral-500">Durasi</dt>
+                <dd class="font-mono text-neutral-500">&mdash;</dd>
+              </div>
+              <div class="flex items-center justify-between">
+                <dt class="text-neutral-500">Dibayar</dt>
+                <dd class="font-mono text-neutral-500">&mdash;</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="relative px-5 pb-5">
+            <button type="button" disabled
+              class="w-full cursor-not-allowed rounded-lg border border-white/[0.05] bg-surface-2 px-3 py-2.5 text-xs font-semibold text-neutral-600">
+              Matikan Manual
+            </button>
+          </div>
+        </article>
+
+        <!-- ---------- SLOT 2 : WAITING PAYMENT ---------- -->
+        <article class="relative overflow-hidden rounded-xl border border-amber/40 bg-surface ring-1 ring-amber/10">
+          <div class="grid-texture pointer-events-none absolute inset-0 opacity-40"></div>
+          <div class="relative flex items-center justify-between border-b border-white/[0.07] px-5 py-4">
+            <div class="flex items-center gap-3">
+              <div class="flex h-9 w-9 items-center justify-center rounded-lg border border-amber/25 bg-amber/10 font-mono text-sm font-bold text-amber">02</div>
+              <div>
+                <h3 class="text-sm font-semibold text-neutral-200">Slot 2</h3>
+                <p class="text-[11px] text-neutral-500">Broco Inbow Socket</p>
+              </div>
+            </div>
+            <span class="inline-flex items-center gap-1.5 rounded-md border border-amber/30 bg-amber/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber">
+              <span class="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-amber"></span> Scan QRIS
+            </span>
+          </div>
+
+          <div class="relative px-5 py-6">
+            <p class="text-center text-[11px] font-medium uppercase tracking-widest text-amber/80">Menunggu Pembayaran</p>
+            <p class="mt-2 text-center font-mono text-5xl font-bold tracking-tight text-amber">02:00</p>
+            <p class="mt-2 text-center text-[11px] text-neutral-500">Batas waktu scan sebelum dibatalkan</p>
+
+            <dl class="mt-6 space-y-2.5 border-t border-white/[0.07] pt-4 text-xs">
+              <div class="flex items-center justify-between">
+                <dt class="text-neutral-500">Durasi</dt>
+                <dd class="font-mono text-neutral-400">Menunggu</dd>
+              </div>
+              <div class="flex items-center justify-between">
+                <dt class="text-neutral-500">Dibayar</dt>
+                <dd class="font-mono text-neutral-400">Menunggu</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="relative px-5 pb-5">
+            <button type="button"
+              class="w-full rounded-lg border border-white/[0.07] bg-surface-2 px-3 py-2.5 text-xs font-semibold text-neutral-300 transition-colors hover:bg-white/[0.04]">
+              Batalkan
+            </button>
+          </div>
+        </article>
+
+        <!-- ---------- SLOT 3 : ACTIVE ---------- -->
+        <article class="relative overflow-hidden rounded-xl border border-emerald/40 bg-surface ring-1 ring-emerald/10">
+          <div class="grid-texture pointer-events-none absolute inset-0 opacity-40"></div>
+          <div class="relative flex items-center justify-between border-b border-white/[0.07] px-5 py-4">
+            <div class="flex items-center gap-3">
+              <div class="flex h-9 w-9 items-center justify-center rounded-lg border border-emerald/25 bg-emerald/10 font-mono text-sm font-bold text-emerald">03</div>
+              <div>
+                <h3 class="text-sm font-semibold text-neutral-200">Slot 3</h3>
+                <p class="text-[11px] text-neutral-500">Broco Inbow Socket</p>
+              </div>
+            </div>
+            <span class="inline-flex items-center gap-1.5 rounded-md border border-emerald/30 bg-emerald/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald">
+              <span class="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-emerald"></span> Aktif
+            </span>
+          </div>
+
+          <div class="relative px-5 py-6">
+            <p class="text-center text-[11px] font-medium uppercase tracking-widest text-emerald/80">Sisa Waktu Sewa</p>
+            <p class="mt-2 text-center font-mono text-5xl font-bold tracking-tight text-emerald">14:59</p>
+
+            <dl class="mt-6 space-y-2.5 border-t border-white/[0.07] pt-4 text-xs">
+              <div class="flex items-center justify-between">
+                <dt class="text-neutral-500">Durasi</dt>
+                <dd class="font-mono text-neutral-200">15 Menit</dd>
+              </div>
+              <div class="flex items-center justify-between">
+                <dt class="text-neutral-500">Dibayar</dt>
+                <dd class="font-mono text-emerald">Rp 1.000</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="relative px-5 pb-5">
+            <button type="button"
+              class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-crimson/40 bg-crimson/10 px-3 py-2.5 text-xs font-semibold text-crimson transition-colors hover:bg-crimson/20">
+              <i data-lucide="power" class="h-3.5 w-3.5"></i>
+              Matikan Manual
+            </button>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- ================= TELEMETRY SENSOR STRIP ================= -->
+    <section class="mt-8" aria-label="Telemetri sensor">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-neutral-400">
+          <i data-lucide="gauge" class="h-4 w-4 text-neutral-500"></i>
+          Telemetri Sensor &mdash; PZEM-004T + DHT22
+        </h2>
+        <span class="font-mono text-xs text-neutral-600">live · 2s</span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.07] sm:grid-cols-3 lg:grid-cols-6">
+        <!-- Voltage -->
+        <div class="bg-surface p-4">
+          <p class="text-[11px] font-medium uppercase tracking-wide text-neutral-500">Tegangan</p>
+          <p class="mt-2 font-mono text-2xl font-semibold text-white">224.2<span class="ml-1 text-sm font-normal text-neutral-500">V</span></p>
+          <p class="mt-1 text-[11px] text-neutral-600">PLN 220V · 50Hz</p>
+        </div>
+        <!-- Current -->
+        <div class="bg-surface p-4">
+          <p class="text-[11px] font-medium uppercase tracking-wide text-neutral-500">Arus</p>
+          <p class="mt-2 font-mono text-2xl font-semibold text-white">0.08<span class="ml-1 text-sm font-normal text-neutral-500">A</span></p>
+          <p class="mt-1 text-[11px] text-neutral-600">CT Clamp</p>
+        </div>
+        <!-- Active power -->
+        <div class="bg-surface p-4">
+          <p class="text-[11px] font-medium uppercase tracking-wide text-neutral-500">Daya Aktif</p>
+          <p class="mt-2 font-mono text-2xl font-semibold text-white">1.8<span class="ml-1 text-sm font-normal text-neutral-500">W</span></p>
+          <p class="mt-1 text-[11px] text-neutral-600">Beban nyata</p>
+        </div>
+        <!-- Cumulative energy -->
+        <div class="bg-surface p-4">
+          <p class="text-[11px] font-medium uppercase tracking-wide text-neutral-500">Energi Kumulatif</p>
+          <p class="mt-2 font-mono text-2xl font-semibold text-white">0.0010<span class="ml-1 text-sm font-normal text-neutral-500">kWh</span></p>
+          <p class="mt-1 text-[11px] text-neutral-600">Meter total</p>
+        </div>
+        <!-- Temperature -->
+        <div class="bg-surface p-4">
+          <div class="flex items-center justify-between">
+            <p class="text-[11px] font-medium uppercase tracking-wide text-neutral-500">Suhu Box</p>
+            <span class="rounded border border-emerald/20 bg-emerald/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald">Normal</span>
+          </div>
+          <p class="mt-2 font-mono text-2xl font-semibold text-white">30.4<span class="ml-1 text-sm font-normal text-neutral-500">&deg;C</span></p>
+          <p class="mt-1 text-[11px] text-neutral-600">Overheat &lt; 60&deg;C</p>
+        </div>
+        <!-- Humidity -->
+        <div class="bg-surface p-4">
+          <p class="text-[11px] font-medium uppercase tracking-wide text-neutral-500">Kelembaban</p>
+          <p class="mt-2 font-mono text-2xl font-semibold text-white">85<span class="ml-1 text-sm font-normal text-neutral-500">%</span></p>
+          <p class="mt-1 text-[11px] text-neutral-600">DHT22</p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="mt-8 border-t border-white/[0.07] pt-4 text-center text-[11px] text-neutral-600">
+      RANOVA Smart Plug IoT Station · ESP32 &middot; Firebase Realtime &middot; QRIS Payment Gateway
+    </footer>
+  </main>
+
+  <script>lucide.createIcons();</script>
+</body>
+</html>
