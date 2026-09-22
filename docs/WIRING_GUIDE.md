@@ -5,26 +5,25 @@ Dokumen ini adalah panduan teknis resmi perakitan kelistrikan, distribusi daya m
 
 ---
 
-## 🛠️ 1. Daftar Kebutuhan Konektor & Aksesoris Wiring
+## 🛠️ 1. Daftar Komponen Wiring Resmi yang Telah Divalidasi & Dibeli
 
-Untuk merakit seluruh sistem dengan rapi, aman dari korsleting, dan bebas dari pelintiran kabel berantakan di dalam box kayu, siapkan komponen penyambung berikut:
+Berdasarkan keputusan final perakitan 3 slot, berikut komponen penyambung yang telah dibeli:
 
-| No | Komponen Penyambung | Jumlah | Estimasi Biaya | Fungsi & Posisi Pemasangan |
+| No | Komponen Penyambung | Jumlah | Status / Spesifikasi | Fungsi & Posisi Pemasangan |
 |---|---|:---:|:---:|---|
-| 1 | **WAGO Connector 221-415 (Tuas 5 Lubang)** | **8 – 9 pcs** | ~Rp 5.500 / pcs | **Terminal Bus Utama:**<br>• 2 pcs untuk AC Fasa (Pre-CT & Post-CT)<br>• 2 pcs untuk AC Netral (Jumper Bersama)<br>• 1 pcs untuk AC Arde / Grounding<br>• 2 pcs untuk DC +5V Bus (Jumper Bersama)<br>• 2 pcs untuk DC Ground Bus (Jumper Bersama) |
-| 2 | **ESP32 Expansion Shield 30-Pin** *(Disarankan)* | **1 pcs** | ~Rp 18.000 | Dudukan ESP32 dengan baut terminal sekrup agar kabel GPIO tidak mudah lepas. |
-| 3 | **Heat Shrink Tube (Selongsong Bakar) 2mm & 4mm** | **1 – 2 meter** | ~Rp 5.000 | Membungkus kaki tombol metal (`NO`, `C`, `+`, `-`) dan mengisolasi kaki `NC`. |
-| 4 | **Kabel NYMHY 3x1.5mm² (Kabel Steker AC)** | Sesuai box | Standar SNI | Khusus mengalirkan listrik tegangan tinggi AC 220V PLN ke Stop Kontak Broco. |
-| 5 | **Kabel Serabut AWG 22 / Kabel Pelangi Jumper** | 2 meter | ~Rp 8.000 | Khusus jalur tegangan rendah DC 5V, Ground, dan sinyal logika GPIO. |
+| 1 | **WAGO Connector PCT-215 (Tuas 5 Lubang)** | **10 pcs** | DIBELI (~Rp 5.000 / pcs) | **Terminal Bus Utama Distribusi:**<br>• 2 pcs untuk AC Fasa (Pre-CT & Post-CT)<br>• 2 pcs untuk AC Netral (Jumper Bersama)<br>• 1 pcs untuk AC Arde / Grounding<br>• 2 pcs untuk DC +5V Bus<br>• 2 pcs untuk DC Ground Bus<br>• 1 pcs Cadangan |
+| 2 | **Kabel NYA-F 1.5mm² (AWG 16) Tembaga Murni** | **4 meter** | DIBELI (Rp 10.000 / m)<br>• **2m Merah**<br>• **2m Putih** | **Jalur Distribusi Listrik Utama:**<br>• **Merah:** Khusus jalur Fasa (Setrum 220V) PLN, Donat CT PZEM, COM/NO Relay, dan L Broco.<br>• **Putih:** Khusus jalur Netral PLN, Stop Kontak Broco, PZEM, dan Power Supply. |
+| 3 | **Kabel Jumper Dupont Female-to-Female** | 1 Set | Stok Tim | Jalur logika tegangan rendah: Pin ESP32 ke Relay (IN1-IN3), LCD I2C, Sensor PZEM, DHT22, dan Tombol. |
+| 4 | **Kabel Steker Dutron (Bawaan Colokan PLN)** | 1 Unit | Sudah Ada | Kabel 3-core dari steker PLN (Fasa, Netral, dan Arde Kuning-Hijau). |
 
 ---
 
-## ⚡ 2. Arsitektur Distribusi Listrik AC 220V (PLN, Power Supply, & PZEM)
+## ⚡ 2. Arsitektur Distribusi Listrik AC 220V (Konvensi Warna Tim RANOVA)
 
-Sistem menggunakan kabel **NYMHY 3x1.5mm²**:
-* **Coklat / Hitam:** Fasa (Line / Setrum 220V)
-* **Biru:** Netral
-* **Kuning / Kuning-Hijau:** Arde (Grounding Pengaman)
+Sesuai kabel AWG 16 yang dibeli (Merah dan Putih):
+* 🔴 **Merah:** Fasa (Line / Setrum 220V)
+* ⚪ **Putih:** Netral (Neutral AC)
+* 🟡🟢 **Kuning / Hijau:** Arde (Grounding Pengaman dari kabel steker PLN)
 
 ```text
                                 [ LISTRIK AC 220V PLN ]

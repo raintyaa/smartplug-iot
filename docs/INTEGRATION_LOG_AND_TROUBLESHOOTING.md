@@ -124,3 +124,28 @@ Ketika sistem direplikasi menjadi **3 Slot Stop Kontak Penuh**, aturan tampilan 
 | **Bayar di Mayar sukses, tapi relay tidak kunjung menyala** | 1. `active_selection` sudah keburu timeout kembali ke `IDLE`.<br>2. Node Firebase tidak sinkron. | 1. Tekan tombol fisik slot dulu sebelum bayar/retry di Mayar.<br>2. Pastikan webhook Vercel versi terbaru aktif (sudah auto-deploy). |
 | **Relay langsung aktif tanpa ditekan tombol saat pertama dinyalakan** | Karakteristik Active-LOW: pin output default bernilai LOW saat inisialisasi. | Pastikan `digitalWrite(PIN_RELAY, HIGH)` dipanggil sebelum relay digunakan di `setup()`. |
 | **Dashboard Web Laravel tidak bisa dibuka** | Layanan MySQL XAMPP belum aktif atau artisan serve belum berjalan. | 1. Buka XAMPP, klik Start pada MySQL.<br>2. Klik ganda `jalankan_dashboard.bat`. |
+
+---
+
+## 7. Catatan Pengadaan Komponen & Desain Wiring 3 Slot (22 September 2026)
+
+Berdasarkan analisis kebutuhan fisik dan kepraktisan perakitan 3 slot stop kontak:
+
+### A. Komponen yang Divalidasi & Dibeli:
+1. **Konektor Tuas Percabangan (WAGO PCT-215 / 5 Lubang 1 Sisi):**
+   * **Jumlah:** 10 pcs (~Rp 5.000 / pcs).
+   * **Alasan Pemilihan:** Semua 5 lubang menyatu pada 1 lempeng tembaga busbar internal. Pas untuk membagi Fasa PLN ke 3 Relay + PSU + PZEM, dan Netral PLN ke 3 Stop Kontak + PZEM + PSU tanpa pelintiran kabel manual.
+2. **Kabel Listrik Serabut Tunggal NYA-F 1.5mm² (AWG 16) Tembaga Murni:**
+   * **Jumlah:** Total 4 Meter (~Rp 10.000 / meter).
+   * **Varian Warna yang Dipilih:**
+     * 🔴 **2 Meter MERAH:** Khusus jalur Fasa / Setrum (220V AC).
+     * ⚪ **2 Meter PUTIH:** Khusus jalur Netral (AC Neutral).
+   * **Alasan Pemilihan:** Standar kelistrikan beban 220V PLN (mampu menahan arus hingga 15–20A / 3.000W+), menjamin stop kontak tidak panas atau meleleh saat dicolok beban daya besar.
+
+### B. Mekanisme Tombol Metal 16mm (Slot 1, 2, 3):
+* **Tanpa Soket Tambahan:** Menggunakan kabel jumper female/solder manual langsung ke pin tombol.
+* **Estafet Pin Ground (Daisy-Chain):**
+  * Pin `C (Common)` dan Pin `LED (-)` pada masing-masing tombol digabung dan diestafetkan (dijumper antar-tombol), lalu berakhir pada 1 kabel tunggal menuju WAGO DC GND.
+  * Pin `NO` masing-masing tombol ditarik independen ke pin GPIO ESP32 (Slot 1: GPIO 27, Slot 2: GPIO 14, Slot 3: GPIO 12).
+  * Pin `LED (+)` ditarik independen ke pin GPIO LED ESP32 (Slot 1: GPIO 32, Slot 2: GPIO 33, Slot 3: GPIO 25).
+  * Pin `NC` dibiarkan kosong dan diisolasi dengan heatshrink.
