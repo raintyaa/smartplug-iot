@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login Operator — RANOVA Smart Plug</title>
-    <link rel="icon" type="image/jpeg" href="{{ asset('images/logo.jpeg') }}">
+    <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -21,8 +21,8 @@
     <div class="w-full max-w-md relative z-10">
         <!-- Logo & Title -->
         <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl overflow-hidden border border-slate-700/60 shadow-xl mb-4">
-                <img src="{{ asset('images/logo.jpeg') }}" alt="Logo" class="w-full h-full object-cover">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl overflow-hidden border border-slate-700/60 shadow-xl mb-4 bg-slate-950">
+                <img src="{{ asset('images/logo.png') }}" alt="Logo" class="w-full h-full object-contain p-1">
             </div>
             <h1 class="text-2xl font-extrabold tracking-tight text-white">RANOVA SMART PLUG</h1>
             <p class="text-sm text-slate-400 mt-1">Portal Pemantauan & Kontrol Operator</p>

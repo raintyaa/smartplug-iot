@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Dashboard') — RANOVA Smart Plug</title>
-    <link rel="icon" type="image/jpeg" href="{{ asset('images/logo.jpeg') }}">
+    <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <!-- Tailwind CSS CDN -->
@@ -65,7 +65,7 @@
         <div>
             <!-- Brand Logo -->
             <div class="h-16 flex items-center px-6 border-b border-hairline space-x-3">
-                <img src="{{ asset('images/logo.jpeg') }}" alt="Logo" class="w-9 h-9 rounded-lg border border-hairline object-cover">
+                <img src="{{ asset('images/logo.png') }}" alt="Logo" class="w-9 h-9 rounded-lg border border-hairline object-contain bg-base">
                 <div>
                     <span class="font-bold text-base tracking-tight text-white">RANOVA</span>
                     <span class="block text-[10px] tracking-wider text-neutral-400 font-medium">Smart Plug IoT Station</span>
