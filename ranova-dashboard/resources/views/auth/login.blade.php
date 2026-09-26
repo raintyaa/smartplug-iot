@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Operator — RANOVA Smart Plug</title>
+    <title>Login Operator — Smart Plug System</title>
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -46,8 +46,8 @@
             <div class="inline-flex items-center justify-center w-14 h-14 rounded-xl border border-hairline bg-surface2 mb-3 p-1">
                 <img src="{{ asset('images/logo.png') }}" alt="Logo" class="w-full h-full object-contain">
             </div>
-            <h1 class="text-xl font-bold tracking-tight text-white">RANOVA SMART PLUG</h1>
-            <p class="text-xs text-neutral-400 mt-1">Portal Pemantauan & Kontrol Operator</p>
+            <h1 class="text-xl font-bold tracking-tight text-white">SMART PLUG SYSTEM</h1>
+            <p class="text-xs text-neutral-400 mt-1">Operator Console</p>
         </div>
 
         <!-- Login Card -->
@@ -100,7 +100,7 @@
 
         <!-- Footer -->
         <p class="text-center text-xs text-neutral-400 mt-6">
-            &copy; 2026 RANOVA IoT Project — Tugas Praktikum Semester 5
+            &copy; 2026 IoT Project
         </p>
     </div>
 
