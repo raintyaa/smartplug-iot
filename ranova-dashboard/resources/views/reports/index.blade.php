@@ -23,7 +23,7 @@
         <!-- Pendapatan Kotor -->
         <div class="rounded-xl bg-surface border border-hairline p-5">
             <div class="flex items-center justify-between">
-                <p class="text-xs font-mono font-medium uppercase tracking-wider text-neutral-300">Total Pendapatan</p>
+                <p class="text-xs font-medium text-neutral-300">Total Pendapatan</p>
                 <i class="fa-solid fa-qrcode text-neutral-400 text-sm"></i>
             </div>
             <p class="mt-3 font-mono text-2xl font-bold tracking-tight text-mint">
@@ -35,7 +35,7 @@
         <!-- Biaya Listrik PLN -->
         <div class="rounded-xl bg-surface border border-hairline p-5">
             <div class="flex items-center justify-between">
-                <p class="text-xs font-mono font-medium uppercase tracking-wider text-neutral-300">Beban Listrik PLN</p>
+                <p class="text-xs font-medium text-neutral-300">Beban Listrik PLN</p>
                 <i class="fa-solid fa-receipt text-neutral-400 text-sm"></i>
             </div>
             <p class="mt-3 font-mono text-2xl font-bold tracking-tight text-white">
@@ -47,7 +47,7 @@
         <!-- Laba Bersih -->
         <div class="rounded-xl bg-surface border border-hairline p-5">
             <div class="flex items-center justify-between">
-                <p class="text-xs font-mono font-medium uppercase tracking-wider text-neutral-300">Laba Bersih (Net)</p>
+                <p class="text-xs font-medium text-neutral-300">Laba Bersih (Net)</p>
                 <i class="fa-solid fa-wallet text-neutral-400 text-sm"></i>
             </div>
             <p class="mt-3 font-mono text-2xl font-bold tracking-tight {{ $netProfit >= 0 ? 'text-mint' : 'text-crimson' }}">
@@ -59,7 +59,7 @@
         <!-- Margin Keuntungan -->
         <div class="rounded-xl bg-surface border border-hairline p-5">
             <div class="flex items-center justify-between">
-                <p class="text-xs font-mono font-medium uppercase tracking-wider text-neutral-300">Margin Operasional</p>
+                <p class="text-xs font-medium text-neutral-300">Margin Operasional</p>
                 <i class="fa-solid fa-percent text-neutral-400 text-sm"></i>
             </div>
             <p class="mt-3 font-mono text-2xl font-bold tracking-tight text-white">
@@ -74,7 +74,7 @@
         <!-- Grafik Tren Pendapatan Harian -->
         <div class="rounded-xl bg-surface border border-hairline p-6 lg:col-span-2">
             <div class="flex items-center justify-between mb-5">
-                <h2 class="text-sm font-mono font-semibold uppercase tracking-wider text-neutral-200 flex items-center space-x-2">
+                <h2 class="text-base font-semibold text-white tracking-tight flex items-center space-x-2">
                     <i class="fa-solid fa-chart-column text-mint text-sm"></i>
                     <span>Tren Pendapatan Harian ({{ $days }} Hari Terakhir)</span>
                 </h2>
@@ -87,7 +87,7 @@
         <!-- Distribusi Pendapatan per Slot -->
         <div class="rounded-xl bg-surface border border-hairline p-6 flex flex-col justify-between">
             <div class="mb-4">
-                <h2 class="text-sm font-mono font-semibold uppercase tracking-wider text-neutral-200 flex items-center space-x-2">
+                <h2 class="text-base font-semibold text-white tracking-tight flex items-center space-x-2">
                     <i class="fa-solid fa-chart-pie text-neutral-400 text-sm"></i>
                     <span>Kontribusi per Stop Kontak</span>
                 </h2>
