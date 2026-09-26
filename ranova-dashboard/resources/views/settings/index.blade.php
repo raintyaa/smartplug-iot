@@ -59,7 +59,7 @@
 
             <!-- Preview Kalkulasi Otomatis (Clean Stat List, 0 Nested Cards) -->
             <div class="pt-5 border-t border-hairline">
-                <p class="text-xs font-mono font-medium text-neutral-300 uppercase tracking-wider mb-3 flex items-center space-x-1.5">
+                <p class="text-xs font-semibold text-neutral-200 mb-3 flex items-center space-x-2">
                     <i class="fa-solid fa-calculator text-mint text-xs"></i>
                     <span>Simulasi Alur Transaksi Pelanggan</span>
                 </p>
