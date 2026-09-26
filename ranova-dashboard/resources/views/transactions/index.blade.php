@@ -96,21 +96,21 @@
         <span class="text-xs font-mono text-neutral-400">Menampilkan {{ $transactions->count() }} dari {{ $transactions->total() }} data</span>
     </div>
 
-    <!-- 3. Tabel Data Transaksi (Single Card Container) -->
-    <div class="rounded-xl bg-surface border border-hairline overflow-hidden">
+    <!-- 3. Tabel Data Transaksi (Padded Card Container) -->
+    <div class="rounded-xl bg-surface border border-hairline p-6">
         <!-- Table Data -->
         <div class="overflow-x-auto">
             <table class="w-full text-left text-xs">
                 <thead class="border-b border-hairline uppercase tracking-wider text-neutral-400 font-mono font-medium">
                     <tr>
-                        <th class="py-3.5 px-4">ID</th>
-                        <th class="py-3.5 px-4">Waktu Mulai</th>
-                        <th class="py-3.5 px-4">Slot</th>
-                        <th class="py-3.5 px-4">Nominal</th>
-                        <th class="py-3.5 px-4">Durasi</th>
-                        <th class="py-3.5 px-4">Status</th>
-                        <th class="py-3.5 px-4">Ref Pembayaran</th>
-                        <th class="py-3.5 px-4 text-right">Aksi</th>
+                        <th class="pb-3.5 px-4">ID</th>
+                        <th class="pb-3.5 px-4">Waktu Mulai</th>
+                        <th class="pb-3.5 px-4">Slot</th>
+                        <th class="pb-3.5 px-4">Nominal</th>
+                        <th class="pb-3.5 px-4">Durasi</th>
+                        <th class="pb-3.5 px-4">Status</th>
+                        <th class="pb-3.5 px-4">Ref Pembayaran</th>
+                        <th class="pb-3.5 px-4 text-right">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-hairline text-neutral-200">
@@ -169,7 +169,7 @@
         </div>
 
         @if($transactions->hasPages())
-            <div class="p-4 border-t border-hairline">
+            <div class="pt-4 mt-2 border-t border-hairline">
                 {{ $transactions->links() }}
             </div>
         @endif
