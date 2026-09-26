@@ -22,7 +22,7 @@ class DatabaseSeeder extends Seeder
         User::updateOrCreate(
             ['email' => 'admin@ranova.id'],
             [
-                'name' => 'Operator RANOVA',
+                'name' => 'Operator Console',
                 'password' => Hash::make('admin123'),
                 'email_verified_at' => now(),
             ]

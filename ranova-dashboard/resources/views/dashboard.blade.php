@@ -11,61 +11,61 @@
         <!-- Pendapatan QRIS -->
         <div class="rounded-xl bg-surface border border-hairline p-5">
             <div class="flex items-center justify-between">
-                <p class="text-xs font-medium text-neutral-400">Pendapatan QRIS (Hari Ini)</p>
-                <i class="fa-solid fa-qrcode text-neutral-500 text-sm"></i>
+                <p class="text-xs font-medium text-neutral-300">Pendapatan QRIS (Hari Ini)</p>
+                <i class="fa-solid fa-qrcode text-neutral-400 text-sm"></i>
             </div>
             <p class="mt-3 font-mono text-2xl font-bold tracking-tight text-white">
                 Rp {{ number_format($todayRevenue, 0, ',', '.') }}
             </p>
-            <p class="mt-2 text-xs text-neutral-400">Total: <span class="font-mono text-neutral-300">Rp {{ number_format($totalRevenue, 0, ',', '.') }}</span></p>
+            <p class="mt-2 text-xs text-neutral-300">Total: <span class="font-mono text-white">Rp {{ number_format($totalRevenue, 0, ',', '.') }}</span></p>
         </div>
 
         <!-- Total Konsumsi Energi -->
         <div class="rounded-xl bg-surface border border-hairline p-5">
             <div class="flex items-center justify-between">
-                <p class="text-xs font-medium text-neutral-400">Konsumsi Energi Total</p>
-                <i class="fa-solid fa-bolt text-neutral-500 text-sm"></i>
+                <p class="text-xs font-medium text-neutral-300">Konsumsi Energi Total</p>
+                <i class="fa-solid fa-bolt text-neutral-400 text-sm"></i>
             </div>
             <p class="mt-3 font-mono text-2xl font-bold tracking-tight text-white" id="stat-energy">
-                {{ number_format($totalKwh, 3, ',', '.') }} <span class="text-sm font-normal text-neutral-400">kWh</span>
+                {{ number_format($totalKwh, 3, ',', '.') }} <span class="text-sm font-normal text-neutral-300">kWh</span>
             </p>
             <div class="mt-2 flex items-center gap-2">
                 <span class="inline-flex items-center gap-1 rounded-md border border-mint/20 bg-mint/10 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-mint">
                     PZEM-004T
                 </span>
-                <span class="text-xs text-neutral-400">Stasiun Utama</span>
+                <span class="text-xs text-neutral-300">Stasiun Utama</span>
             </div>
         </div>
 
         <!-- Biaya Listrik PLN -->
         <div class="rounded-xl bg-surface border border-hairline p-5">
             <div class="flex items-center justify-between">
-                <p class="text-xs font-medium text-neutral-400">Estimasi Biaya PLN</p>
-                <i class="fa-solid fa-receipt text-neutral-500 text-sm"></i>
+                <p class="text-xs font-medium text-neutral-300">Estimasi Biaya PLN</p>
+                <i class="fa-solid fa-receipt text-neutral-400 text-sm"></i>
             </div>
             <p class="mt-3 font-mono text-2xl font-bold tracking-tight text-white" id="stat-pln-cost">
                 Rp {{ number_format($totalPlnCost, 0, ',', '.') }}
             </p>
-            <p class="mt-2 text-xs text-neutral-400">Tarif: <span class="font-mono text-neutral-300">Rp 1.444,70</span> / kWh</p>
+            <p class="mt-2 text-xs text-neutral-300">Tarif: <span class="font-mono text-white">Rp 1.444,70</span> / kWh</p>
         </div>
 
         <!-- Margin Bersih -->
         <div class="rounded-xl bg-surface border border-hairline p-5">
             <div class="flex items-center justify-between">
-                <p class="text-xs font-medium text-neutral-400">Estimasi Laba Bersih</p>
-                <i class="fa-solid fa-wallet text-neutral-500 text-sm"></i>
+                <p class="text-xs font-medium text-neutral-300">Estimasi Laba Bersih</p>
+                <i class="fa-solid fa-wallet text-neutral-400 text-sm"></i>
             </div>
             <p class="mt-3 font-mono text-2xl font-bold tracking-tight text-mint">
                 Rp {{ number_format($netProfit, 0, ',', '.') }}
             </p>
-            <p class="mt-2 text-xs text-neutral-400">Pendapatan &minus; Biaya Listrik</p>
+            <p class="mt-2 text-xs text-neutral-300">Pendapatan dikurangi Biaya Listrik</p>
         </div>
     </div>
 
     <!-- 2. Status Stop Kontak (Clean Grid - 3 Relay Cards) -->
     <section class="space-y-3">
         <div class="flex items-center justify-between">
-            <h2 class="text-sm font-semibold text-white tracking-wide">Status Stop Kontak</h2>
+            <h2 class="text-lg font-semibold text-white tracking-tight">Status Stop Kontak</h2>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -78,32 +78,32 @@
                 <div class="rounded-xl bg-surface border border-hairline p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300" id="card-slot-{{ $i }}">
                     <!-- Header Slot -->
                     <div class="flex items-center justify-between">
-                        <p class="text-sm font-semibold text-white">Slot {{ $i }}</p>
-                        <span class="text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-neutral-800 text-neutral-300 uppercase tracking-wide" id="badge-slot-{{ $i }}">
+                        <p class="font-mono text-sm font-semibold text-white tracking-wide">SLOT 0{{ $i }}</p>
+                        <span class="font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-surface2 border border-hairline text-neutral-300 uppercase tracking-wide" id="badge-slot-{{ $i }}">
                             {{ $status === 'ACTIVE' ? 'AKTIF' : ($status === 'WAITING_PAYMENT' ? 'MENUNGGU BAYAR' : 'SIAP') }}
                         </span>
                     </div>
 
                     <!-- Center Countdown Display -->
                     <div class="my-4 text-center">
-                        <p class="text-[11px] font-medium uppercase tracking-widest text-white">Sisa Waktu Sewa</p>
-                        <p class="mt-1 font-mono text-4xl font-bold tracking-tight text-neutral-500" id="countdown-slot-{{ $i }}">
-                            {{ $status === 'ACTIVE' ? '14:59' : ($status === 'WAITING_PAYMENT' ? 'SCAN QR' : '--:--') }}
+                        <p class="font-mono text-[11px] font-medium uppercase tracking-widest text-neutral-300">Sisa Waktu Sewa</p>
+                        <p class="mt-1 font-mono text-4xl font-bold tracking-tight text-neutral-300" id="countdown-slot-{{ $i }}">
+                            {{ $status === 'ACTIVE' ? '14:59' : ($status === 'WAITING_PAYMENT' ? 'SCAN QR' : '00:00') }}
                         </p>
                     </div>
 
                     <!-- Details: Durasi & Dibayar -->
                     <div class="border-t border-hairline pt-3 space-y-2 text-xs">
                         <div class="flex items-center justify-between">
-                            <span class="text-neutral-400">Durasi</span>
-                            <span class="font-mono text-white" id="duration-slot-{{ $i }}">
-                                {{ $status === 'ACTIVE' ? round(($slot['active_duration'] ?? 0) / 60) . ' Menit' : ($status === 'WAITING_PAYMENT' ? 'Menunggu' : '—') }}
+                            <span class="text-neutral-300">Durasi</span>
+                            <span class="font-mono text-white font-medium" id="duration-slot-{{ $i }}">
+                                {{ $status === 'ACTIVE' ? round(($slot['active_duration'] ?? 0) / 60) . ' Menit' : ($status === 'WAITING_PAYMENT' ? 'Menunggu' : 'Standby') }}
                             </span>
                         </div>
                         <div class="flex items-center justify-between">
-                            <span class="text-neutral-400">Dibayar</span>
-                            <span class="font-mono text-white" id="paid-slot-{{ $i }}">
-                                {{ $status === 'ACTIVE' ? 'Rp ' . (isset($slot['nominal_paid']) ? number_format($slot['nominal_paid'], 0, ',', '.') : '1.000') : ($status === 'WAITING_PAYMENT' ? 'Menunggu' : '—') }}
+                            <span class="text-neutral-300">Dibayar</span>
+                            <span class="font-mono text-white font-medium" id="paid-slot-{{ $i }}">
+                                {{ $status === 'ACTIVE' ? 'Rp ' . (isset($slot['nominal_paid']) ? number_format($slot['nominal_paid'], 0, ',', '.') : '1.000') : ($status === 'WAITING_PAYMENT' ? 'Menunggu' : 'Rp 0') }}
                             </span>
                         </div>
                     </div>
@@ -113,7 +113,7 @@
                         <form action="{{ route('dashboard.slots.stop', $i) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin mematikan Slot {{ $i }}?')">
                             @csrf
                             <button type="submit" id="btn-stop-slot-{{ $i }}" {{ $status === 'STANDBY' ? 'disabled' : '' }}
-                                class="w-full text-xs font-semibold py-2 rounded-lg transition-colors {{ $status === 'ACTIVE' ? 'bg-crimson/10 border border-crimson/30 text-crimson hover:bg-crimson/20' : ($status === 'WAITING_PAYMENT' ? 'bg-surface2 border border-hairline text-neutral-300 hover:bg-white/[0.04]' : 'bg-neutral-800/80 text-neutral-500 cursor-not-allowed border border-white/[0.03]') }}">
+                                class="w-full text-xs font-semibold py-2 rounded-lg transition-colors {{ $status === 'ACTIVE' ? 'bg-crimson/10 border border-crimson/30 text-crimson hover:bg-crimson/20' : ($status === 'WAITING_PAYMENT' ? 'bg-surface2 border border-hairline text-neutral-300 hover:bg-white/[0.04]' : 'bg-surface2/60 text-neutral-300/80 border border-hairline/80 cursor-not-allowed') }}">
                                 Matikan Manual
                             </button>
                         </form>
@@ -126,51 +126,51 @@
     <!-- 3. Telemetri Sensor Strip (PZEM-004T & DHT22) -->
     <section class="rounded-xl bg-surface border border-hairline p-4">
         <div class="flex items-center justify-between mb-3">
-            <p class="text-sm font-semibold text-white tracking-wide">Telemetri Sensor</p>
-            <span class="text-xs text-neutral-400">PZEM-004T · DHT22</span>
+            <h2 class="text-lg font-semibold text-white tracking-tight">Telemetri Sensor</h2>
+            <span class="font-mono text-xs text-neutral-300">PZEM-004T · DHT22</span>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-6 divide-y md:divide-y-0 md:divide-x divide-hairline">
             <!-- Tegangan -->
             <div class="px-4 py-2 md:py-0 first:pl-0">
-                <p class="text-xs text-neutral-400 font-medium">Tegangan</p>
+                <p class="text-xs text-neutral-300 font-medium">Tegangan</p>
                 <p class="font-mono text-lg text-white font-semibold mt-1" id="sensor-volt">
                     {{ number_format($firebaseData['sensors']['voltage'] ?? 0, 1) }} <span class="text-xs font-normal text-neutral-400">V</span>
                 </p>
             </div>
             <!-- Arus -->
             <div class="px-4 py-2 md:py-0">
-                <p class="text-xs text-neutral-400 font-medium">Arus</p>
+                <p class="text-xs text-neutral-300 font-medium">Arus</p>
                 <p class="font-mono text-lg text-white font-semibold mt-1" id="sensor-curr">
                     {{ number_format($firebaseData['sensors']['current'] ?? 0, 2) }} <span class="text-xs font-normal text-neutral-400">A</span>
                 </p>
             </div>
             <!-- Daya Aktif -->
             <div class="px-4 py-2 md:py-0">
-                <p class="text-xs text-neutral-400 font-medium">Daya Aktif</p>
+                <p class="text-xs text-neutral-300 font-medium">Daya Aktif</p>
                 <p class="font-mono text-lg text-white font-semibold mt-1" id="sensor-power">
                     {{ number_format($firebaseData['sensors']['power'] ?? 0, 1) }} <span class="text-xs font-normal text-neutral-400">W</span>
                 </p>
             </div>
             <!-- Energi Kumulatif -->
             <div class="px-4 py-2 md:py-0">
-                <p class="text-xs text-neutral-400 font-medium">Energi Kumulatif</p>
+                <p class="text-xs text-neutral-300 font-medium">Energi Kumulatif</p>
                 <p class="font-mono text-lg text-white font-semibold mt-1">
                     <span id="sensor-energy">{{ number_format($firebaseData['sensors']['energy'] ?? 0, 4) }}</span> <span class="text-xs font-normal text-neutral-400">kWh</span>
                 </p>
             </div>
             <!-- Suhu Box Internal -->
             <div class="px-4 py-2 md:py-0">
-                <p class="text-xs text-neutral-400 font-medium">Suhu Box Internal</p>
+                <p class="text-xs text-neutral-300 font-medium">Suhu Box Internal</p>
                 <p class="font-mono text-lg text-white font-semibold mt-1" id="sensor-temp">
                     {{ number_format($firebaseData['sensors']['temperature'] ?? 0, 1) }}°C
                 </p>
                 <div class="mt-1" id="temp-badge">
-                    <span class="inline-block text-[11px] font-semibold px-1.5 py-0.5 rounded bg-mint/10 text-mint">Normal &lt; {{ $overheatThreshold }}°C</span>
+                    <span class="inline-block font-mono text-[11px] font-semibold px-1.5 py-0.5 rounded bg-mint/10 text-mint border border-mint/25">Normal &lt; {{ $overheatThreshold }}°C</span>
                 </div>
             </div>
             <!-- Kelembapan -->
             <div class="px-4 py-2 md:py-0">
-                <p class="text-xs text-neutral-400 font-medium">Kelembapan</p>
+                <p class="text-xs text-neutral-300 font-medium">Kelembapan</p>
                 <p class="font-mono text-lg text-white font-semibold mt-1" id="sensor-hum">
                     {{ round($firebaseData['sensors']['humidity'] ?? 0) }}%
                 </p>
@@ -197,7 +197,7 @@
     function setEsp32Online() {
         const badge = getEsp32Badge();
         if (badge) {
-            badge.className = 'text-xs font-medium px-3 py-1.5 rounded-lg bg-mint/10 border border-mint/25 text-mint';
+            badge.className = 'font-mono text-xs font-medium px-3 py-1.5 rounded-lg bg-mint/10 border border-mint/25 text-mint';
             badge.innerText = 'ESP32';
         }
     }
@@ -205,7 +205,7 @@
     function setEsp32Offline() {
         const badge = getEsp32Badge();
         if (badge) {
-            badge.className = 'text-xs font-medium px-3 py-1.5 rounded-lg bg-surface2 border border-hairline text-neutral-400';
+            badge.className = 'font-mono text-xs font-medium px-3 py-1.5 rounded-lg bg-surface2 border border-hairline text-neutral-300';
             badge.innerText = 'ESP32';
         }
         // Nol-kan semua nilai sensor
@@ -218,7 +218,7 @@
             document.getElementById('sensor-energy').innerText = '0.0000';
             const tempBadge = document.getElementById('temp-badge');
             if (tempBadge) {
-                tempBadge.innerHTML = '<span class="inline-block text-[11px] font-medium px-1.5 py-0.5 rounded bg-surface2 text-neutral-400">Offline</span>';
+                tempBadge.innerHTML = '<span class="inline-block font-mono text-[11px] font-medium px-1.5 py-0.5 rounded bg-surface2 text-neutral-300 border border-hairline">Offline</span>';
             }
         }
     }
@@ -247,7 +247,7 @@
 
                     // Styling badge sesuai status
                     if (status === 'ACTIVE') {
-                        badge.className = 'text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-mint/10 text-mint uppercase tracking-wide';
+                        badge.className = 'font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-mint/10 border border-mint/25 text-mint uppercase tracking-wide';
                         badge.innerText = 'AKTIF';
                         card.className = 'rounded-xl bg-surface2 border border-mint/40 p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300';
                         btnStop.disabled = false;
@@ -268,25 +268,25 @@
                         duration.innerText = Math.round(durationSec / 60) + ' Menit';
                         paid.innerText = 'Rp ' + (slot.nominal_paid ? Number(slot.nominal_paid).toLocaleString('id-ID') : '1.000');
                     } else if (status === 'WAITING_PAYMENT') {
-                        badge.className = 'pulse-amber text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-amber/10 text-amber uppercase tracking-wide';
+                        badge.className = 'pulse-amber font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-amber/10 border border-amber/25 text-amber uppercase tracking-wide';
                         badge.innerText = 'MENUNGGU BAYAR';
                         card.className = 'rounded-xl bg-surface border border-amber/30 p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300';
                         btnStop.disabled = false;
-                        btnStop.className = 'w-full text-xs font-semibold py-2 rounded-lg bg-surface2 border border-hairline text-neutral-300 hover:bg-white/[0.04] transition-colors';
+                        btnStop.className = 'w-full text-xs font-semibold py-2 rounded-lg bg-surface2 border border-hairline text-neutral-200 hover:bg-white/[0.04] transition-colors';
                         countdown.innerText = 'SCAN QR';
                         countdown.className = 'mt-1 font-mono text-4xl font-bold tracking-tight text-amber';
                         duration.innerText = 'Menunggu';
                         paid.innerText = 'Menunggu';
                     } else {
-                        badge.className = 'text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-neutral-800 text-neutral-300 uppercase tracking-wide';
+                        badge.className = 'font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-surface2 border border-hairline text-neutral-300 uppercase tracking-wide';
                         badge.innerText = 'SIAP';
                         card.className = 'rounded-xl bg-surface border border-hairline p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300';
                         btnStop.disabled = true;
-                        btnStop.className = 'w-full text-xs font-medium py-2 rounded-lg bg-neutral-800/80 text-neutral-500 cursor-not-allowed border border-white/[0.03]';
-                        countdown.innerText = '--:--';
-                        countdown.className = 'mt-1 font-mono text-4xl font-bold tracking-tight text-neutral-500';
-                        duration.innerText = '—';
-                        paid.innerText = '—';
+                        btnStop.className = 'w-full text-xs font-semibold py-2 rounded-lg bg-surface2/60 text-neutral-300/80 border border-hairline/80 cursor-not-allowed';
+                        countdown.innerText = '00:00';
+                        countdown.className = 'mt-1 font-mono text-4xl font-bold tracking-tight text-neutral-300';
+                        duration.innerText = 'Standby';
+                        paid.innerText = 'Rp 0';
                     }
                 }
 
@@ -319,11 +319,11 @@
 
                             const tempBadge = document.getElementById('temp-badge');
                             if (temp >= OVERHEAT_LIMIT && OVERHEAT_LIMIT > 0) {
-                                tempBadge.innerHTML = '<span class="inline-block text-[11px] font-bold px-1.5 py-0.5 rounded bg-crimson/20 text-crimson">OVERHEAT!</span>';
+                                tempBadge.innerHTML = '<span class="inline-block font-mono text-[11px] font-bold px-1.5 py-0.5 rounded bg-crimson/20 text-crimson border border-crimson/30">OVERHEAT!</span>';
                             } else if (temp > 0) {
-                                tempBadge.innerHTML = '<span class="inline-block text-[11px] font-semibold px-1.5 py-0.5 rounded bg-mint/10 text-mint">Normal &lt; ' + OVERHEAT_LIMIT + '°C</span>';
+                                tempBadge.innerHTML = '<span class="inline-block font-mono text-[11px] font-semibold px-1.5 py-0.5 rounded bg-mint/10 text-mint border border-mint/25">Normal &lt; ' + OVERHEAT_LIMIT + '°C</span>';
                             } else {
-                                tempBadge.innerHTML = '<span class="inline-block text-[11px] font-semibold px-1.5 py-0.5 rounded bg-surface2 text-neutral-400">Standby</span>';
+                                tempBadge.innerHTML = '<span class="inline-block font-mono text-[11px] font-semibold px-1.5 py-0.5 rounded bg-surface2 text-neutral-300 border border-hairline">Standby</span>';
                             }
                         }
                     }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'Dashboard') — RANOVA Smart Plug</title>
+    <title>@yield('title', 'Dashboard') | Smart Plug System</title>
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -68,8 +68,8 @@
             <div class="h-16 flex items-center px-6 border-b border-hairline space-x-3">
                 <img src="{{ asset('images/logo.png') }}" alt="Logo" class="w-9 h-9 rounded-lg border border-hairline object-contain bg-base">
                 <div>
-                    <span class="font-bold text-base tracking-tight text-white">RANOVA</span>
-                    <span class="block text-[10px] tracking-wider text-neutral-400 font-medium">Smart Plug IoT Station</span>
+                    <span class="font-bold text-base tracking-tight text-white">SMART PLUG</span>
+                    <span class="block text-xs tracking-wider text-neutral-300 font-medium">Operator Console</span>
                 </div>
             </div>
 
@@ -106,12 +106,12 @@
         <div class="p-3 border-t border-hairline">
             <div class="flex items-center justify-between mb-3 px-2">
                 <div class="flex items-center space-x-2">
-                    <div class="w-8 h-8 rounded-full bg-surface2 border border-hairline flex items-center justify-center text-xs font-bold text-mint">
+                    <div class="w-8 h-8 rounded-full bg-surface2 border border-hairline flex items-center justify-center text-xs font-bold text-mint font-mono">
                         OP
                     </div>
                     <div class="overflow-hidden">
                         <p class="text-xs font-semibold text-white truncate">{{ Auth::user()->name ?? 'Operator' }}</p>
-                        <p class="text-[11px] text-neutral-400 truncate">Online via Local</p>
+                        <p class="text-xs text-neutral-300 truncate">Online via Local</p>
                     </div>
                 </div>
             </div>
@@ -130,29 +130,29 @@
         <!-- Topbar Header -->
         <header class="h-16 border-b border-hairline bg-surface px-8 flex items-center justify-between flex-shrink-0">
             <div class="flex items-center space-x-3">
-                <h1 class="text-base font-semibold text-white tracking-tight">@yield('page_title', 'Dashboard')</h1>
+                <h1 class="text-2xl font-bold text-white tracking-tight">@yield('page_title', 'Dashboard')</h1>
             </div>
 
             <div class="flex items-center space-x-3">
                 <!-- Sync Clock -->
-                <span id="last-sync-time" class="font-mono text-xs text-neutral-400 px-2.5 py-1.5 rounded-lg bg-base border border-hairline">
-                    Sinkron: --:--:--
+                <span id="last-sync-time" class="font-mono text-xs text-neutral-300 px-2.5 py-1.5 rounded-lg bg-surface2 border border-hairline">
+                    Sinkron: 00:00:00
                 </span>
 
                 <!-- Status ESP32 Badge (Dynamic JS) -->
-                <span id="esp32-badge" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-surface2 border border-hairline text-neutral-400">
+                <span id="esp32-badge" class="font-mono text-xs font-medium px-3 py-1.5 rounded-lg bg-surface2 border border-hairline text-neutral-300">
                     ESP32
                 </span>
 
                 <!-- Status Koneksi Firebase -->
-                <div id="connection-status" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-mint/10 border border-mint/25 text-mint">
+                <div id="connection-status" class="font-mono text-xs font-medium px-3 py-1.5 rounded-lg bg-mint/10 border border-mint/25 text-mint">
                     Firebase
                 </div>
 
                 <!-- Emergency Shutdown Button -->
                 <form action="{{ route('dashboard.emergency_stop') }}" method="POST" onsubmit="return confirm('PERINGATAN: Apakah Anda yakin ingin mematikan SELURUH relay secara darurat?')">
                     @csrf
-                    <button type="submit" class="inline-flex items-center px-3.5 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider text-crimson bg-crimson/10 border border-crimson/30 hover:bg-crimson/20 transition">
+                    <button type="submit" class="inline-flex items-center px-3.5 py-1.5 rounded-lg font-mono text-xs font-semibold uppercase tracking-wider text-crimson bg-crimson/10 border border-crimson/30 hover:bg-crimson/20 transition">
                         Emergency Shutdown
                     </button>
                 </form>
