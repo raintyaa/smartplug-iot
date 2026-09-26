@@ -8,8 +8,8 @@
 
     <!-- Header Filter Periode -->
     <div class="flex flex-wrap items-center justify-between gap-4">
-        <p class="text-xs text-neutral-300 max-w-xl leading-relaxed">
-            Perbandingan pendapatan sewa QRIS terhadap estimasi biaya konsumsi listrik PLN (Tarif Golongan R-1/TR 1.300 VA).
+        <p class="text-xs text-neutral-300 max-w-md leading-relaxed">
+            Perbandingan omzet sewa QRIS terhadap estimasi biaya listrik PLN golongan tarif R-1/TR 1.300 VA.
         </p>
         <div class="flex items-center space-x-2">
             <a href="{{ route('reports.index', ['days' => 7]) }}" class="px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition {{ $days == 7 ? 'bg-mint/15 text-mint border border-mint/30' : 'bg-surface2 text-neutral-300 hover:text-white border border-hairline' }}">7 Hari</a>
@@ -23,49 +23,49 @@
         <!-- Pendapatan Kotor -->
         <div class="rounded-xl bg-surface border border-hairline p-5">
             <div class="flex items-center justify-between">
-                <p class="text-xs font-medium text-neutral-300">Total Pendapatan QRIS</p>
+                <p class="text-xs font-mono font-medium uppercase tracking-wider text-neutral-300">Total Pendapatan</p>
                 <i class="fa-solid fa-qrcode text-neutral-400 text-sm"></i>
             </div>
             <p class="mt-3 font-mono text-2xl font-bold tracking-tight text-mint">
                 Rp {{ number_format($totalRevenue, 0, ',', '.') }}
             </p>
-            <p class="mt-2 text-xs text-neutral-300">Akumulasi sewa masuk</p>
+            <p class="mt-2 text-xs font-mono text-neutral-300">Akumulasi sewa QRIS</p>
         </div>
 
         <!-- Biaya Listrik PLN -->
         <div class="rounded-xl bg-surface border border-hairline p-5">
             <div class="flex items-center justify-between">
-                <p class="text-xs font-medium text-neutral-300">Total Beban Listrik PLN</p>
+                <p class="text-xs font-mono font-medium uppercase tracking-wider text-neutral-300">Beban Listrik PLN</p>
                 <i class="fa-solid fa-receipt text-neutral-400 text-sm"></i>
             </div>
             <p class="mt-3 font-mono text-2xl font-bold tracking-tight text-white">
                 Rp {{ number_format($totalPlnCost, 0, ',', '.') }}
             </p>
-            <p class="mt-2 text-xs text-neutral-300 font-mono">{{ number_format($totalKwh, 3, ',', '.') }} kWh &times; Rp {{ number_format($plnTariff, 0, ',', '.') }}</p>
+            <p class="mt-2 text-xs font-mono text-neutral-300">{{ number_format($totalKwh, 3, ',', '.') }} kWh &times; Rp {{ number_format($plnTariff, 0, ',', '.') }}</p>
         </div>
 
         <!-- Laba Bersih -->
         <div class="rounded-xl bg-surface border border-hairline p-5">
             <div class="flex items-center justify-between">
-                <p class="text-xs font-medium text-neutral-300">Laba Bersih (Net Profit)</p>
+                <p class="text-xs font-mono font-medium uppercase tracking-wider text-neutral-300">Laba Bersih (Net)</p>
                 <i class="fa-solid fa-wallet text-neutral-400 text-sm"></i>
             </div>
             <p class="mt-3 font-mono text-2xl font-bold tracking-tight {{ $netProfit >= 0 ? 'text-mint' : 'text-crimson' }}">
                 Rp {{ number_format($netProfit, 0, ',', '.') }}
             </p>
-            <p class="mt-2 text-xs text-neutral-300">Pendapatan dikurangi Biaya PLN</p>
+            <p class="mt-2 text-xs font-mono text-neutral-300">Pendapatan dikurangi Beban</p>
         </div>
 
         <!-- Margin Keuntungan -->
         <div class="rounded-xl bg-surface border border-hairline p-5">
             <div class="flex items-center justify-between">
-                <p class="text-xs font-medium text-neutral-300">Margin Keuntungan</p>
+                <p class="text-xs font-mono font-medium uppercase tracking-wider text-neutral-300">Margin Operasional</p>
                 <i class="fa-solid fa-percent text-neutral-400 text-sm"></i>
             </div>
             <p class="mt-3 font-mono text-2xl font-bold tracking-tight text-white">
                 {{ $marginPct }}%
             </p>
-            <p class="mt-2 text-xs text-neutral-300">Rasio efisiensi profitabilitas</p>
+            <p class="mt-2 text-xs font-mono text-neutral-300">Efisiensi omzet terhadap PLN</p>
         </div>
     </div>
 
@@ -74,7 +74,7 @@
         <!-- Grafik Tren Pendapatan Harian -->
         <div class="rounded-xl bg-surface border border-hairline p-6 lg:col-span-2">
             <div class="flex items-center justify-between mb-5">
-                <h2 class="text-base font-semibold text-white tracking-tight flex items-center space-x-2">
+                <h2 class="text-sm font-mono font-semibold uppercase tracking-wider text-neutral-200 flex items-center space-x-2">
                     <i class="fa-solid fa-chart-column text-mint text-sm"></i>
                     <span>Tren Pendapatan Harian ({{ $days }} Hari Terakhir)</span>
                 </h2>
@@ -87,7 +87,7 @@
         <!-- Distribusi Pendapatan per Slot -->
         <div class="rounded-xl bg-surface border border-hairline p-6 flex flex-col justify-between">
             <div class="mb-4">
-                <h2 class="text-base font-semibold text-white tracking-tight flex items-center space-x-2">
+                <h2 class="text-sm font-mono font-semibold uppercase tracking-wider text-neutral-200 flex items-center space-x-2">
                     <i class="fa-solid fa-chart-pie text-neutral-400 text-sm"></i>
                     <span>Kontribusi per Stop Kontak</span>
                 </h2>
@@ -95,18 +95,18 @@
             <div class="h-52 relative flex items-center justify-center">
                 <canvas id="slotChart"></canvas>
             </div>
-            <div class="grid grid-cols-3 gap-2 mt-5 pt-4 border-t border-hairline text-center">
-                <div class="p-2.5 rounded-lg bg-surface2 border border-hairline">
+            <div class="grid grid-cols-3 gap-4 mt-5 pt-4 border-t border-hairline text-center">
+                <div>
                     <span class="font-mono text-xs font-semibold text-mint block">SLOT 01</span>
-                    <span class="font-mono text-xs text-neutral-300 mt-1 block">Rp {{ number_format($slotDistribution['Slot 1'], 0, ',', '.') }}</span>
+                    <span class="font-mono text-sm font-bold text-white mt-1 block">Rp {{ number_format($slotDistribution['Slot 1'], 0, ',', '.') }}</span>
                 </div>
-                <div class="p-2.5 rounded-lg bg-surface2 border border-hairline">
+                <div>
                     <span class="font-mono text-xs font-semibold text-amber block">SLOT 02</span>
-                    <span class="font-mono text-xs text-neutral-300 mt-1 block">Rp {{ number_format($slotDistribution['Slot 2'], 0, ',', '.') }}</span>
+                    <span class="font-mono text-sm font-bold text-white mt-1 block">Rp {{ number_format($slotDistribution['Slot 2'], 0, ',', '.') }}</span>
                 </div>
-                <div class="p-2.5 rounded-lg bg-surface2 border border-hairline">
-                    <span class="font-mono text-xs font-semibold text-neutral-300 block">SLOT 03</span>
-                    <span class="font-mono text-xs text-neutral-300 mt-1 block">Rp {{ number_format($slotDistribution['Slot 3'], 0, ',', '.') }}</span>
+                <div>
+                    <span class="font-mono text-xs font-semibold text-neutral-400 block">SLOT 03</span>
+                    <span class="font-mono text-sm font-bold text-white mt-1 block">Rp {{ number_format($slotDistribution['Slot 3'], 0, ',', '.') }}</span>
                 </div>
             </div>
         </div>
