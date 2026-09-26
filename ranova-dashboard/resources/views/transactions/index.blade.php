@@ -66,51 +66,51 @@
         </div>
     </div>
 
-    <!-- 2. Tabel Data Transaksi (Unified Panel, 0 Nested Cards) -->
+    <!-- 2. Filter Bar (Flat Toolbar) -->
+    <div class="flex flex-wrap items-center justify-between gap-4">
+        <form method="GET" action="{{ route('transactions.index') }}" class="flex flex-wrap items-center gap-3">
+            <div>
+                <select name="slot" onchange="this.form.submit()" class="bg-surface border border-hairline text-xs font-mono text-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:border-mint/50 focus:ring-1 focus:ring-mint/20 transition">
+                    <option value="">Semua Slot</option>
+                    <option value="1" {{ request('slot') == 1 ? 'selected' : '' }}>Slot 01</option>
+                    <option value="2" {{ request('slot') == 2 ? 'selected' : '' }}>Slot 02</option>
+                    <option value="3" {{ request('slot') == 3 ? 'selected' : '' }}>Slot 03</option>
+                </select>
+            </div>
+
+            <div>
+                <select name="status" onchange="this.form.submit()" class="bg-surface border border-hairline text-xs font-mono text-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:border-mint/50 focus:ring-1 focus:ring-mint/20 transition">
+                    <option value="">Semua Status</option>
+                    <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>Selesai</option>
+                    <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Aktif</option>
+                    <option value="force_stopped" {{ request('status') == 'force_stopped' ? 'selected' : '' }}>Dihentikan Manual</option>
+                    <option value="emergency_stopped" {{ request('status') == 'emergency_stopped' ? 'selected' : '' }}>Darurat (Overheat)</option>
+                </select>
+            </div>
+
+            @if(request('slot') || request('status'))
+                <a href="{{ route('transactions.index') }}" class="text-xs font-mono text-neutral-400 hover:text-white underline transition">Reset Filter</a>
+            @endif
+        </form>
+
+        <span class="text-xs font-mono text-neutral-400">Menampilkan {{ $transactions->count() }} dari {{ $transactions->total() }} data</span>
+    </div>
+
+    <!-- 3. Tabel Data Transaksi (Single Card Container) -->
     <div class="rounded-xl bg-surface border border-hairline overflow-hidden">
-        <!-- Toolbar Filter & Counter -->
-        <div class="p-4 border-b border-hairline flex flex-wrap items-center justify-between gap-4 bg-surface2/30">
-            <form method="GET" action="{{ route('transactions.index') }}" class="flex flex-wrap items-center gap-3">
-                <div>
-                    <select name="slot" onchange="this.form.submit()" class="bg-surface2 border border-hairline text-xs font-mono text-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:border-mint/50 focus:ring-1 focus:ring-mint/20 transition">
-                        <option value="">Semua Slot</option>
-                        <option value="1" {{ request('slot') == 1 ? 'selected' : '' }}>Slot 01</option>
-                        <option value="2" {{ request('slot') == 2 ? 'selected' : '' }}>Slot 02</option>
-                        <option value="3" {{ request('slot') == 3 ? 'selected' : '' }}>Slot 03</option>
-                    </select>
-                </div>
-
-                <div>
-                    <select name="status" onchange="this.form.submit()" class="bg-surface2 border border-hairline text-xs font-mono text-neutral-200 rounded-lg px-3 py-2 focus:outline-none focus:border-mint/50 focus:ring-1 focus:ring-mint/20 transition">
-                        <option value="">Semua Status</option>
-                        <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>Selesai</option>
-                        <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Aktif</option>
-                        <option value="force_stopped" {{ request('status') == 'force_stopped' ? 'selected' : '' }}>Dihentikan Manual</option>
-                        <option value="emergency_stopped" {{ request('status') == 'emergency_stopped' ? 'selected' : '' }}>Darurat (Overheat)</option>
-                    </select>
-                </div>
-
-                @if(request('slot') || request('status'))
-                    <a href="{{ route('transactions.index') }}" class="text-xs font-mono text-neutral-300 hover:text-white underline transition">Reset Filter</a>
-                @endif
-            </form>
-
-            <span class="text-xs font-mono text-neutral-300">Menampilkan {{ $transactions->count() }} dari {{ $transactions->total() }} data</span>
-        </div>
-
         <!-- Table Data -->
         <div class="overflow-x-auto">
             <table class="w-full text-left text-xs">
-                <thead class="bg-surface2/60 border-b border-hairline uppercase tracking-wider text-neutral-300 font-mono font-semibold">
+                <thead class="border-b border-hairline uppercase tracking-wider text-neutral-400 font-mono font-medium">
                     <tr>
-                        <th class="py-3 px-4">ID</th>
-                        <th class="py-3 px-4">Waktu Mulai</th>
-                        <th class="py-3 px-4">Slot</th>
-                        <th class="py-3 px-4">Nominal</th>
-                        <th class="py-3 px-4">Durasi</th>
-                        <th class="py-3 px-4">Status</th>
-                        <th class="py-3 px-4">Ref Pembayaran</th>
-                        <th class="py-3 px-4 text-right">Aksi</th>
+                        <th class="py-3.5 px-4">ID</th>
+                        <th class="py-3.5 px-4">Waktu Mulai</th>
+                        <th class="py-3.5 px-4">Slot</th>
+                        <th class="py-3.5 px-4">Nominal</th>
+                        <th class="py-3.5 px-4">Durasi</th>
+                        <th class="py-3.5 px-4">Status</th>
+                        <th class="py-3.5 px-4">Ref Pembayaran</th>
+                        <th class="py-3.5 px-4 text-right">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-hairline text-neutral-200">
@@ -169,7 +169,7 @@
         </div>
 
         @if($transactions->hasPages())
-            <div class="p-4 border-t border-hairline bg-surface2/30">
+            <div class="p-4 border-t border-hairline">
                 {{ $transactions->links() }}
             </div>
         @endif
