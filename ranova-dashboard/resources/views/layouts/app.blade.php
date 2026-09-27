@@ -97,7 +97,7 @@
 
                 <a href="{{ route('settings.index') }}" class="flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition {{ request()->routeIs('settings.*') ? 'bg-mint/10 text-mint border border-mint/25' : 'text-neutral-400 hover:text-white hover:bg-surface2' }}">
                     <i class="fa-solid fa-sliders w-4 text-center"></i>
-                    <span>Pengaturan Sistem</span>
+                    <span>Settings</span>
                 </a>
             </nav>
         </div>

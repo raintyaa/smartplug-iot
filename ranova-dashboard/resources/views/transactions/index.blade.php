@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Riwayat Transaksi')
-@section('page_title', 'Riwayat Transaksi QRIS')
+@section('page_title', 'RIWAYAT TRANSAKSI')
 
 @section('content')
 <div class="space-y-6">

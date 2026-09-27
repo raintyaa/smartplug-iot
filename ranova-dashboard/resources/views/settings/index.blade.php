@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Pengaturan Tarif & Sistem')
-@section('page_title', 'Konfigurasi Tarif Sewa & Sistem')
+@section('title', 'Settings')
+@section('page_title', 'SETTINGS')
 
 @section('content')
 <div class="max-w-3xl mx-auto space-y-6">

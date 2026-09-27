@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Telemetri Sensor')
-@section('page_title', 'Telemetri Sensor PZEM-004T & DHT22')
+@section('page_title', 'TELEMETRI SENSOR')
 
 @section('content')
 <div class="space-y-6">

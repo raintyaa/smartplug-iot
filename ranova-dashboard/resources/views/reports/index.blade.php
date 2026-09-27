@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Laporan & Finansial')
-@section('page_title', 'Analisis Laba Rugi & Efisiensi Energi')
+@section('page_title', 'LAPORAN & FINANSIAL')
 
 @section('content')
 <div class="space-y-6">
