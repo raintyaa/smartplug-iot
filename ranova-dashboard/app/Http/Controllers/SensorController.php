@@ -9,8 +9,13 @@ use App\Services\FirebaseService;
 
 class SensorController extends Controller
 {
-    public function index()
+    public function index(FirebaseService $firebase)
     {
+        $firebaseData = $firebase->getSystemData();
+        if (!empty($firebaseData['sensors'])) {
+            $firebase->recordSensorReadings($firebaseData['sensors']);
+        }
+
         $latestPower = PowerReading::latest('recorded_at')->first();
         $latestTemp = TemperatureReading::latest('recorded_at')->first();
 

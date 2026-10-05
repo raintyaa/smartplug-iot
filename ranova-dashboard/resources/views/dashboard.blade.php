@@ -301,7 +301,7 @@
                     const nowUnix = Math.floor(Date.now() / 1000);
                     const secondsSinceUpdate = (lastSensorUpdatedAt > 0) ? (nowUnix - lastSensorUpdatedAt) : 9999;
 
-                    if (lastSensorUpdatedAt === 0 || secondsSinceUpdate > 10) {
+                    if (lastSensorUpdatedAt === 0 || secondsSinceUpdate > 25) {
                         setEsp32Offline();
                     } else {
                         setEsp32Online();

@@ -21,8 +21,12 @@ class DashboardController extends Controller
 
     public function index()
     {
-        // 1. Ambil data realtime dari Firebase RTDB
+        // 1. Sinkronkan transaksi dari Firebase ke database lokal & ambil data realtime
+        $this->firebase->syncTransactions();
         $firebaseData = $this->firebase->getSystemData();
+        if (!empty($firebaseData['sensors'])) {
+            $this->firebase->recordSensorReadings($firebaseData['sensors']);
+        }
 
         // 2. Kalkulasi Ringkasan Finansial Hari Ini
         $todayRevenue = Transaction::whereDate('created_at', Carbon::today())
@@ -34,7 +38,7 @@ class DashboardController extends Controller
 
         // 3. Ambil data kWh terbaru dari PZEM
         $latestPower = PowerReading::latest('recorded_at')->first();
-        $totalKwh = $latestPower ? $latestPower->energy : 0.0;
+        $totalKwh = $latestPower ? (float) $latestPower->energy : (float) ($firebaseData['sensors']['energy'] ?? 0.0);
 
         // 4. Biaya PLN
         $plnTariff = (float) Setting::get('tariff_pln_per_kwh', 1444.70);
@@ -69,6 +73,11 @@ class DashboardController extends Controller
     {
         $data = $this->firebase->getSystemData();
 
+        // Rekam data sensor ke database lokal
+        if (!empty($data['sensors'])) {
+            $this->firebase->recordSensorReadings($data['sensors']);
+        }
+
         // Ambil data sensor terbaru dari database
         $latestPower = PowerReading::latest('recorded_at')->first();
         $latestTemp = TemperatureReading::latest('recorded_at')->first();
@@ -87,6 +96,7 @@ class DashboardController extends Controller
                 'current' => $data['sensors']['current'] ?? ($latestPower->current ?? 0.0),
                 'power' => $data['sensors']['power'] ?? ($latestPower->power ?? 0.0),
                 'energy' => $data['sensors']['energy'] ?? ($latestPower->energy ?? 0.0),
+                'updated_at' => $data['sensors']['updated_at'] ?? (isset($latestPower->recorded_at) ? $latestPower->recorded_at->timestamp : 0),
             ],
             'timestamp' => now()->timestamp,
         ]);

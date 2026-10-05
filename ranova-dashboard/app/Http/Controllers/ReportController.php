@@ -6,13 +6,16 @@ use Illuminate\Http\Request;
 use App\Models\Transaction;
 use App\Models\PowerReading;
 use App\Models\Setting;
+use App\Services\FirebaseService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, FirebaseService $firebase)
     {
+        $firebase->syncTransactions();
+
         $plnTariff = (float) Setting::get('tariff_pln_per_kwh', 1444.70);
 
         // Filter rentang hari (default 7 hari terakhir)

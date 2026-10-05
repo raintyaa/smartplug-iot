@@ -146,6 +146,7 @@ void handleOverheat();
 void setSlotStandby(int idx);
 String fbGet(const String& path);
 bool fbPut(const String& path, const String& body);
+bool fbPatch(const String& path, const String& body);
 
 // ============================================================
 // SETUP
@@ -314,7 +315,7 @@ String fbGet(const String& path) {
   if (WiFi.status() != WL_CONNECTED) return "null";
   HTTPClient http;
   http.begin(secureClient, String(FIREBASE_HOST) + "/" + path + ".json");
-  http.setTimeout(4000);
+  http.setTimeout(2000);
   int code = http.GET();
   String res = "null";
   if (code == 200) res = http.getString();
@@ -330,41 +331,57 @@ bool fbPut(const String& path, const String& body) {
   HTTPClient http;
   http.begin(secureClient, String(FIREBASE_HOST) + "/" + path + ".json");
   http.addHeader("Content-Type", "application/json");
-  http.setTimeout(4000);
+  http.setTimeout(2000);
   int code = http.PUT(body);
   http.end();
   return (code == 200);
 }
 
 // ============================================================
-// Cek Tombol — Deteksi tekan dengan debounce
+// Firebase: PATCH (Multi-node atomic update dalam 1 request)
+// ============================================================
+bool fbPatch(const String& path, const String& body) {
+  if (WiFi.status() != WL_CONNECTED) return false;
+  HTTPClient http;
+  String url = String(FIREBASE_HOST) + (path.length() > 0 ? ("/" + path) : "") + ".json";
+  http.begin(secureClient, url);
+  http.addHeader("Content-Type", "application/json");
+  http.setTimeout(2000);
+  int code = http.PATCH(body);
+  http.end();
+  return (code == 200);
+}
+
+// ============================================================
+// Cek Tombol — Deteksi tekan dengan debounce responsif
 // ============================================================
 void checkButtons() {
   for (int i = 0; i < NUM_SLOTS; i++) {
     if (digitalRead(PIN_BTN[i]) == LOW) {
-      delay(40);  // Debounce
+      delay(30);  // Debounce cepat
       if (digitalRead(PIN_BTN[i]) != LOW) continue;
 
       // --- Aksi berdasarkan state slot saat ini ---
       if (slots[i].state == STANDBY) {
-        // Mulai proses sewa — kirim WAITING_PAYMENT ke Firebase
+        // Mulai proses sewa — respon hardware INSTAN sebelum kirim internet!
         Serial.printf("\n[BTN %d] Ditekan -> WAITING_PAYMENT\n", i + 1);
         slots[i].state = WAITING_PAYMENT;
         slots[i].waitStart = millis();
 
-        // Update Firebase: active_selection
-        String selPayload = "{\"slot\":\"slot" + String(i + 1) + "\",\"status\":\"WAITING_PAYMENT\",\"timestamp\":0}";
-        fbPut("system/active_selection", selPayload);
+        // 1. Update fisik (LED mulai kedip, LCD berganti) SEKETIKA (0ms delay)
+        updateHardware();
+        updateLcdDisplay();
 
-        // Update Firebase: slots/slotX
-        String slotPayload = "{\"status\":\"WAITING_PAYMENT\",\"duration_seconds\":0,\"amount_paid\":0}";
-        fbPut("slots/slot" + String(i + 1), slotPayload);
+        // 2. Kirim update ke Firebase dalam 1 KALI REQUEST PATCH multi-node
+        String slotKey = "slot" + String(i + 1);
+        String patchPayload = "{"
+          "\"system/active_selection\":{\"slot\":\"" + slotKey + "\",\"status\":\"WAITING_PAYMENT\",\"timestamp\":0},"
+          "\"slots/" + slotKey + "\":{\"status\":\"WAITING_PAYMENT\",\"duration_seconds\":0,\"amount_paid\":0},"
+          "\"" + slotKey + "\":{\"status\":\"WAITING_PAYMENT\",\"active_duration\":0,\"started_at\":0}"
+        "}";
+        fbPatch("", patchPayload);
 
-        // Update Firebase: slotX (kompatibilitas dashboard)
-        String slotPayload2 = "{\"status\":\"WAITING_PAYMENT\",\"active_duration\":0,\"started_at\":0}";
-        fbPut("slot" + String(i + 1), slotPayload2);
-
-        Serial.printf("[FIREBASE] Slot %d -> WAITING_PAYMENT terkirim.\n", i + 1);
+        Serial.printf("[FIREBASE] Slot %d -> WAITING_PAYMENT terkirim (PATCH instan).\n", i + 1);
       }
       else if (slots[i].state == WAITING_PAYMENT) {
         // Tekan lagi saat menunggu → batalkan seleksi
@@ -377,8 +394,9 @@ void checkButtons() {
         setSlotStandby(i);
       }
 
-      // Tunggu tombol dilepas
-      while (digitalRead(PIN_BTN[i]) == LOW) delay(10);
+      // Tunggu tombol dilepas dengan safety timeout agar loop tidak macet
+      unsigned long tRelease = millis();
+      while (digitalRead(PIN_BTN[i]) == LOW && millis() - tRelease < 800) delay(10);
     }
   }
 }
@@ -664,25 +682,22 @@ void setSlotStandby(int idx) {
   slots[idx].state = STANDBY;
   slots[idx].durationSec = 0;
 
-  // Hardware: relay OFF, LED OFF
+  // Hardware: relay OFF, LED OFF seketika
   digitalWrite(PIN_RELAY[idx], HIGH);
   digitalWrite(PIN_LED[idx], LOW);
+  updateHardware();
 
   if (WiFi.status() != WL_CONNECTED) return;
 
   String slotKey = "slot" + String(idx + 1);
 
-  // 1. Reset /slots/slotX (node utama webhook)
-  String payload1 = "{\"status\":\"STANDBY\",\"duration_seconds\":0,\"amount_paid\":0,\"activated_at\":0,\"expires_at\":0}";
-  fbPut("slots/" + slotKey, payload1);
+  // 1 KALI REQUEST PATCH multi-node instan
+  String patchPayload = "{"
+    "\"slots/" + slotKey + "\":{\"status\":\"STANDBY\",\"duration_seconds\":0,\"amount_paid\":0,\"activated_at\":0,\"expires_at\":0},"
+    "\"" + slotKey + "\":{\"status\":\"STANDBY\",\"active_duration\":0,\"started_at\":0,\"nominal_paid\":0},"
+    "\"system/active_selection\":{\"slot\":\"none\",\"status\":\"IDLE\",\"timestamp\":0}"
+  "}";
+  fbPatch("", patchPayload);
 
-  // 2. Reset /slotX (node kompatibilitas dashboard)
-  String payload2 = "{\"status\":\"STANDBY\",\"active_duration\":0,\"started_at\":0,\"nominal_paid\":0}";
-  fbPut(slotKey, payload2);
-
-  // 3. Reset active_selection ke IDLE
-  String selPayload = "{\"slot\":\"none\",\"status\":\"IDLE\",\"timestamp\":0}";
-  fbPut("system/active_selection", selPayload);
-
-  Serial.printf("[SLOT %d] Reset -> STANDBY.\n", idx + 1);
+  Serial.printf("[SLOT %d] Reset -> STANDBY (PATCH instan).\n", idx + 1);
 }

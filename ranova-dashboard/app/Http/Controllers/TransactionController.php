@@ -4,11 +4,22 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Transaction;
+use App\Services\FirebaseService;
 
 class TransactionController extends Controller
 {
+    protected FirebaseService $firebase;
+
+    public function __construct(FirebaseService $firebase)
+    {
+        $this->firebase = $firebase;
+    }
+
     public function index(Request $request)
     {
+        // Sinkronkan data transaksi dari Firebase RTDB ke MySQL
+        $this->firebase->syncTransactions();
+
         $query = Transaction::query()->latest();
 
         if ($request->filled('slot')) {
