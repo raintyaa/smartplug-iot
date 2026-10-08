@@ -92,3 +92,12 @@ getData()
 ehthumbs.db
 Thumbs.db
 desktop.ini
+
+# 11. Local Documents, Raw Assets & Maintenance Scripts (Excluded from Git)
+*.docx
+*.doc
+*.pptx
+Tampilan 1.jpeg
+Logo Fix.png
+reset_firebase.ps1
+

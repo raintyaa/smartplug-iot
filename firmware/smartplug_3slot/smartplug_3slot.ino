@@ -47,7 +47,7 @@
 // ============================================================
 // KONFIGURASI — Ganti sesuai jaringan WiFi lokasi
 // ============================================================
-const char* WIFI_SSID     = "RedmiNote12Rez";      // Nama WiFi / Hotspot HP
+const char* WIFI_SSID     = "RedmiNote";      // Nama WiFi / Hotspot HP
 const char* WIFI_PASSWORD = "12345678";         // Password WiFi
 const char* FIREBASE_HOST = "https://smartplug-4442d-default-rtdb.asia-southeast1.firebasedatabase.app";
 
@@ -315,10 +315,14 @@ String fbGet(const String& path) {
   if (WiFi.status() != WL_CONNECTED) return "null";
   HTTPClient http;
   http.begin(secureClient, String(FIREBASE_HOST) + "/" + path + ".json");
-  http.setTimeout(2000);
+  http.setTimeout(2500);
   int code = http.GET();
   String res = "null";
-  if (code == 200) res = http.getString();
+  if (code == 200) {
+    res = http.getString();
+  } else if (code > 0 && code != 200) {
+    Serial.printf("[FB GET ERR] %s -> Code: %d\n", path.c_str(), code);
+  }
   http.end();
   return res;
 }
@@ -331,8 +335,11 @@ bool fbPut(const String& path, const String& body) {
   HTTPClient http;
   http.begin(secureClient, String(FIREBASE_HOST) + "/" + path + ".json");
   http.addHeader("Content-Type", "application/json");
-  http.setTimeout(2000);
+  http.setTimeout(3000);
   int code = http.PUT(body);
+  if (code != 200) {
+    Serial.printf("[FB PUT ERR] %s -> Code: %d\n", path.c_str(), code);
+  }
   http.end();
   return (code == 200);
 }
@@ -343,11 +350,14 @@ bool fbPut(const String& path, const String& body) {
 bool fbPatch(const String& path, const String& body) {
   if (WiFi.status() != WL_CONNECTED) return false;
   HTTPClient http;
-  String url = String(FIREBASE_HOST) + (path.length() > 0 ? ("/" + path) : "") + ".json";
+  String url = String(FIREBASE_HOST) + "/" + (path.length() > 0 ? (path + ".json") : ".json");
   http.begin(secureClient, url);
   http.addHeader("Content-Type", "application/json");
-  http.setTimeout(2000);
+  http.setTimeout(3000);
   int code = http.PATCH(body);
+  if (code != 200) {
+    Serial.printf("[FB PATCH ERR] Code: %d\n", code);
+  }
   http.end();
   return (code == 200);
 }
@@ -375,8 +385,8 @@ void checkButtons() {
         // 2. Kirim update ke Firebase dalam 1 KALI REQUEST PATCH multi-node
         String slotKey = "slot" + String(i + 1);
         String patchPayload = "{"
-          "\"system/active_selection\":{\"slot\":\"" + slotKey + "\",\"status\":\"WAITING_PAYMENT\",\"timestamp\":0},"
-          "\"slots/" + slotKey + "\":{\"status\":\"WAITING_PAYMENT\",\"duration_seconds\":0,\"amount_paid\":0},"
+          "\"system\":{\"active_selection\":{\"slot\":\"" + slotKey + "\",\"status\":\"WAITING_PAYMENT\",\"timestamp\":0}},"
+          "\"slots\":{\"" + slotKey + "\":{\"status\":\"WAITING_PAYMENT\",\"duration_seconds\":0,\"amount_paid\":0}},"
           "\"" + slotKey + "\":{\"status\":\"WAITING_PAYMENT\",\"active_duration\":0,\"started_at\":0}"
         "}";
         fbPatch("", patchPayload);
@@ -540,13 +550,11 @@ void updateLcdDisplay() {
     }
   }
 
-  // ── PRIORITAS 3: Slot aktif (countdown) ──
-  // Kumpulkan index slot aktif
-  int activeList[NUM_SLOTS];
+  // ── PRIORITAS 3: Slot aktif -> Tampilkan Telemetri Sensor Daya PZEM ──
   int activeCount = 0;
   for (int i = 0; i < NUM_SLOTS; i++) {
     if (slots[i].state == ACTIVE) {
-      activeList[activeCount++] = i;
+      activeCount++;
     }
   }
 
@@ -559,47 +567,12 @@ void updateLcdDisplay() {
     return;
   }
 
-  if (activeCount == 1) {
-    // 1 slot aktif
-    int si = activeList[0];
-    unsigned long elapsed = (now - slots[si].activeStart) / 1000;
-    unsigned long remaining = (elapsed < slots[si].durationSec) ? slots[si].durationSec - elapsed : 0;
-    char timeBuf[6];
-    fmtTime(remaining, timeBuf, sizeof(timeBuf));
+  // Jika ada slot aktif -> Tampilkan data sensor daya bersih & presisi 16 karakter
+  // Baris 1: Tegangan (V) & Arus (A)
+  snprintf(r1, 17, "V: %3.0fV  I:%4.2fA", sensorVoltage, sensorCurrent);
 
-    snprintf(r1, 17, "SLOT %d  AKTIF   ", si + 1);
-
-    // Baris 2: Countdown + Watt realtime
-    snprintf(r2, 17, "%s  %4.0fW   ", timeBuf, sensorPower);
-
-    lcd.setCursor(0, 0); lcd.print(r1);
-    lcd.setCursor(0, 1); lcd.print(r2);
-    return;
-  }
-
-  // Multiple slot aktif — rotasi tampilan tiap 3 detik
-  if (now - tLcdRotate >= INTERVAL_LCD_ROTATE) {
-    tLcdRotate = now;
-    lcdRotateIdx = (lcdRotateIdx + 1) % activeCount;
-  }
-  if (lcdRotateIdx >= activeCount) lcdRotateIdx = 0;
-
-  int si = activeList[lcdRotateIdx];
-  unsigned long elapsed = (now - slots[si].activeStart) / 1000;
-  unsigned long remaining = (elapsed < slots[si].durationSec) ? slots[si].durationSec - elapsed : 0;
-  char timeBuf[6];
-  fmtTime(remaining, timeBuf, sizeof(timeBuf));
-
-  // Indikator slot aktif lain: [1][2][3]
-  char indicators[10] = "";
-  for (int j = 0; j < activeCount; j++) {
-    char tmp[4];
-    snprintf(tmp, 4, "[%d]", activeList[j] + 1);
-    strcat(indicators, tmp);
-  }
-
-  snprintf(r1, 17, "S%d %s %s", si + 1, timeBuf, indicators);
-  snprintf(r2, 17, "%3.0fV %4.1fA %4.0fW", sensorVoltage, sensorCurrent, sensorPower);
+  // Baris 2: Daya Nyata (Watt)
+  snprintf(r2, 17, "Daya: %5.1f Watt", sensorPower);
 
   lcd.setCursor(0, 0); lcd.print(r1);
   lcd.setCursor(0, 1); lcd.print(r2);
@@ -641,7 +614,12 @@ void updateTelemetry() {
     json += "\"updated_at\":"  + String((unsigned long)time(nullptr));
     json += "}";
 
-    fbPut("sensors", json);
+    bool ok = fbPut("sensors", json);
+    if (ok) {
+      Serial.println("[FIREBASE] Telemetri sensor berhasil di-update!");
+    } else {
+      Serial.println("[FIREBASE] GAGAL upload telemetri! Pastikan Rules Firebase aktif.");
+    }
   }
 }
 
@@ -691,11 +669,11 @@ void setSlotStandby(int idx) {
 
   String slotKey = "slot" + String(idx + 1);
 
-  // 1 KALI REQUEST PATCH multi-node instan
+  // 1 KALI REQUEST PATCH multi-node instan (valid nested JSON, tanpa tanda slash '/' di nama key)
   String patchPayload = "{"
-    "\"slots/" + slotKey + "\":{\"status\":\"STANDBY\",\"duration_seconds\":0,\"amount_paid\":0,\"activated_at\":0,\"expires_at\":0},"
+    "\"slots\":{\"" + slotKey + "\":{\"status\":\"STANDBY\",\"duration_seconds\":0,\"amount_paid\":0,\"activated_at\":0,\"expires_at\":0}},"
     "\"" + slotKey + "\":{\"status\":\"STANDBY\",\"active_duration\":0,\"started_at\":0,\"nominal_paid\":0},"
-    "\"system/active_selection\":{\"slot\":\"none\",\"status\":\"IDLE\",\"timestamp\":0}"
+    "\"system\":{\"active_selection\":{\"slot\":\"none\",\"status\":\"IDLE\",\"timestamp\":0}}"
   "}";
   fbPatch("", patchPayload);
 
