@@ -12,45 +12,59 @@ Dokumen ini memuat aturan operasional, alur transaksi, penanganan tombol, logika
 
 2. **Kunci Pemilihan Slot (*Mutex / State Lock* saat Transaksi):**
    * Ketika Pengguna A menekan tombol salah satu slot (misal Slot 1) dan sistem masuk ke status `WAITING_PAYMENT` (QRIS muncul):
-     * **Tombol slot lain (Slot 2 & 3) DIKUNCI TOTAL (diabaikan oleh program)** sampai transaksi Slot 1 selesai atau batas waktu habis.
-     * Pengguna tidak dapat membatalkan manual dengan menekan tombol kembali.
-   * **Batas Waktu (*Timeout*) QRIS:** Ditetapkan tepat **60 detik (1 menit)**.
-     * Jika dalam 60 detik tidak ada pembayaran masuk: Slot 1 otomatis kembali ke `STANDBY`, dan tombol slot lain terbuka kembali.
-     * Jika pembayaran berhasil masuk via Webhook: Slot 1 berubah status menjadi `ACTIVE`, relay menyala, LED menyala solid, dan tombol slot lain langsung terbuka kembali untuk disewa oleh pengguna lain.
+     * **Tombol slot lain (Slot 2 & 3) DIKUNCI SEMENTARA (diabaikan oleh program)** sampai transaksi Slot 1 selesai atau batas waktu habis.
+     * **Fitur Pembatalan Manual (Cancel Selection):** Pengguna dapat membatalkan pilihan slot dengan **menekan kembali tombol slot tersebut**, sehingga slot seketika kembali ke `STANDBY` dan membuka kunci untuk slot lainnya.
+   * **Batas Waktu (*Timeout*) QRIS:** Ditetapkan **300 detik (5 menit)** (`QRIS_TIMEOUT_MS = 300000`).
+     * Pengguna memiliki waktu 5 menit yang cukup untuk membuka aplikasi mobile banking/e-wallet, memindai QRIS, dan memasukkan PIN.
+     * Layar LCD menampilkan hitung mundur waktu tunggu (`Tunggu: xxx s`).
+     * Jika dalam 5 menit tidak ada pembayaran masuk: Slot 1 otomatis kedaluwarsa dan kembali ke `STANDBY`, lalu tombol slot lain terbuka kembali.
+     * Jika pembayaran berhasil masuk via Webhook: Slot 1 berubah status menjadi `ACTIVE`, relay menyala, LED menyala solid, dan tombol slot lain langsung terbuka kembali untuk disewa oleh pengguna lain secara bersamaan.
 
 3. **Fitur Penghentian Manual Lebih Awal (*Early Stop / Force Finish*):**
    * Pengguna dapat menekan kembali tombol slot yang sedang `ACTIVE` jika selesai mengecas sebelum waktu habis.
-   * **Konsekuensi:** Sisa waktu langsung **hangus (dihapus)** dan status slot langsung kembali ke `STANDBY` (Relay OFF, LED OFF).
-   * Pengguna tidak bisa melanjutkan sisa waktu sebelumnya jika menekan tombol lagi (harus bayar dari awal).
+   * **Respons Fisik Instan (0 ms Delay via Hardware Interrupts):**
+     * Menggunakan `attachInterrupt` ESP32 (mode `FALLING`) pada pin tombol GPIO 27, 14, 12.
+     * Begitu tombol ditekan, relay beban dan lampu LED **langsung mati seketika** di level hardware tanpa menunggu respons internet.
+   * **Konsekuensi:** Sisa waktu langsung **hangus (dihapus)** dan status slot langsung diperbarui ke `STANDBY` di Firebase.
+   * **Proteksi Edge-Detection:** Filter transisi digital mencegah *holding re-trigger* (menahan tombol tidak akan memicu sesi sewa baru tanpa sengaja).
 
 ---
 
 ## 2. Logika Tampilan Display (LCD 16x2 I2C)
 
-Layar LCD dirancang dengan pendekatan **Minimalis Berbasis Notifikasi Event**, bukan pemantauan terus-menerus:
+Layar LCD dirancang dengan sistem prioritas bertingkat (*Priority-Based State Machine*):
 
-1. **State 1: Kondisi Standby (Tidak Ada Transaksi Baru)**
-   * Menampilkan kalimat pesan default ramah pengguna:
+1. **State 1: Kondisi Standby (Seluruh Slot Menganggur)**
+   * Menampilkan pesan ramah pengguna:
      ```text
-     [Line 1]: RANOVA SMARTPLUG
-     [Line 2]: TEKAN TOMBOL SLOT
+     [Line 1]:   SMART  PLUG   
+     [Line 2]:  Tekan Tombol...
      ```
-2. **State 2: Tombol Ditekan (Menunggu Pembayaran)**
-   * Menampilkan instruksi pembayaran dan slot yang dipilih:
+2. **State 2: Tombol Ditekan (Menunggu Pembayaran QRIS)**
+   * Menampilkan nomor slot dan hitung mundur batas waktu scan 5 menit:
      ```text
-     [Line 1]: SLOT 1 DIPILIH
-     [Line 2]: SCAN QRIS DI WEB
+     [Line 1]: Scan QRIS Slot 1
+     [Line 2]: Tunggu: 295s    
      ```
-3. **State 3: Pembayaran Sukses Dikonfirmasi**
-   * Menampilkan notifikasi sukses selama 3–4 detik:
+3. **State 3: Pembayaran Sukses Dikonfirmasi (Prioritas Tertinggi, 4 Detik)**
+   * Menampilkan notifikasi sukses transien selama 4 detik:
      ```text
-     [Line 1]: PEMBAYARAN OKE!
-     [Line 2]: SLOT 1 AKTIF
+     [Line 1]:  BAYAR BERHASIL 
+     [Line 2]:   SLOT 1 AKTIF  
      ```
-4. **State 4: Kembali ke Standby**
-   * Setelah notifikasi sukses selesai, layar LCD **langsung kembali ke tampilan awal (State 1)**.
-   * Tidak perlu menampilkan *countdown* berulang-ulang di LCD agar tidak membuat layar penuh/berkedip.
-   * **Indikator Slot Aktif:** Pengguna cukup melihat **Lampu LED Ring Tombol** yang menyala solid pada slot yang aktif, serta memantau countdown detail melalui **Web Dashboard**.
+4. **State 4: Telemetri Sensor Daya saat Slot Aktif (Revisi Final Presisi)**
+   * Jika ada minimal 1 slot yang sedang berstatus `ACTIVE`, LCD otomatis beralih menampilkan telemetri daya listrik aktual dari modul PZEM-004T secara bersih (16 karakter pas):
+     ```text
+     [Line 1]: V: 220V  I: 0.50A
+     [Line 2]: Daya: 110.0 Watt
+     ```
+   * *Catatan Desain:* Nomor slot aktif sengaja tidak dimampatkan ke baris LCD agar teks tidak terpotong. Indikator slot aktif fisik ditunjukkan secara elegan oleh **Lampu LED Ring Tombol** yang menyala solid di panel box, serta countdown detail di Web Dashboard.
+5. **State 5: Kondisi Darurat Overheat ($T \ge 60^\circ\text{C}$)**
+   * Mengambil alih tampilan LCD untuk menampilkan peringatan bahaya dan angka suhu pendinginan realtime:
+     ```text
+     [Line 1]: ! OVERHEAT >60C!
+     [Line 2]: Suhu Box: 62.4 C
+     ```
 
 ---
 

@@ -223,31 +223,31 @@ Sensor PZEM-004T mengukur kWh secara akumulatif, sehingga sistem dapat menghitun
   - [x] Integrasi Webhook Mayar QRIS -> Vercel Serverless Function -> Firebase (teruji sukses end-to-end).
   - [x] Pembuatan virtual prototype firmware di simulator Wokwi & PlatformIO VS Code (ESP32 + WiFi + LCD + Relay 4-ch + DHT22 + PZEM-004T).
   - [x] Finalisasi UX LCD: notifikasi transaksi sukses transien (4 detik) lalu kembali Standby, countdown & telemetri multi-slot terpusat ke Web Dashboard.
-  - [ ] Pembelian komponen hardware online sesuai BOM & Enclosure.
-- [ ] **Fase 3: Pengujian Hardware Bertahap (Incremental Bring-up)**
+  - [x] Pembelian komponen hardware online sesuai BOM & Enclosure (WAGO PCT-215, NYA-F 1.5mm², Steker Dutron, Stop Kontak Broco, Relay 4-ch, Tombol Metal 16mm).
+- [x] **Fase 3: Pengujian Hardware Bertahap (Incremental Bring-up) — SELESAI 100%**
   - [x] **Tes 1A:** I2C Scanner & Kontrol Backlight LCD 16x2 terverifikasi pada alamat `0x27`.
   - [x] **Tes 1B:** Tombol Metal 16mm & LED Ring Slot 1 (`GPIO 27` & `GPIO 32`) teruji sukses responsif 100%.
   - [x] **Tes 1C:** Modul Relay 4-Channel (Channel 1 `GPIO 23` Active-LOW) terintegrasi dengan Tombol 1 & LED Ring.
-  - [x] Dokumentasi solusi isolasi pin `NC` tombol & arsitektur distribusi daya Common Ground (WAGO/Breadboard).
+  - [x] Dokumentasi solusi isolasi pin `NC` tombol & arsitektur distribusi daya Common Ground (WAGO Connector).
   - [x] **Tahap 2:** Uji End-to-End Single-Slot Fisik ke Cloud (ESP32 + WiFi + Firebase + Webhook QRIS Mayar) — **SUKSES 100%**!
-  - [x] **Tahap 3:** Uji Kelistrikan AC 220V pada Stop Kontak Broco Slot 1 (Beban nyata: lampu/charger) — **SUKSES 100%**!
-    * Steker Dutron dirakit ke NYMHY ➔ Fasa PLN ke Relay COM ➔ Relay NO ke Broco L ➔ Netral PLN ke Broco N ➔ Arde ke Broco Arde. Beban nyata berhasil menyala otomatis saat transaksi sewa QRIS terkonfirmasi!
+  - [x] **Tahap 3:** Uji Kelistrikan AC 220V pada Stop Kontak Broco Slot 1 (Beban nyata: charger laptop) — **SUKSES 100%**!
   - [x] **Tahap 4:** Pengujian Sensor Suhu DHT22 (GPIO 4) & Sensor Daya PZEM-004T (UART GPIO 16/17) [SELESAI 100%].
   - [x] **Tahap 4B:** Uji Terpadu 1 Slot + PZEM + DHT22 + LCD 16x2 + Relay + Tombol Metal + Mayar Webhook (Tes 3) [SELESAI 100%].
-  - [ ] **Tahap 5:** Replikasi pengujian untuk 3 Slot (3 Tombol, 3 Relay, 3 Stop Kontak via WAGO Connector).
-- [x] **Fase 4: Integrasi Full System ke Cloud & Payment Trigger**
-  - [x] ESP32 membaca trigger status ON/OFF dan durasi dari Firebase secara realtime (Dual-Node sync).
-  - [x] Implementasi logika early stop (matikan manual via tombol fisik).
-  - [x] Implementasi logika emergency shutdown (suhu > 60°C).
-- [x] **Fase 5: Pembuatan Realtime Hardware Web Dashboard (Laravel Operator)**
+  - [x] **Tahap 5:** Replikasi pengujian untuk 3 Slot (3 Tombol, 3 Relay, 3 Stop Kontak via WAGO Connector) — **SUKSES TERUJI SECARA SIMULTAN**!
+- [x] **Fase 4: Integrasi Full System ke Cloud, Payment Trigger & Safety — SELESAI 100%**
+  - [x] ESP32 membaca trigger status ON/OFF dan durasi dari Firebase secara realtime (Dual-Node sync & Batch Polling `/slots.json`).
+  - [x] Implementasi logika *Early Stop* instan (0 ms delay) via **Hardware Interrupts (`attachInterrupt` mode `FALLING`)** & *Falling Edge Detection*.
+  - [x] Implementasi sistem proteksi keselamatan termal **Thermal Hysteresis** (Emergency Stop $T \ge 60^\circ\text{C}$ & Auto-Recovery $T < 50^\circ\text{C}$).
+  - [x] Optimasi tampilan LCD 16x2: Telemetri daya PZEM-004T bersih ($V, A, W$) saat slot aktif dan live cooling alert saat overheat.
+- [x] **Fase 5: Pembuatan Realtime Hardware Web Dashboard (Laravel Operator) — SELESAI 100%**
   - [x] Web Dashboard Operator Laravel (`ranova-dashboard`) dengan MySQL + Firebase RTDB.
   - [x] UI Realtime Telemetri Stop Kontak, Sensor PZEM & Sensor DHT22.
   - [x] Panel Log Transaksi, Countdown Timer, Kontrol Manual Stop, Emergency Cutoff, dan Laporan Laba Bersih.
   - [x] Sinkronisasi Dynamic Rental Pricing ke Firebase dan Webhook Vercel.
-- [ ] **Fase 6: Fabrikasi Casing & Final Assembly**
-  - [ ] Perakitan komponen ke dalam casing (Box Panel ABS / 3D Print).
-  - [ ] Wiring jalur AC 220V + sekring pengaman 5A/10A.
-  - [ ] Full system stress test & debugging.
+- [ ] **Fase 6: Fabrikasi Casing & Final Assembly (SEDANG BERJALAN)**
+  - [ ] Perakitan komponen ke dalam casing enclosure stasiun pengisian daya.
+  - [ ] Finishing wiring jalur AC 220V + sekring pengaman 5A/10A.
+  - [ ] Full system stress test & demonstrasi akhir.
 - [ ] **Fase 7: Dokumentasi Akhir & Pameran Dies Natalis**
   - [ ] Penyusunan laporan akhir untuk MK IoT & Ubiquitous Computing.
   - [ ] Persiapan materi presentasi & demo stan pameran.

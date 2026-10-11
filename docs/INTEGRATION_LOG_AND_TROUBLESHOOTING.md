@@ -149,3 +149,33 @@ Berdasarkan analisis kebutuhan fisik dan kepraktisan perakitan 3 slot stop konta
   * Pin `NO` masing-masing tombol ditarik independen ke pin GPIO ESP32 (Slot 1: GPIO 27, Slot 2: GPIO 14, Slot 3: GPIO 12).
   * Pin `LED (+)` ditarik independen ke pin GPIO LED ESP32 (Slot 1: GPIO 32, Slot 2: GPIO 33, Slot 3: GPIO 25).
   * Pin `NC` dibiarkan kosong dan diisolasi dengan heatshrink.
+
+---
+
+## 8. Log Pembaruan Firmware & Resolusi Masalah Multi-Slot (Oktober 2026)
+
+### A. Masalah Relay Tidak Aktif Pasca Pembayaran QRIS (Root Cause: Node Overwrite)
+* **Gejala:** Pembayaran di Mayar sukses tercatat di riwayat transaksi, tetapi relay ESP32 tidak menyala dan charger laptop tidak mendapat daya.
+* **Akar Masalah:**
+  1. Webhook Mayar menulis update ke node root `/slotX`, sedangkan firmware sebelumnya hanya memantau node nested `/slots/slotX`.
+  2. Perintah `fbPatch("", ...)` sebelumnya di `setSlotStandby` secara tidak sengaja menimpa (*overwrite*) seluruh objek `/slots` sehingga `/slots/slot1` bernilai `null`.
+* **Solusi yang Diterapkan:**
+  1. Menerapkan *Dual-Node Polling*: Firmware memantau kedua node secara cerdas.
+  2. Mengganti patch root dengan update terisolasi per-slot (`fbPut(slotKey, ...)` dan `fbPut("slots/" + slotKey, ...)`), sehingga data antar-slot tidak saling menghapus.
+
+### B. Masalah Tombol Tidak Mau Mematikan Stop Kontak Aktif (Root Cause: CPU Network Choking)
+* **Gejala:** Saat slot sedang aktif mengalirkan listrik, penekanan tombol fisik berkali-kali gagal mematikan relay (*Early Stop macet*).
+* **Akar Masalah:**
+  1. Firmware sebelumnya melakukan hingga 4–6 kali panggilan HTTPS terpisah setiap 2 detik saat ada slot aktif.
+  2. Karena setiap HTTPS request memakan waktu ~1 detik, CPU ESP32 mengalami *choking* (hampir 100% waktunya membeku di dalam antrean SSL/WiFi) sehingga pulsa penekanan tombol fisik terlewat.
+* **Solusi yang Diterapkan:**
+  1. **Hardware Interrupts (`attachInterrupt` mode `FALLING`):** GPIO 27, 14, 12 dipasangi interrupt perangkat keras. Begitu tombol ditekan, relay dan LED diputus seketika (0 ms delay) di level hardware tanpa menunggu proses internet selesai.
+  2. **Batch 1-Request Polling (`/slots.json`):** Memangkas seluruh panggilan HTTP terpisah menjadi hanya 1 kali HTTP GET (~200 ms) untuk membaca ketiga slot sekaligus.
+  3. **Adaptive Polling Rate:** Polling diperlambat menjadi 7 detik saat slot aktif tanpa ada antrean bayar baru, membebaskan CPU sebesar 98%.
+  4. **Falling Edge Detection:** Tombol hanya merespons momen transisi dari lepas ke tekan untuk mencegah *holding re-trigger* (menahan tombol tidak memicu sesi sewa baru).
+
+### C. Proteksi Termal Hysteresis ($T \ge 60^\circ\text{C}$ & $T < 50^\circ\text{C}$)
+* Menambahkan safety cutoff otomatis jika sensor DHT22 mendeteksi suhu internal box $\ge 60^\circ\text{C}$.
+* Seluruh relay mati seketika, tombol dikunci, alert Firebase aktif, dan LCD menampilkan angka suhu pendinginan realtime.
+* Sistem pulih secara otomatis (*Auto-Recovery*) ke mode `STANDBY` saat suhu turun di bawah $50^\circ\text{C}$ (selisih histeresis $10^\circ\text{C}$ mencegah *thermal chattering*).
+

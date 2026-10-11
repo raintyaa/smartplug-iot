@@ -169,9 +169,9 @@ Semua kabel sinyal modul logika terhubung langsung ke pin ESP32 tanpa melewati W
 
 | Modul Hardware | Kaki / Pin Modul | Pin ESP32 | Mode Firmware | Keterangan Fungsi |
 |---|---|---|---|---|
-| **Tombol 1 (Slot 1)** | `NO` | **GPIO 27** | `INPUT_PULLUP` | Saklar Pemilihan Slot 1 |
-| **Tombol 2 (Slot 2)** | `NO` | **GPIO 14** | `INPUT_PULLUP` | Saklar Pemilihan Slot 2 |
-| **Tombol 3 (Slot 3)** | `NO` | **GPIO 12** | `INPUT_PULLUP` | Saklar Pemilihan Slot 3 |
+| **Tombol 1 (Slot 1)** | `NO` | **GPIO 27** | `INPUT_PULLUP` + Interrupt | Saklar Pemilihan & Early Stop Slot 1 |
+| **Tombol 2 (Slot 2)** | `NO` | **GPIO 14** | `INPUT_PULLUP` + Interrupt | Saklar Pemilihan & Early Stop Slot 2 |
+| **Tombol 3 (Slot 3)** | `NO` | **GPIO 12** | `INPUT_PULLUP` + Interrupt | Saklar Pemilihan & Early Stop Slot 3 |
 | **Semua Tombol** | `C (Common)` | WAGO GND-B (L-4) | Ground | Estafet kabel pendek antar-tombol |
 | **LED Ring 1** | `+ (Anoda)` | **GPIO 32** | `OUTPUT` | Indikator Status Slot 1 (Kedip/Solid) |
 | **LED Ring 2** | `+ (Anoda)` | **GPIO 33** | `OUTPUT` | Indikator Status Slot 2 (Kedip/Solid) |
