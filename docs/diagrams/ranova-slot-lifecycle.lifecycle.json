@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "State Machine & Siklus Hidup Slot RANOVA",
+    "subtitle": "State Transisi Multi-Slot: Standby -> Pembayaran QRIS -> Aktif -> Emergency Cutoff",
+    "output": "ranova-slot-lifecycle.html",
+    "viewBox": [1080, 680],
+    "animation": "trace",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    { "id": "main", "label": "Siklus Sewa Normal" },
+    { "id": "waiting", "label": "Interupsi & Penghentian" },
+    { "id": "exceptions", "label": "Proteksi Keselamatan Termal" }
+  ],
+  "states": [
+    { "id": "standby", "type": "start", "label": "STANDBY", "sublabel": "Relay OFF, siap sewa", "lane": "main", "col": 0, "step": "01", "tag": "entry" },
+    { "id": "waiting", "type": "active", "label": "WAITING_PAYMENT", "sublabel": "Scan QRIS, timeout 300s", "lane": "main", "col": 1, "step": "02", "tag": "mutex" },
+    { "id": "active", "type": "active", "label": "ACTIVE", "sublabel": "Relay ON, daya mengalir", "lane": "main", "col": 2, "step": "03", "tag": "charging" },
+    { "id": "completed", "type": "success", "label": "COMPLETED", "sublabel": "Durasi habis, relay OFF", "lane": "main", "col": 3, "step": "04", "tag": "done" },
+
+    { "id": "cancelled", "type": "waiting", "label": "CANCELLED", "sublabel": "Batal sewa", "lane": "waiting", "col": 1, "tag": "cancel" },
+    { "id": "force_stop", "type": "waiting", "label": "FORCE_STOP", "sublabel": "Early stop tombol/web", "lane": "waiting", "col": 2, "tag": "interrupt" },
+
+    { "id": "overheat", "type": "failure", "label": "EMERGENCY_STOP", "sublabel": "Suhu >= 60°C (Cutoff)", "lane": "exceptions", "col": 2, "yOffset": 78, "tag": "danger" }
+  ],
+  "transitions": [
+    { "id": "t-press", "from": "standby", "to": "waiting", "label": "Tekan Tombol", "variant": "emphasis" },
+    { "id": "t-paid", "from": "waiting", "to": "active", "label": "Bayar QRIS Sukses", "variant": "emphasis" },
+    { "id": "t-done", "from": "active", "to": "completed", "label": "Timer Selesai", "variant": "emphasis" },
+    { "id": "t-cancel", "from": "waiting", "to": "cancelled", "label": "Batal (Tombol)", "variant": "default", "fromSide": "bottom", "toSide": "top" },
+    { "id": "t-early-stop", "from": "active", "to": "force_stop", "label": "Stop Manual", "variant": "default", "fromSide": "bottom", "toSide": "top" },
+    { "id": "t-overheat-trip", "from": "active", "to": "overheat", "label": "Overheat >= 60C", "variant": "security" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Siklus Sewa Normal",
+      "items": [
+        "Pengguna memilih slot -> status WAITING_PAYMENT dengan batas waktu 5 menit",
+        "Pembayaran webhook mengaktifkan relay dan menghitung mundur waktu sewa",
+        "Setelah waktu habis, slot otomatis menuju COMPLETED dan kembali idle"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Proteksi Multi-Lapis",
+      "items": [
+        "Pengguna dapat membatalkan pilihan sebelum membayar (CANCELLED)",
+        "Hardware interrupt mendukung penghentian manual instan (FORCE_STOP)",
+        "Sensor DHT22 memicu EMERGENCY_STOP jika suhu box mencapai 60°C"
+      ]
+    }
+  ]
+}

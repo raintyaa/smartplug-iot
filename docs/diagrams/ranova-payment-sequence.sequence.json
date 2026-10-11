@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Alur Transaksi & Aktivasi RANOVA Smart Plug",
+    "subtitle": "Interaksi Event-Driven: Tombol Fisik -> Mayar QRIS -> Vercel Webhook -> Firebase -> ESP32",
+    "output": "ranova-payment-sequence.html",
+    "viewBox": [1260, 780],
+    "column_fit": "spread",
+    "animation": "trace",
+    "quality_profile": "showcase"
+  },
+  "participants": [
+    { "id": "user", "type": "external", "label": "Pengguna", "sublabel": "m-Banking / HP" },
+    { "id": "esp32", "type": "backend", "label": "ESP32", "sublabel": "IoT Firmware" },
+    { "id": "lcd", "type": "frontend", "label": "LCD 16x2", "sublabel": "Display Lokal" },
+    { "id": "mayar", "type": "cloud", "label": "Mayar QRIS", "sublabel": "Payment Gateway" },
+    { "id": "vercel", "type": "backend", "label": "Vercel Webhook", "sublabel": "Serverless (Node.js)" },
+    { "id": "firebase", "type": "database", "label": "Firebase RTDB", "sublabel": "Central State" },
+    { "id": "relay", "type": "backend", "label": "Relay 220V", "sublabel": "Stop Kontak" },
+    { "id": "dashboard", "type": "frontend", "label": "Web Dashboard", "sublabel": "Operator Admin" }
+  ],
+  "segments": [
+    { "from": 150, "to": 260, "label": "1. Inisiasi & Pemilihan Slot" },
+    { "from": 270, "to": 415, "label": "2. Pembayaran QRIS & Webhook Callback" },
+    { "from": 425, "to": 615, "label": "3. Aktivasi Beban Listrik & Monitoring" }
+  ],
+  "messages": [
+    { "id": "m1", "from": "user", "to": "esp32", "y": 165, "label": "Tekan tombol Slot 1 (GPIO 27)", "variant": "emphasis" },
+    { "id": "m2", "from": "esp32", "to": "lcd", "y": 195, "label": "Kunci slot lain & tampil 'Tunggu 300s'", "variant": "default" },
+    { "id": "m3", "from": "esp32", "to": "firebase", "y": 230, "label": "Set status: WAITING_PAYMENT", "variant": "default" },
+    { "id": "m4", "from": "user", "to": "mayar", "y": 285, "label": "Scan QRIS & Bayar Rp 2.000", "variant": "emphasis" },
+    { "id": "m5", "from": "mayar", "to": "vercel", "y": 325, "label": "HTTP POST Webhook (Settlement OK)", "variant": "security" },
+    { "id": "m6", "from": "vercel", "to": "firebase", "y": 365, "label": "Update slot: ACTIVE, duration: 1800s", "variant": "emphasis" },
+    { "id": "m7", "from": "vercel", "to": "mayar", "y": 395, "label": "200 OK Callback Response", "variant": "return" },
+    { "id": "m8", "from": "firebase", "to": "esp32", "y": 440, "label": "Stream event: slot1 = ACTIVE", "variant": "emphasis" },
+    { "id": "m9", "from": "esp32", "to": "relay", "y": 470, "label": "Relay 1 ON (Active LOW 0V)", "variant": "emphasis" },
+    { "id": "m10", "from": "esp32", "to": "lcd", "y": 500, "label": "Tampil 'BAYAR BERHASIL'", "variant": "default" },
+    { "id": "m11", "from": "relay", "to": "user", "y": 530, "label": "Listrik 220V aktif (Charger ON)", "variant": "return" },
+    { "id": "m12", "from": "esp32", "to": "firebase", "y": 560, "label": "Stream telemetri: V, A, W, kWh", "variant": "dashed" },
+    { "id": "m13", "from": "dashboard", "to": "firebase", "y": 590, "label": "Sinkronisasi riwayat ke MySQL", "variant": "default" }
+  ],
+  "activations": [
+    { "participant": "user", "from": 160, "to": 290, "type": "external" },
+    { "participant": "esp32", "from": 165, "to": 240, "type": "backend" },
+    { "participant": "mayar", "from": 280, "to": 400, "type": "cloud" },
+    { "participant": "vercel", "from": 320, "to": 400, "type": "backend" },
+    { "participant": "firebase", "from": 225, "to": 240, "type": "database" },
+    { "participant": "firebase", "from": 360, "to": 450, "type": "database" },
+    { "participant": "esp32", "from": 435, "to": 570, "type": "backend" },
+    { "participant": "relay", "from": 465, "to": 535, "type": "backend" },
+    { "participant": "dashboard", "from": 585, "to": 600, "type": "frontend" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Alur Transaksi Utama (Happy Path)",
+      "items": [
+        "Tekan tombol fisik mengunci slot dan memulai hitung mundur 5 menit",
+        "Mayar memproses pembayaran dan memicu serverless webhook seketika",
+        "ESP32 mengaktifkan relay tanpa jeda begitu Firebase terupdate"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Keandalan & Validasi",
+      "items": [
+        "Webhook dilindungi verifikasi signature / secret token",
+        "Jika pembayaran tidak terjadi dalam 300 detik, slot otomatis kedaluwarsa (STANDBY)",
+        "Interupsi fisik tombol (GPIO falling) memprioritaskan keamanan hardware"
+      ]
+    }
+  ]
+}

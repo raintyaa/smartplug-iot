@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Arsitektur Sistem RANOVA Smart Plug IoT",
+    "subtitle": "Integrasi Edge ESP32, Mayar QRIS Payment Gateway, Firebase RTDB & Dashboard",
+    "output": "ranova-system-architecture.html",
+    "visual_preset": "signal-flow",
+    "animation": "trace",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    { "id": "users", "type": "external", "label": "Pengguna", "sublabel": "m-Banking / e-Wallet", "pos": [40, 300], "size": [130, 64] },
+    { "id": "mayar", "type": "cloud", "label": "Mayar.id PG", "sublabel": "QRIS Engine", "pos": [280, 160], "size": [130, 64], "tag": "Webhook Callback" },
+    { "id": "vercel", "type": "backend", "label": "Vercel Serverless", "sublabel": "Node.js (webhook.js)", "pos": [530, 160], "size": [140, 64], "tag": "HTTPS POST" },
+    { "id": "firebase", "type": "database", "label": "Firebase RTDB", "sublabel": "Cloud State Sync", "pos": [770, 300], "size": [140, 64], "tag": "WebSocket" },
+    { "id": "dashboard", "type": "frontend", "label": "Web Dashboard", "sublabel": "Laravel 11 Console", "pos": [530, 450], "size": [140, 64], "tag": "Admin Monitor" },
+    { "id": "mysql", "type": "database", "label": "MySQL Database", "sublabel": "Local Storage", "pos": [280, 450], "size": [130, 64], "tag": "Audit & Reports" },
+    { "id": "esp32", "type": "backend", "label": "ESP32 DevKit V1", "sublabel": "FreeRTOS & WiFi", "pos": [1030, 300], "size": [140, 68], "tag": "Edge IoT Node" },
+    { "id": "buttons", "type": "external", "label": "3x Metal Button", "sublabel": "LED Ring (Interrupt)", "pos": [1030, 140], "size": [140, 60] },
+    { "id": "lcd", "type": "frontend", "label": "LCD 16x2 I2C", "sublabel": "Display Status", "pos": [1030, 460], "size": [140, 60] },
+    { "id": "relay", "type": "backend", "label": "Relay 4-Channel", "sublabel": "5V Optocoupler", "pos": [1270, 300], "size": [130, 64], "tag": "Active LOW" },
+    { "id": "pzem", "type": "security", "label": "PZEM-004T V3", "sublabel": "Energy Sensor (CT)", "pos": [1270, 450], "size": [130, 64], "tag": "Modbus UART" },
+    { "id": "dht", "type": "security", "label": "DHT22 Sensor", "sublabel": "Suhu Box & Termal", "pos": [1270, 140], "size": [130, 64], "tag": "1-Wire GPIO 4" },
+    { "id": "loads", "type": "external", "label": "3x Stop Kontak", "sublabel": "AC 220V Outlets", "pos": [1490, 300], "size": [130, 64], "tag": "Slot 1, 2, 3" }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Cloud & Payment Services", "wraps": ["mayar", "vercel", "firebase"], "pad": 18 },
+    { "kind": "region", "label": "RANOVA Smart Plug Box (Hardware Enclosure)", "wraps": ["esp32", "buttons", "lcd", "relay", "pzem", "dht", "loads"], "pad": 18 },
+    { "kind": "security-group", "label": "Local Operator Station", "wraps": ["dashboard", "mysql"], "pad": 16 }
+  ],
+  "connections": [
+    { "id": "c-users-mayar", "from": "users", "to": "mayar", "label": "Scan & Bayar QRIS", "variant": "emphasis" },
+    { "id": "c-users-btn", "from": "users", "to": "buttons", "label": "Pilih Slot", "variant": "default", "fromSide": "top", "toSide": "left" },
+    { "id": "c-mayar-vercel", "from": "mayar", "to": "vercel", "label": "HTTP POST Webhook", "variant": "security" },
+    { "id": "c-vercel-firebase", "from": "vercel", "to": "firebase", "label": "Update slot: ACTIVE", "variant": "emphasis" },
+    { "id": "c-firebase-esp32", "from": "firebase", "to": "esp32", "label": "Sync Status & Timer", "variant": "emphasis" },
+    { "id": "c-btn-esp32", "from": "buttons", "to": "esp32", "label": "GPIO Interrupt", "variant": "default" },
+    { "id": "c-esp32-lcd", "from": "esp32", "to": "lcd", "label": "I2C SDA/SCL", "variant": "default" },
+    { "id": "c-esp32-relay", "from": "esp32", "to": "relay", "label": "Trigger Relay (ON)", "variant": "emphasis" },
+    { "id": "c-relay-loads", "from": "relay", "to": "loads", "label": "Alirkan AC 220V", "variant": "emphasis" },
+    { "id": "c-loads-pzem", "from": "loads", "to": "pzem", "label": "Arus Beban (CT)", "variant": "dashed" },
+    { "id": "c-pzem-esp32", "from": "pzem", "to": "esp32", "label": "UART Telemetri", "variant": "default" },
+    { "id": "c-dht-esp32", "from": "dht", "to": "esp32", "label": "Proteksi Overheat >60C", "variant": "security" },
+    { "id": "c-dashboard-firebase", "from": "dashboard", "to": "firebase", "label": "Polling REST API", "variant": "default" },
+    { "id": "c-dashboard-mysql", "from": "dashboard", "to": "mysql", "label": "Simpan Audit Log", "variant": "default" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Alur Pembayaran QRIS Dinamis",
+      "items": [
+        "Pengguna scan QRIS Mayar di box dan membayar nominal sewa",
+        "Mayar memicu callback HTTP POST Webhook ke Vercel Serverless",
+        "Vercel menghitung durasi dan mengupdate Firebase RTDB menjadi ACTIVE"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Keselamatan & Kontrol Fisik",
+      "items": [
+        "Sensor DHT22 memicu Emergency Cutoff seketika jika suhu box >= 60°C",
+        "Interupsi hardware (GPIO falling) memproses pembatalan atau early stop",
+        "Relay 4-channel active-LOW mengisolasi tegangan AC 220V secara aman"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Monitoring & Rekonsiliasi",
+      "items": [
+        "PZEM-004T mengukur tegangan, arus beban, daya nyata, dan energi kWh",
+        "ESP32 melakukan streaming telemetri secara berkala ke Firebase RTDB",
+        "Web Dashboard Laravel menyinkronkan rekaman transaksi ke MySQL lokal"
+      ]
+    }
+  ]
+}
