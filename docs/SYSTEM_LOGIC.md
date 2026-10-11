@@ -71,15 +71,22 @@ Layar LCD dirancang dengan pendekatan **Minimalis Berbasis Notifikasi Event**, b
 
 ---
 
-## 4. Sistem Proteksi Keselamatan Termal (DHT22 Overheat Cut-off)
+## 4. Sistem Proteksi Keselamatan Termal (Thermal Hysteresis Protection)
 
-1. **Ambang Batas Suhu Bahaya:** $T > 60^\circ\text{C}$ di dalam casing kayu.
+1. **Ambang Batas Suhu Bahaya:** $T \ge 60^\circ\text{C}$ di dalam casing.
 2. **Aksi Darurat (*Emergency Cut-off*):**
-   * Seluruh relay (Channel 1, 2, 3) **langsung dimatikan paksa seketika (OFF)**.
-   * Status seluruh slot di Firebase langsung di-reset ke `STANDBY` / `EMERGENCY_STOP`.
-   * Seluruh sisa waktu sewa **langsung dibatalkan** demi keamanan sirkuit dan mencegah beban komputasi/penyimpanan state berlebih pada ESP32.
-   * LCD menampilkan peringatan:
+   * Seluruh relay beban (Channel 1, 2, 3 & Spare) **langsung diputus seketika (OFF)**. Aliran 220V ke seluruh stop kontak mati total.
+   * Seluruh lampu LED indikator slot dimatikan.
+   * Seluruh tombol fisik dinonaktifkan (dikunci total dari penekanan sewa baru).
+   * Status darurat dikirim ke Firebase (`system/emergency_alert = true`, status slot = `EMERGENCY_STOP`).
+   * LCD 16x2 tetap menyala menampilkan peringatan bahaya dan **angka suhu realtime** yang sedang mendingin:
      ```text
-     [Line 1]: ! SUHU OVERHEAT !
-     [Line 2]: SISTEM DIMATIKAN
+     [Line 1]: ! OVERHEAT >60C!
+     [Line 2]: Suhu Box: xx.x C
      ```
+3. **Pemulihan Otomatis (*Auto Recovery / Thermal Hysteresis*):**
+   * **Ambang Batas Suhu Aman:** $T < 50^\circ\text{C}$ (selisih histeresis $10^\circ\text{C}$ untuk mencegah *thermal chattering*).
+   * Saat suhu turun di bawah $50^\circ\text{C}$, sistem secara otomatis mereset status darurat di Firebase (`system/emergency_alert = false`).
+   * Seluruh slot kembali ke mode `STANDBY` (siap disewa kembali).
+   * Tombol fisik diaktifkan kembali dan LCD kembali ke tampilan awal `SMART PLUG / Tekan Tombol...`.
+

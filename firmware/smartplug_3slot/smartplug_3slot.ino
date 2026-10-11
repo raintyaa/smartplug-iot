@@ -72,7 +72,8 @@ const int PIN_RELAY_SPARE      = 26;            // Relay cadangan (selalu OFF)
 // ============================================================
 // PARAMETER OPERASI
 // ============================================================
-#define OVERHEAT_LIMIT_C     60.0     // Batas suhu darurat (°C)
+#define OVERHEAT_LIMIT_C     60.0     // Batas suhu darurat (°C) — Matikan semua relay
+#define OVERHEAT_SAFE_C      50.0     // Batas suhu pemulihan histeresis (°C) — Kembali ke STANDBY
 #define QRIS_TIMEOUT_MS      300000   // Timeout menunggu bayar: 5 menit (ms)
 
 // Interval waktu (ms)
@@ -82,6 +83,7 @@ const int PIN_RELAY_SPARE      = 26;            // Relay cadangan (selalu OFF)
 #define INTERVAL_BLINK          400    // Kecepatan kedip LED
 #define INTERVAL_WIFI_CHECK     30000  // Cek WiFi tiap 30 detik
 #define INTERVAL_LCD_ROTATE     3000   // Rotasi tampilan multi-slot tiap 3 detik
+#define INTERVAL_DHT_READ       1500   // Sampling DHT22 tiap 1.5 detik
 
 // ============================================================
 // OBJEK GLOBAL
@@ -123,7 +125,9 @@ unsigned long tLcdRefresh   = 0;
 unsigned long tBlink        = 0;
 unsigned long tWifiCheck    = 0;
 unsigned long tLcdRotate    = 0;
+unsigned long tDhtRead      = 0;
 bool blinkState             = false;
+bool isOverheated           = false;
 int  lcdRotateIdx           = 0;
 
 // Notifikasi sukses bayar di LCD
@@ -366,6 +370,8 @@ bool fbPatch(const String& path, const String& body) {
 // Cek Tombol — Deteksi tekan dengan debounce responsif
 // ============================================================
 void checkButtons() {
+  if (isOverheated) return;  // Proteksi: Selama kondisi overheat, tombol fisik dikunci total!
+
   for (int i = 0; i < NUM_SLOTS; i++) {
     if (digitalRead(PIN_BTN[i]) == LOW) {
       delay(30);  // Debounce cepat
@@ -415,6 +421,8 @@ void checkButtons() {
 // Poll semua slot dari Firebase
 // ============================================================
 void pollFirebaseSlots() {
+  if (isOverheated) return;  // Proteksi: Selama overheat, jangan terima aktivasi slot baru!
+
   for (int i = 0; i < NUM_SLOTS; i++) {
     // Hanya poll slot yang sedang menunggu bayar atau aktif
     if (slots[i].state != WAITING_PAYMENT && slots[i].state != ACTIVE) continue;
@@ -488,6 +496,16 @@ void updateTimers() {
 // Update relay & LED ring berdasarkan state
 // ============================================================
 void updateHardware() {
+  if (isOverheated) {
+    // Matikan seluruh relay dan seluruh LED seketika
+    for (int i = 0; i < NUM_SLOTS; i++) {
+      digitalWrite(PIN_RELAY[i], HIGH);
+      digitalWrite(PIN_LED[i], LOW);
+    }
+    digitalWrite(PIN_RELAY_SPARE, HIGH);
+    return;
+  }
+
   for (int i = 0; i < NUM_SLOTS; i++) {
     switch (slots[i].state) {
       case ACTIVE:
@@ -523,6 +541,15 @@ void fmtTime(unsigned long totalSec, char* buf, size_t len) {
 void updateLcdDisplay() {
   char r1[17], r2[17];
   unsigned long now = millis();
+
+  // ── PRIORITAS 0: Kondisi Overheat Darurat (Live Monitoring Suhu) ──
+  if (isOverheated) {
+    snprintf(r1, 17, "! OVERHEAT >60C!");
+    snprintf(r2, 17, "Suhu Box: %4.1f C", sensorTemp);
+    lcd.setCursor(0, 0); lcd.print(r1);
+    lcd.setCursor(0, 1); lcd.print(r2);
+    return;
+  }
 
   // ── PRIORITAS 1: Notifikasi "BAYAR BERHASIL" (4 detik) ──
   if (successSlot >= 0) {
@@ -624,15 +651,30 @@ void updateTelemetry() {
 }
 
 // ============================================================
-// Proteksi Overheat (>60°C)
+// Proteksi Overheat (>60°C) dengan Histeresis Termal (<50°C)
 // ============================================================
 void handleOverheat() {
-  if (sensorTemp >= OVERHEAT_LIMIT_C) {
+  unsigned long now = millis();
+
+  // 1. Sampling DHT22 tiap 1.5 detik untuk deteksi & monitoring live
+  if (now - tDhtRead >= INTERVAL_DHT_READ) {
+    tDhtRead = now;
+    float t = dht.readTemperature();
+    float h = dht.readHumidity();
+    if (!isnan(t)) sensorTemp  = t;
+    if (!isnan(h)) sensorHumid = h;
+  }
+
+  // 2. FASE 1: Suhu >= 60°C -> AKTIFKAN EMERGENCY STOP
+  if (!isOverheated && sensorTemp >= OVERHEAT_LIMIT_C) {
+    isOverheated = true;
+
     Serial.println("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-    Serial.println("  DARURAT: SUHU > 60°C — EMERGENCY STOP!");
+    Serial.printf("  DARURAT: SUHU %.1f°C >= 60°C — EMERGENCY STOP!\n", sensorTemp);
+    Serial.println("  Seluruh relay & LED dimatikan! Tombol dikunci.");
     Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 
-    // Matikan semua relay & LED
+    // Matikan seluruh relay beban (Active-LOW: HIGH = OFF) & LED seketika
     for (int i = 0; i < NUM_SLOTS; i++) {
       slots[i].state = EMERGENCY_STOP;
       digitalWrite(PIN_RELAY[i], HIGH);
@@ -640,16 +682,30 @@ void handleOverheat() {
     }
     digitalWrite(PIN_RELAY_SPARE, HIGH);
 
-    // Kirim alert ke Firebase
+    // Kirim notifikasi darurat ke Firebase
     fbPut("system/emergency_alert", "true");
+    for (int i = 0; i < NUM_SLOTS; i++) {
+      String slotKey = "slot" + String(i + 1);
+      fbPut("slots/" + slotKey + "/status", "\"EMERGENCY_STOP\"");
+      fbPut(slotKey + "/status", "\"EMERGENCY_STOP\"");
+    }
+  }
+  // 3. FASE 2: Histeresis Termal (Suhu Turun < 50°C) -> AUTO RECOVERY KE STANDBY
+  else if (isOverheated && sensorTemp > 0 && sensorTemp < OVERHEAT_SAFE_C) {
+    isOverheated = false;
 
-    // Tampilkan peringatan di LCD
-    lcd.clear();
-    lcd.setCursor(0, 0); lcd.print("!! DARURAT !!   ");
-    lcd.setCursor(0, 1); lcd.print("OVERHEAT >60C!! ");
+    Serial.println("\n============================================");
+    Serial.printf("  SUHU SUDAH AMAN (%.1f°C < 50°C) — AUTO RECOVERY!\n", sensorTemp);
+    Serial.println("  Sistem kembali normal ke mode STANDBY.");
+    Serial.println("============================================");
 
-    // HALT — perlu power cycle / reset manual
-    while (true) delay(1000);
+    // Bersihkan alert di Firebase
+    fbPut("system/emergency_alert", "false");
+
+    // Reset seluruh slot ke STANDBY (Relay tetap OFF, siap sewa baru)
+    for (int i = 0; i < NUM_SLOTS; i++) {
+      setSlotStandby(i);
+    }
   }
 }
 
