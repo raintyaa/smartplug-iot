@@ -388,16 +388,14 @@ void checkButtons() {
         updateHardware();
         updateLcdDisplay();
 
-        // 2. Kirim update ke Firebase dalam 1 KALI REQUEST PATCH multi-node
+        // 2. Kirim update ke Firebase tanpa menimpa slot lain
         String slotKey = "slot" + String(i + 1);
-        String patchPayload = "{"
-          "\"system\":{\"active_selection\":{\"slot\":\"" + slotKey + "\",\"status\":\"WAITING_PAYMENT\",\"timestamp\":0}},"
-          "\"slots\":{\"" + slotKey + "\":{\"status\":\"WAITING_PAYMENT\",\"duration_seconds\":0,\"amount_paid\":0}},"
-          "\"" + slotKey + "\":{\"status\":\"WAITING_PAYMENT\",\"active_duration\":0,\"started_at\":0}"
-        "}";
-        fbPatch("", patchPayload);
+        String body = "{\"status\":\"WAITING_PAYMENT\",\"active_duration\":0,\"duration_seconds\":0,\"started_at\":0,\"amount_paid\":0}";
+        fbPut(slotKey, body);
+        fbPut("slots/" + slotKey, body);
+        fbPut("system/active_selection", "{\"slot\":\"" + slotKey + "\",\"status\":\"WAITING_PAYMENT\",\"timestamp\":0}");
 
-        Serial.printf("[FIREBASE] Slot %d -> WAITING_PAYMENT terkirim (PATCH instan).\n", i + 1);
+        Serial.printf("[FIREBASE] Slot %d -> WAITING_PAYMENT terkirim.\n", i + 1);
       }
       else if (slots[i].state == WAITING_PAYMENT) {
         // Tekan lagi saat menunggu → batalkan seleksi
@@ -427,16 +425,41 @@ void pollFirebaseSlots() {
     // Hanya poll slot yang sedang menunggu bayar atau aktif
     if (slots[i].state != WAITING_PAYMENT && slots[i].state != ACTIVE) continue;
 
-    String raw = fbGet("slots/slot" + String(i + 1));
-    if (raw == "null" || raw.length() < 5) continue;
+    String slotKey = "slot" + String(i + 1);
+    const char* status = nullptr;
+    uint32_t durSec = 0;
 
+    // 1. Cek node root (/slotX) terlebih dahulu
+    String raw = fbGet(slotKey);
     StaticJsonDocument<256> doc;
-    if (deserializeJson(doc, raw)) continue;
+    bool hasDoc = (raw != "null" && raw.length() >= 5 && !deserializeJson(doc, raw) && doc.containsKey("status"));
 
-    const char* status = doc["status"];
+    if (hasDoc) {
+      const char* s = doc["status"];
+      if (slots[i].state == WAITING_PAYMENT && s && strcmp(s, "ACTIVE") == 0) {
+        status = "ACTIVE";
+        durSec = doc["duration_seconds"] | doc["active_duration"] | 0;
+      } else if (slots[i].state == ACTIVE && s && strcmp(s, "STANDBY") == 0) {
+        status = "STANDBY";
+      }
+    }
+
+    // 2. Jika di node root belum terdeteksi transisi target, cek fallback ke nested (/slots/slotX)
+    if (!status) {
+      String rawNested = fbGet("slots/" + slotKey);
+      StaticJsonDocument<256> docNested;
+      if (rawNested != "null" && rawNested.length() >= 5 && !deserializeJson(docNested, rawNested) && docNested.containsKey("status")) {
+        const char* sNested = docNested["status"];
+        if (slots[i].state == WAITING_PAYMENT && sNested && strcmp(sNested, "ACTIVE") == 0) {
+          status = "ACTIVE";
+          durSec = docNested["duration_seconds"] | docNested["active_duration"] | 0;
+        } else if (slots[i].state == ACTIVE && sNested && strcmp(sNested, "STANDBY") == 0) {
+          status = "STANDBY";
+        }
+      }
+    }
+
     if (!status) continue;
-
-    uint32_t durSec = doc["duration_seconds"] | doc["active_duration"] | 0;
 
     // Transisi: WAITING_PAYMENT -> ACTIVE (pembayaran berhasil)
     if (strcmp(status, "ACTIVE") == 0 && slots[i].state != ACTIVE) {
@@ -724,14 +747,10 @@ void setSlotStandby(int idx) {
   if (WiFi.status() != WL_CONNECTED) return;
 
   String slotKey = "slot" + String(idx + 1);
+  String body = "{\"status\":\"STANDBY\",\"duration_seconds\":0,\"active_duration\":0,\"amount_paid\":0,\"nominal_paid\":0,\"started_at\":0,\"activated_at\":0,\"expires_at\":0}";
+  fbPut(slotKey, body);
+  fbPut("slots/" + slotKey, body);
+  fbPut("system/active_selection", "{\"slot\":\"none\",\"status\":\"IDLE\",\"timestamp\":0}");
 
-  // 1 KALI REQUEST PATCH multi-node instan (valid nested JSON, tanpa tanda slash '/' di nama key)
-  String patchPayload = "{"
-    "\"slots\":{\"" + slotKey + "\":{\"status\":\"STANDBY\",\"duration_seconds\":0,\"amount_paid\":0,\"activated_at\":0,\"expires_at\":0}},"
-    "\"" + slotKey + "\":{\"status\":\"STANDBY\",\"active_duration\":0,\"started_at\":0,\"nominal_paid\":0},"
-    "\"system\":{\"active_selection\":{\"slot\":\"none\",\"status\":\"IDLE\",\"timestamp\":0}}"
-  "}";
-  fbPatch("", patchPayload);
-
-  Serial.printf("[SLOT %d] Reset -> STANDBY (PATCH instan).\n", idx + 1);
+  Serial.printf("[SLOT %d] Reset -> STANDBY terkirim.\n", idx + 1);
 }
