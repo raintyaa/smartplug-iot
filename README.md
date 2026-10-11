@@ -25,25 +25,28 @@ Sistem dirancang dengan alur interaksi fisik ke digital (*Physical-to-Digital Se
 
 ---
 
-## 💳 3 Strategi Integrasi Pembayaran QRIS
+## 💳 Strategi Integrasi Pembayaran QRIS Dinamis
 
-Sistem dirancang modular untuk mendukung 3 strategi pembayaran:
+Sistem menggunakan **Mayar Payment Gateway (Mayar.id)** sebagai infrastruktur utama pemrosesan transaksi QRIS otomatis secara *event-driven*:
 
-### 1. Payment Gateway Resmi Nasional (Midtrans / Mayar)
-* **Alur:** Tekan tombol fisik -> Scan QRIS resmi -> Bayar via E-Wallet/M-Banking -> Server Gateway kirim Webhook HTTP POST otomatis ke Backend/Firebase -> ESP32 aktif.
-* **Status:** Midtrans Sandbox aktif & siap; Pengajuan akun Production dalam proses review.
+### 1. Payment Gateway Resmi (Mayar QRIS Dinamis) ⭐
+* **Alur:** 
+  1. Pengguna menekan tombol fisik slot yang ingin disewa pada stasiun pengisian daya.
+  2. Pengguna memindai stiker QRIS resmi Mayar pada bodi alat dengan aplikasi m-banking atau e-wallet (BCA Mobile, Mandiri Livin, GoPay, OVO, Dana, ShopeePay, dll.).
+  3. Pengguna menginput dan membayar nominal sewa yang diinginkan (kelipatan Rp 1.000 = 15 menit).
+  4. Server Mayar memverifikasi pembayaran sukses dan memicu callback **HTTP POST Webhook** ke Vercel Serverless Function (`api/webhook.js`).
+  5. Vercel menghitung durasi waktu sewa secara proporsional dan mengupdate status slot di **Firebase Realtime Database** menjadi `ACTIVE`.
+  6. ESP32 mendeteksi perubahan status secara realtime: Relay stop kontak ON, LED ring menyala solid, dan beban listrik menyala otomatis.
+* **Status:** **Production Active & Terintegrasi Penuh** (Telah teruji sukses end-to-end dengan transaksi riil dan aktivasi beban nyata charger laptop).
 
-### 2. Self-Hosted Interactive Web Payment Portal & Mock Gateway (HTTPS REST API / Webhook) ⭐
+### 2. Self-Hosted Interactive Web Payment Portal (HTTPS REST API Fallback)
 * **Alur:**
-  1. Pengguna menekan tombol fisik slot yang ingin dipakai pada box alat.
-  2. Pengguna scan QR code stiker alat dengan kamera HP -> Web Pembayaran RANOVA (`pay.html`) terbuka.
-  3. Web secara cerdas menampilkan slot yang telah ditekan, dan pengguna memasukkan nominal durasi yang diinginkan.
-  4. Pengguna klik "Konfirmasi Pembayaran" -> Web mengirimkan `HTTPS REST API` (`PATCH/POST`) ke Firebase Realtime Database.
-  5. ESP32 merespons perubahan data secara instan: Relay aktif, LED tombol menyala solid, timer berjalan.
-* **Kelebihan:** 100% interaktif nyata di HP penguji/dosen, handal, dan menerapkan protokol HTTPS, REST API, Webhook, serta WebSocket/MQTT secara nyata tanpa ketergantungan pihak ketiga.
-
-### 3. DANA Bisnis QRIS Notification Forwarder
-* **Alur:** Tekan tombol fisik -> Scan stiker QRIS Nasional DANA Bisnis -> Notifikasi push pembayaran masuk ke HP -> MacroDroid meneruskan via HTTP POST ke Firebase -> ESP32 aktif.
+  1. Pengguna menekan tombol fisik slot pada box alat.
+  2. Pengguna scan QR code stiker alat dengan kamera HP -> Web Portal Pembayaran RANOVA (`pay.html`) terbuka.
+  3. Web secara cerdas membaca slot yang dipilih dari Firebase, dan pengguna memasukkan nominal durasi yang diinginkan.
+  4. Pengguna klik "Konfirmasi Pembayaran" -> Web portal mengirimkan `HTTPS REST API` ke Firebase Realtime Database.
+  5. ESP32 merespons perubahan data: Relay aktif, LED menyala solid, timer berjalan.
+* **Fungsi:** Sebagai portal alternatif interaktif untuk pengujian cepat, simulasi offline, dan demonstrasi tanpa ketergantungan pihak ketiga.
 
 ---
 
