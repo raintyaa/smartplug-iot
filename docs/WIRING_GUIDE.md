@@ -1,11 +1,11 @@
-# 🔌 Panduan Lengkap Wiring & Distribusi Daya — RANOVA Smart Plug IoT
-*(Versi Final Lengkap dengan Power Supply 5V & Konektor WAGO — 21 September 2026)*
+# Panduan Lengkap Wiring dan Distribusi Daya — RANOVA Smart Plug IoT
+*(Versi Final Lengkap dengan Power Supply 5V dan Konektor WAGO — 21 September 2026)*
 
 Dokumen ini adalah panduan teknis resmi perakitan kelistrikan, distribusi daya mandiri (internal switching power supply), skema alokasi port terminal WAGO, serta pemetaan pin-to-pin untuk seluruh modul hardware RANOVA Smart Plug.
 
 ---
 
-## 🛠️ 1. Daftar Komponen Wiring Resmi yang Telah Divalidasi & Dibeli
+## 1. Daftar Komponen Wiring Resmi yang Telah Divalidasi dan Dibeli
 
 Berdasarkan keputusan final perakitan 3 slot, berikut komponen penyambung yang telah dibeli:
 
@@ -18,12 +18,12 @@ Berdasarkan keputusan final perakitan 3 slot, berikut komponen penyambung yang t
 
 ---
 
-## ⚡ 2. Arsitektur Distribusi Listrik AC 220V (Konvensi Warna Tim RANOVA)
+## 2. Arsitektur Distribusi Listrik AC 220V (Konvensi Warna Tim RANOVA)
 
 Sesuai kabel AWG 16 yang dibeli (Merah dan Putih):
-* 🔴 **Merah:** Fasa (Line / Setrum 220V)
-* ⚪ **Putih:** Netral (Neutral AC)
-* 🟡🟢 **Kuning / Hijau:** Arde (Grounding Pengaman dari kabel steker PLN)
+* **Merah:** Fasa (Line / Setrum 220V)
+* **Putih:** Netral (Neutral AC)
+* **Kuning / Hijau:** Arde (Grounding Pengaman dari kabel steker PLN)
 
 ```text
                                 [ LISTRIK AC 220V PLN ]
@@ -46,7 +46,7 @@ Sesuai kabel AWG 16 yang dibeli (Merah dan Putih):
 ---
 
 ### A. Alokasi Port WAGO AC-Fasa (2 Unit WAGO 5-Lubang):
-> 💡 **Trik Pemisahan Donat CT:** Input Fasa Power Supply diambil **SEBELUM** kabel melewati donat CT PZEM. Dengan cara ini, konsumsi listrik internal mikrokontroler & relay tidak terhitung sebagai beban sewa pengguna.
+> **Catatan Pemisahan Donat CT:** Input Fasa Power Supply diambil **SEBELUM** kabel melewati donat CT PZEM. Dengan cara ini, konsumsi listrik internal mikrokontroler dan relay tidak terhitung sebagai beban sewa pengguna.
 
 #### 1. WAGO AC-FASA 1 (Sebelum Donat CT / Jalur Sumber Utama):
 * **Lubang 1:** Input Kabel Fasa (Coklat) dari Steker Colokan Dinding PLN
@@ -94,22 +94,22 @@ Karena ada 6 perangkat yang membutuhkan Netral AC (1 PLN, 3 Broco, 1 PZEM, 1 PSU
 
 ### D. Jalur Saklar Relay ke Stop Kontak Broco (Langsung Baut-ke-Baut):
 Kabel Fasa terkontrol dari relay mengalirkan listrik saat transaksi sewa aktif:
-* Terminal Baut **`NO` Relay Channel 1** ──► Baut **`L` Stop Kontak Broco 1**
-* Terminal Baut **`NO` Relay Channel 2** ──► Baut **`L` Stop Kontak Broco 2**
-* Terminal Baut **`NO` Relay Channel 3** ──► Baut **`L` Stop Kontak Broco 3**
+* Terminal Baut **`NO` Relay Channel 1** -> Baut **`L` Stop Kontak Broco 1**
+* Terminal Baut **`NO` Relay Channel 2** -> Baut **`L` Stop Kontak Broco 2**
+* Terminal Baut **`NO` Relay Channel 3** -> Baut **`L` Stop Kontak Broco 3**
 
 *(Baut `NC` pada ketiga channel relay dikosongkan).*
 
 ---
 
-## 🔋 3. Arsitektur Distribusi Listrik DC (Output Power Supply 5V & Ground)
+## 3. Arsitektur Distribusi Listrik DC (Output Power Supply 5V dan Ground)
 
 Modul Power Supply 5V internal bertindak sebagai "jantung" penyedia daya seluruh komponen DC mandiri di dalam kotak.
 
 ```text
                          ┌─────────────────────────────┐
                          │   Modul Power Supply 5V     │
-                         │   (AC 220V ➔ DC 5V 2A/3A)   │
+                         │   (AC 220V -> DC 5V 2A/3A)  │
                          └──────────────┬──────────────┘
                                         │
                         ┌───────────────┴───────────────┐
@@ -136,7 +136,7 @@ Modul Power Supply 5V internal bertindak sebagai "jantung" penyedia daya seluruh
 * **Lubang 4:** Pin **`VCC` Modul Relay 4-Channel** *(Daya koil mekanik relay)*
 * **Lubang 5:** Pin **`VCC` Sensor Suhu DHT22**
 
-#### 2. WAGO DC +5V-B (Pusat Suplai Modul Tampilan & Telemetri):
+#### 2. WAGO DC +5V-B (Pusat Suplai Modul Tampilan dan Telemetri):
 * **Lubang 1:** Menerima Kabel Jumper dari WAGO DC +5V-A
 * **Lubang 2:** Pin **`VCC` Layar LCD 16x2 I2C**
 * **Lubang 3:** Pin **`5V` Modul Sensor Daya PZEM-004T**
@@ -147,14 +147,14 @@ Modul Power Supply 5V internal bertindak sebagai "jantung" penyedia daya seluruh
 
 ### B. Alokasi Port WAGO DC Ground (2 Unit WAGO 5-Lubang Dijumper):
 
-#### 1. WAGO DC GND-A (Ground Sensor & Logika):
+#### 1. WAGO DC GND-A (Ground Sensor dan Logika):
 * **Lubang 1:** Input kabel `GND (V-)` dari Output Modul Power Supply
 * **Lubang 2:** Kabel Jumper pendek ke Lubang 1 WAGO DC GND-B
 * **Lubang 3:** Pin **`GND` Board ESP32**
 * **Lubang 4:** Pin **`GND` Sensor Suhu DHT22**
 * **Lubang 5:** Pin **`GND` Layar LCD 16x2 I2C**
 
-#### 2. WAGO DC GND-B (Ground Daya, Relay, & Tombol Panel):
+#### 2. WAGO DC GND-B (Ground Daya, Relay, dan Tombol Panel):
 * **Lubang 1:** Menerima Kabel Jumper dari WAGO DC GND-A
 * **Lubang 2:** Pin **`GND` Modul Relay 4-Channel**
 * **Lubang 3:** Pin **`GND` Modul Sensor Daya PZEM-004T**
@@ -163,7 +163,7 @@ Modul Power Supply 5V internal bertindak sebagai "jantung" penyedia daya seluruh
 
 ---
 
-## 📌 4. Tabel Pemetaan Seluruh Pin GPIO ESP32
+## 4. Tabel Pemetaan Seluruh Pin GPIO ESP32
 
 Semua kabel sinyal modul logika terhubung langsung ke pin ESP32 tanpa melewati WAGO:
 
@@ -189,7 +189,7 @@ Semua kabel sinyal modul logika terhubung langsung ke pin ESP32 tanpa melewati W
 
 ---
 
-## 🪢 5. Panduan Wiring Estafet (Daisy-Chain) 3 Tombol Metal
+## 5. Panduan Wiring Estafet (Daisy-Chain) 3 Tombol Metal
 
 Di balik panel depan tempat 3 tombol terpasang, sambungkan kaki `C` dan `-` secara estafet kabel pendek:
 
@@ -205,17 +205,17 @@ Tombol 2:  Kaki [ - ] ─── (sambung ke) ─── Kaki [ C ]
 Tombol 3:  Kaki [ - ] ─── (sambung ke) ─── Kaki [ C ] ───► 1 KABEL TUNGGAL ke WAGO GND-B (Lubang 4)
 ```
 
-> **Hasil:** Sangat rapi! Hanya ada **1 kabel Ground** yang melintang dari pintu depan box kayu menuju ke WAGO sirkuit belakang.
+> **Hasil:** Sangat rapi. Hanya ada **1 kabel Ground** yang melintang dari pintu depan box kayu menuju ke WAGO sirkuit belakang.
 
 ---
 
-## ⚠️ 6. Peringatan Penting Perakitan & Keamanan
+## 6. Peringatan Penting Perakitan dan Keamanan
 
 1. **Aturan Cincin Donat CT PZEM:**
-   * Hanya **1 kabel Fasa (Coklat)** yang boleh melewati lubang donat CT.
+   * Hanya **1 kabel Fasa (Merah/Coklat)** yang boleh melewati lubang donat CT.
    * **Dilarang keras** memasukkan kabel Fasa dan Netral bersamaan ke dalam donat CT, karena medan magnetnya akan saling meniadakan dan pembacaan arus menjadi 0 Ampere.
 2. **Isolasi Kaki `NC` Tombol Metal:**
    * Kaki `NC` bersebelahan langsung dengan kaki `NO`. Wajib dibungkus dengan selongsong bakar (*heat shrink*) atau isolasi agar tidak menyentuh pin `NO`.
 3. **Pemisahan Jalur AC dan DC:**
-   * Jangan campur kabel AC 220V (NYMHY) dengan kabel jumper DC di dalam satu WAGO yang sama!
+   * Jangan campur kabel AC 220V (NYMHY) dengan kabel jumper DC di dalam satu WAGO yang sama.
    * Rapikan kabel AC di bagian bawah box dan kabel sensor logika DC di bagian atas/tengah untuk meminimalisir interferensi elektromagnetik (*noise*).
