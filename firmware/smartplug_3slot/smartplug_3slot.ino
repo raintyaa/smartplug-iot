@@ -77,8 +77,8 @@ const int PIN_RELAY_SPARE      = 26;            // Relay cadangan (selalu OFF)
 #define QRIS_TIMEOUT_MS      300000   // Timeout menunggu bayar: 5 menit (ms)
 
 // Interval waktu (ms)
-#define INTERVAL_FIREBASE_POLL  2000   // Poll Firebase tiap 2 detik
-#define INTERVAL_TELEMETRY      3000   // Upload PZEM + DHT22 tiap 3 detik
+#define INTERVAL_FIREBASE_POLL  2000   // Poll Firebase saat menunggu bayar (ms)
+#define INTERVAL_TELEMETRY      5000   // Upload PZEM + DHT22 tiap 5 detik
 #define INTERVAL_LCD_REFRESH    500    // Refresh LCD tiap 0.5 detik
 #define INTERVAL_BLINK          400    // Kecepatan kedip LED
 #define INTERVAL_WIFI_CHECK     30000  // Cek WiFi tiap 30 detik
@@ -99,12 +99,55 @@ WiFiClientSecure secureClient;
 enum SlotState { STANDBY, WAITING_PAYMENT, ACTIVE, EMERGENCY_STOP };
 
 struct Slot {
-  SlotState state         = STANDBY;
-  unsigned long waitStart = 0;       // millis() saat mulai menunggu bayar
-  unsigned long activeStart = 0;     // millis() saat relay diaktifkan
-  unsigned long durationSec = 0;     // Durasi sewa dalam detik
+  volatile SlotState state  = STANDBY;
+  unsigned long waitStart   = 0;       // millis() saat mulai menunggu bayar
+  unsigned long activeStart = 0;       // millis() saat relay diaktifkan
+  unsigned long durationSec = 0;       // Durasi sewa dalam detik
 };
 Slot slots[NUM_SLOTS];
+
+// ============================================================
+// HARDWARE INTERRUPT UNTUK TOMBOL (Anti-Miss & Early Stop Seketika)
+// ============================================================
+volatile bool btnTriggered[NUM_SLOTS] = {false, false, false};
+volatile unsigned long lastBtnTime[NUM_SLOTS] = {0, 0, 0};
+bool lastBtnPhysical[NUM_SLOTS] = {HIGH, HIGH, HIGH};
+
+void IRAM_ATTR isrBtn1() {
+  unsigned long now = millis();
+  if (now - lastBtnTime[0] > 200) {
+    lastBtnTime[0] = now;
+    btnTriggered[0] = true;
+    if (slots[0].state == ACTIVE) {
+      digitalWrite(PIN_RELAY[0], HIGH); // Relay OFF seketika (0ms)
+      digitalWrite(PIN_LED[0], LOW);    // LED OFF seketika (0ms)
+    }
+  }
+}
+
+void IRAM_ATTR isrBtn2() {
+  unsigned long now = millis();
+  if (now - lastBtnTime[1] > 200) {
+    lastBtnTime[1] = now;
+    btnTriggered[1] = true;
+    if (slots[1].state == ACTIVE) {
+      digitalWrite(PIN_RELAY[1], HIGH); // Relay OFF seketika (0ms)
+      digitalWrite(PIN_LED[1], LOW);    // LED OFF seketika (0ms)
+    }
+  }
+}
+
+void IRAM_ATTR isrBtn3() {
+  unsigned long now = millis();
+  if (now - lastBtnTime[2] > 200) {
+    lastBtnTime[2] = now;
+    btnTriggered[2] = true;
+    if (slots[2].state == ACTIVE) {
+      digitalWrite(PIN_RELAY[2], HIGH); // Relay OFF seketika (0ms)
+      digitalWrite(PIN_LED[2], LOW);    // LED OFF seketika (0ms)
+    }
+  }
+}
 
 // ============================================================
 // DATA SENSOR TERAKHIR
@@ -171,12 +214,15 @@ void setup() {
   pinMode(PIN_RELAY_SPARE, OUTPUT);
   digitalWrite(PIN_RELAY_SPARE, HIGH);
 
-  // 2. Init Tombol & LED Ring
+  // 2. Init Tombol & LED Ring (dengan Hardware Interrupts)
   for (int i = 0; i < NUM_SLOTS; i++) {
     pinMode(PIN_BTN[i], INPUT_PULLUP);
     pinMode(PIN_LED[i], OUTPUT);
     digitalWrite(PIN_LED[i], LOW);
   }
+  attachInterrupt(digitalPinToInterrupt(PIN_BTN[0]), isrBtn1, FALLING);
+  attachInterrupt(digitalPinToInterrupt(PIN_BTN[1]), isrBtn2, FALLING);
+  attachInterrupt(digitalPinToInterrupt(PIN_BTN[2]), isrBtn3, FALLING);
 
   // 3. Init LCD
   Wire.begin(21, 22);
@@ -228,8 +274,15 @@ void loop() {
     blinkState = !blinkState;
   }
 
-  // 4. Poll status slot dari Firebase (tiap 2 detik)
-  if (now - tFirebasePoll >= INTERVAL_FIREBASE_POLL) {
+  // 4. Poll status slot dari Firebase (adaptif: 2 detik jika waiting payment, 7 detik jika aktif)
+  unsigned long currentPollInterval = 7000;
+  for (int i = 0; i < NUM_SLOTS; i++) {
+    if (slots[i].state == WAITING_PAYMENT) {
+      currentPollInterval = INTERVAL_FIREBASE_POLL;  // 2000 ms
+      break;
+    }
+  }
+  if (now - tFirebasePoll >= currentPollInterval) {
     tFirebasePoll = now;
     pollFirebaseSlots();
   }
@@ -367,126 +420,155 @@ bool fbPatch(const String& path, const String& body) {
 }
 
 // ============================================================
-// Cek Tombol — Deteksi tekan dengan debounce responsif
+// Cek Tombol — Deteksi tekan dengan interrupt & edge detection
 // ============================================================
 void checkButtons() {
   if (isOverheated) return;  // Proteksi: Selama kondisi overheat, tombol fisik dikunci total!
 
   for (int i = 0; i < NUM_SLOTS; i++) {
-    if (digitalRead(PIN_BTN[i]) == LOW) {
-      delay(30);  // Debounce cepat
-      if (digitalRead(PIN_BTN[i]) != LOW) continue;
+    bool raw = digitalRead(PIN_BTN[i]);
+    bool pressEvent = false;
 
-      // --- Aksi berdasarkan state slot saat ini ---
-      if (slots[i].state == STANDBY) {
-        // Mulai proses sewa — respon hardware INSTAN sebelum kirim internet!
-        Serial.printf("\n[BTN %d] Ditekan -> WAITING_PAYMENT\n", i + 1);
-        slots[i].state = WAITING_PAYMENT;
-        slots[i].waitStart = millis();
-
-        // 1. Update fisik (LED mulai kedip, LCD berganti) SEKETIKA (0ms delay)
-        updateHardware();
-        updateLcdDisplay();
-
-        // 2. Kirim update ke Firebase tanpa menimpa slot lain
-        String slotKey = "slot" + String(i + 1);
-        String body = "{\"status\":\"WAITING_PAYMENT\",\"active_duration\":0,\"duration_seconds\":0,\"started_at\":0,\"amount_paid\":0}";
-        fbPut(slotKey, body);
-        fbPut("slots/" + slotKey, body);
-        fbPut("system/active_selection", "{\"slot\":\"" + slotKey + "\",\"status\":\"WAITING_PAYMENT\",\"timestamp\":0}");
-
-        Serial.printf("[FIREBASE] Slot %d -> WAITING_PAYMENT terkirim.\n", i + 1);
+    // Prioritas 1: Flag dari hardware interrupt
+    if (btnTriggered[i]) {
+      btnTriggered[i] = false;
+      pressEvent = true;
+    }
+    // Prioritas 2: Deteksi falling edge langsung (anti-miss)
+    else if (lastBtnPhysical[i] == HIGH && raw == LOW) {
+      delay(20);
+      if (digitalRead(PIN_BTN[i]) == LOW) {
+        pressEvent = true;
       }
-      else if (slots[i].state == WAITING_PAYMENT) {
-        // Tekan lagi saat menunggu → batalkan seleksi
-        Serial.printf("[BTN %d] Batal seleksi.\n", i + 1);
-        setSlotStandby(i);
-      }
-      else if (slots[i].state == ACTIVE) {
-        // Early Stop: matikan sewa lebih awal
-        Serial.printf("[BTN %d] Early Stop oleh pengguna.\n", i + 1);
-        setSlotStandby(i);
-      }
+    }
+    lastBtnPhysical[i] = raw;
 
-      // Tunggu tombol dilepas dengan safety timeout agar loop tidak macet
-      unsigned long tRelease = millis();
-      while (digitalRead(PIN_BTN[i]) == LOW && millis() - tRelease < 800) delay(10);
+    if (!pressEvent) continue;
+
+    // --- Aksi berdasarkan state slot saat ini ---
+    if (slots[i].state == STANDBY) {
+      // Mulai proses sewa — respon hardware INSTAN sebelum kirim internet!
+      Serial.printf("\n[BTN %d] Ditekan -> WAITING_PAYMENT\n", i + 1);
+      slots[i].state = WAITING_PAYMENT;
+      slots[i].waitStart = millis();
+
+      // 1. Update fisik (LED mulai kedip, LCD berganti) SEKETIKA (0ms delay)
+      updateHardware();
+      updateLcdDisplay();
+
+      // 2. Kirim update ke Firebase tanpa menimpa slot lain
+      String slotKey = "slot" + String(i + 1);
+      String body = "{\"status\":\"WAITING_PAYMENT\",\"active_duration\":0,\"duration_seconds\":0,\"started_at\":0,\"amount_paid\":0}";
+      fbPut(slotKey, body);
+      fbPut("slots/" + slotKey, body);
+      fbPut("system/active_selection", "{\"slot\":\"" + slotKey + "\",\"status\":\"WAITING_PAYMENT\",\"timestamp\":0}");
+
+      Serial.printf("[FIREBASE] Slot %d -> WAITING_PAYMENT terkirim.\n", i + 1);
+    }
+    else if (slots[i].state == WAITING_PAYMENT) {
+      // Tekan lagi saat menunggu → batalkan seleksi
+      Serial.printf("[BTN %d] Batal seleksi.\n", i + 1);
+      setSlotStandby(i);
+    }
+    else if (slots[i].state == ACTIVE) {
+      // Early Stop: matikan sewa lebih awal
+      Serial.printf("[BTN %d] Early Stop oleh pengguna.\n", i + 1);
+      setSlotStandby(i);
     }
   }
 }
 
 // ============================================================
-// Poll semua slot dari Firebase
+// Poll semua slot dari Firebase (1 request batch /slots.json)
 // ============================================================
 void pollFirebaseSlots() {
   if (isOverheated) return;  // Proteksi: Selama overheat, jangan terima aktivasi slot baru!
 
+  bool hasWaiting = false;
+  bool hasActive  = false;
   for (int i = 0; i < NUM_SLOTS; i++) {
-    // Hanya poll slot yang sedang menunggu bayar atau aktif
-    if (slots[i].state != WAITING_PAYMENT && slots[i].state != ACTIVE) continue;
+    if (slots[i].state == WAITING_PAYMENT) hasWaiting = true;
+    if (slots[i].state == ACTIVE)          hasActive  = true;
+  }
 
-    String slotKey = "slot" + String(i + 1);
-    const char* status = nullptr;
-    uint32_t durSec = 0;
+  // Jika semua slot STANDBY, hemat jaringan & CPU
+  if (!hasWaiting && !hasActive) return;
 
-    // 1. Cek node root (/slotX) terlebih dahulu
-    String raw = fbGet(slotKey);
-    StaticJsonDocument<256> doc;
-    bool hasDoc = (raw != "null" && raw.length() >= 5 && !deserializeJson(doc, raw) && doc.containsKey("status"));
+  // 1 KALI REQUEST: Ambil seluruh data node /slots (hanya ~200ms)
+  String raw = fbGet("slots");
+  if (raw != "null" && raw.length() >= 10) {
+    StaticJsonDocument<1024> doc;
+    if (!deserializeJson(doc, raw)) {
+      for (int i = 0; i < NUM_SLOTS; i++) {
+        String slotKey = "slot" + String(i + 1);
+        JsonObject sObj = doc[slotKey];
+        if (sObj.isNull()) continue;
 
-    if (hasDoc) {
-      const char* s = doc["status"];
-      if (slots[i].state == WAITING_PAYMENT && s && strcmp(s, "ACTIVE") == 0) {
-        status = "ACTIVE";
-        durSec = doc["duration_seconds"] | doc["active_duration"] | 0;
-      } else if (slots[i].state == ACTIVE && s && strcmp(s, "STANDBY") == 0) {
-        status = "STANDBY";
-      }
-    }
+        const char* status = sObj["status"];
+        if (!status) continue;
 
-    // 2. Jika di node root belum terdeteksi transisi target, cek fallback ke nested (/slots/slotX)
-    if (!status) {
-      String rawNested = fbGet("slots/" + slotKey);
-      StaticJsonDocument<256> docNested;
-      if (rawNested != "null" && rawNested.length() >= 5 && !deserializeJson(docNested, rawNested) && docNested.containsKey("status")) {
-        const char* sNested = docNested["status"];
-        if (slots[i].state == WAITING_PAYMENT && sNested && strcmp(sNested, "ACTIVE") == 0) {
-          status = "ACTIVE";
-          durSec = docNested["duration_seconds"] | docNested["active_duration"] | 0;
-        } else if (slots[i].state == ACTIVE && sNested && strcmp(sNested, "STANDBY") == 0) {
-          status = "STANDBY";
+        uint32_t durSec = sObj["duration_seconds"] | sObj["active_duration"] | 0;
+
+        // Transisi: WAITING_PAYMENT -> ACTIVE (pembayaran berhasil)
+        if (strcmp(status, "ACTIVE") == 0 && slots[i].state != ACTIVE) {
+          slots[i].state = ACTIVE;
+          slots[i].durationSec = durSec > 0 ? durSec : 900;  // default 15 menit
+          slots[i].activeStart = millis();
+
+          // Nyalakan relay & LED
+          digitalWrite(PIN_RELAY[i], LOW);   // Active-LOW: LOW = ON
+          digitalWrite(PIN_LED[i], HIGH);
+
+          // Trigger notifikasi sukses di LCD
+          successSlot = i;
+          tSuccess = millis();
+
+          Serial.println("\n=================================================");
+          Serial.printf("  PEMBAYARAN DITERIMA! RELAY %d AKTIF!\n", i + 1);
+          Serial.printf("  Durasi: %lu detik (%lu menit)\n", slots[i].durationSec, slots[i].durationSec / 60);
+          Serial.println("=================================================");
+        }
+
+        // Transisi: ACTIVE -> STANDBY (dihentikan dari remote dashboard)
+        if (strcmp(status, "STANDBY") == 0 && slots[i].state == ACTIVE) {
+          Serial.printf("[REMOTE] Dashboard mematikan Slot %d.\n", i + 1);
+          setSlotStandby(i);
         }
       }
     }
+  }
 
-    if (!status) continue;
+  // Fallback cadangan khusus slot yang sedang menunggu bayar
+  // Jika webhook Mayar hanya mengupdate root /slotX
+  if (hasWaiting) {
+    for (int i = 0; i < NUM_SLOTS; i++) {
+      if (slots[i].state == WAITING_PAYMENT) {
+        String slotKey = "slot" + String(i + 1);
+        String rawRoot = fbGet(slotKey);
+        if (rawRoot != "null" && rawRoot.length() >= 5) {
+          StaticJsonDocument<256> docRoot;
+          if (!deserializeJson(docRoot, rawRoot)) {
+            const char* st = docRoot["status"];
+            if (st && strcmp(st, "ACTIVE") == 0) {
+              slots[i].state = ACTIVE;
+              uint32_t durSec = docRoot["duration_seconds"] | docRoot["active_duration"] | 0;
+              slots[i].durationSec = durSec > 0 ? durSec : 900;
+              slots[i].activeStart = millis();
 
-    // Transisi: WAITING_PAYMENT -> ACTIVE (pembayaran berhasil)
-    if (strcmp(status, "ACTIVE") == 0 && slots[i].state != ACTIVE) {
-      slots[i].state = ACTIVE;
-      slots[i].durationSec = durSec > 0 ? durSec : 900;  // default 15 menit
-      slots[i].activeStart = millis();
+              digitalWrite(PIN_RELAY[i], LOW);
+              digitalWrite(PIN_LED[i], HIGH);
 
-      // Nyalakan relay & LED
-      digitalWrite(PIN_RELAY[i], LOW);   // Active-LOW: LOW = ON
-      digitalWrite(PIN_LED[i], HIGH);
+              successSlot = i;
+              tSuccess = millis();
 
-      // Trigger notifikasi sukses di LCD
-      successSlot = i;
-      tSuccess = millis();
-
-      Serial.println("\n=================================================");
-      Serial.printf("  PEMBAYARAN DITERIMA! RELAY %d AKTIF!\n", i + 1);
-      Serial.printf("  Durasi: %lu detik (%lu menit)\n", slots[i].durationSec, slots[i].durationSec / 60);
-      Serial.println("=================================================");
-    }
-
-    // Transisi: ACTIVE -> STANDBY (dihentikan dari dashboard)
-    if (strcmp(status, "STANDBY") == 0 && slots[i].state == ACTIVE) {
-      Serial.printf("[REMOTE] Dashboard mematikan Slot %d.\n", i + 1);
-      slots[i].state = STANDBY;
-      digitalWrite(PIN_RELAY[i], HIGH);
-      digitalWrite(PIN_LED[i], LOW);
+              Serial.println("\n=================================================");
+              Serial.printf("  PEMBAYARAN DITERIMA (ROOT)! RELAY %d AKTIF!\n", i + 1);
+              Serial.printf("  Durasi: %lu detik (%lu menit)\n", slots[i].durationSec, slots[i].durationSec / 60);
+              Serial.println("=================================================");
+            }
+          }
+        }
+      }
     }
   }
 }
@@ -743,6 +825,7 @@ void setSlotStandby(int idx) {
   digitalWrite(PIN_RELAY[idx], HIGH);
   digitalWrite(PIN_LED[idx], LOW);
   updateHardware();
+  updateLcdDisplay();
 
   if (WiFi.status() != WL_CONNECTED) return;
 
