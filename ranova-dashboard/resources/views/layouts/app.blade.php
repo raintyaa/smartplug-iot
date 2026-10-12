@@ -62,7 +62,7 @@
 <body class="h-full flex overflow-hidden bg-base text-neutral-200 antialiased selection:bg-mint/30">
 
     <!-- Sidebar Navigation -->
-    <aside class="w-64 bg-surface border-r border-hairline flex flex-col justify-between flex-shrink-0">
+    <aside id="app-sidebar" class="w-64 bg-surface border-r border-hairline flex flex-col justify-between flex-shrink-0 transition-all duration-300 ease-in-out">
         <div>
             <!-- Brand Logo -->
             <div class="h-16 flex items-center px-6 border-b border-hairline space-x-3">
@@ -130,6 +130,9 @@
         <!-- Topbar Header -->
         <header class="h-16 border-b border-hairline bg-surface px-8 flex items-center justify-between flex-shrink-0">
             <div class="flex items-center space-x-3">
+                <button id="sidebar-toggle" class="p-2 mr-2 rounded-lg text-neutral-400 hover:text-white hover:bg-surface2 border border-transparent hover:border-hairline transition focus:outline-none" title="Toggle Sidebar">
+                    <i class="fa-solid fa-bars text-sm"></i>
+                </button>
                 <h1 class="text-2xl font-bold text-white tracking-tight">@yield('page_title', 'Dashboard')</h1>
             </div>
 
@@ -186,6 +189,45 @@
             @yield('content')
         </div>
     </main>
+
+    <script>
+        (function () {
+            var STORAGE_KEY = 'sidebar_collapsed';
+            var sidebar = document.getElementById('app-sidebar');
+            var toggleBtn = document.getElementById('sidebar-toggle');
+
+            function applySidebarState() {
+                if (!sidebar) return;
+                var collapsed = false;
+                try {
+                    collapsed = localStorage.getItem(STORAGE_KEY) === '1';
+                } catch (e) {
+                    collapsed = false;
+                }
+                sidebar.classList.toggle('-ml-64', collapsed);
+            }
+
+            // Apply immediately (before paint) to prevent visual flickering on navigation.
+            applySidebarState();
+
+            document.addEventListener('DOMContentLoaded', function () {
+                sidebar = document.getElementById('app-sidebar');
+                toggleBtn = document.getElementById('sidebar-toggle');
+                applySidebarState();
+
+                if (toggleBtn && sidebar) {
+                    toggleBtn.addEventListener('click', function () {
+                        var isCollapsed = sidebar.classList.toggle('-ml-64');
+                        try {
+                            localStorage.setItem(STORAGE_KEY, isCollapsed ? '1' : '0');
+                        } catch (e) {
+                            /* storage unavailable: keep UI-only toggle */
+                        }
+                    });
+                }
+            });
+        })();
+    </script>
 
     @stack('scripts')
 </body>
