@@ -22,17 +22,18 @@ Dokumen ini memuat aturan operasional, alur transaksi, penanganan tombol, logika
 
 3. **Fitur Penghentian Manual Lebih Awal (*Early Stop / Force Finish*):**
    * Pengguna dapat menekan kembali tombol slot yang sedang `ACTIVE` jika selesai mengecas sebelum waktu habis.
-   * **Respons Fisik Instan (0 ms Delay via Hardware Interrupts):**
-     * Menggunakan `attachInterrupt` ESP32 (mode `FALLING`) pada pin tombol GPIO 27, 14, 12.
-     * Begitu tombol ditekan, relay beban dan lampu LED **langsung mati seketika** di level hardware tanpa menunggu respons internet.
-   * **Konsekuensi:** Sisa waktu langsung **hangus (dihapus)** dan status slot langsung diperbarui ke `STANDBY` di Firebase.
+   * **Respons Fisik Cepat & Kebal Gangguan EMI (50ms Software Debounce):**
+     * Membaca pin tombol GPIO 27, 14, 12 menggunakan *edge detection* digital dengan debounce software 50 ms. Pendekatan ini menggantikan interrupt hardware untuk mengeliminasi pemicu palsu akibat *switching transient* / EMI AC 220V.
+     * Begitu tombol ditekan stabil, relay beban dan lampu LED **langsung mati seketika** di level hardware tanpa menunggu respons internet.
+   * **Konsekuensi:** Sisa waktu langsung **hangus (dihapus)** dan status slot langsung diperbarui ke `STANDBY` di broker MQTT dan Firebase RTDB.
    * **Proteksi Edge-Detection:** Filter transisi digital mencegah *holding re-trigger* (menahan tombol tidak akan memicu sesi sewa baru tanpa sengaja).
 
 ---
 
-## 2. Logika Tampilan Display (LCD 16x2 I2C)
+## 2. Logika Tampilan Display (LCD 20x4 I2C via FreeRTOS Core 0)
 
-Layar LCD dirancang dengan sistem prioritas bertingkat (*Priority-Based State Machine*):
+Layar LCD 20x4 I2C diisolasi pada **Core 0 FreeRTOS** (`TaskLCD`, frekuensi refresh 250 ms) agar operasi I2C tidak memblokir komunikasi MQTT, loop sensor PZEM, dan pembacaan tombol pada Core 1.
+Layar dirancang dengan sistem prioritas bertingkat (*Priority-Based State Machine*):
 
 1. **State 1: Kondisi Standby (Seluruh Slot Menganggur)**
    * Menampilkan pesan ramah pengguna:
