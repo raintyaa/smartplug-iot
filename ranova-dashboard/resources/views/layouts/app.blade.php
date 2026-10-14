@@ -254,7 +254,7 @@
             function updateGlobalSync() {
                 if (window.hasCustomDashboardLoop) return;
 
-                fetch("{{ route('api.realtime') }}")
+                fetch("{{ route('dashboard.realtime') }}")
                     .then(function(res) { return res.json(); })
                     .then(function(data) {
                         var now = new Date();
