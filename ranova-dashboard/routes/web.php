@@ -26,6 +26,7 @@ Route::middleware('auth')->group(function () {
     // Dashboard Utama
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/realtime', [DashboardController::class, 'apiRealtime'])->name('dashboard.realtime');
+    Route::post('/dashboard/slots/{slot}/start', [DashboardController::class, 'manualStartSlot'])->name('dashboard.slots.start');
     Route::post('/dashboard/slots/{slot}/stop', [DashboardController::class, 'forceStopSlot'])->name('dashboard.slots.stop');
     Route::post('/dashboard/emergency-stop', [DashboardController::class, 'emergencyStop'])->name('dashboard.emergency_stop');
 

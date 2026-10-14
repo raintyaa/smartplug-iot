@@ -103,6 +103,30 @@ class DashboardController extends Controller
     }
 
     /**
+     * Tindakan manual aktivasi slot oleh operator (Bypass Bayar & Mode Kontinu)
+     */
+    public function manualStartSlot(Request $request, int $slotNumber)
+    {
+        $success = $this->firebase->manualStartSlot($slotNumber);
+
+        // Buat record audit transaksi bypass
+        Transaction::create([
+            'slot_number' => $slotNumber,
+            'nominal_paid' => 0,
+            'duration_seconds' => 0,
+            'status' => 'active',
+            'payment_reference' => 'ADMIN-MANUAL-' . strtoupper(uniqid()),
+            'customer_name' => 'Operator / Admin',
+            'started_at' => now(),
+        ]);
+
+        if ($success) {
+            return back()->with('success', "Slot {$slotNumber} berhasil DINYALAKAN (Mode Kontinu / Tanpa Batas Waktu).");
+        }
+        return back()->with('error', "Gagal menghubungi Firebase untuk menyalakan Slot {$slotNumber}.");
+    }
+
+    /**
      * Tindakan manual stop slot oleh operator
      */
     public function forceStopSlot(Request $request, int $slotNumber)

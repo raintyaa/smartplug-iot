@@ -87,8 +87,17 @@
                     <!-- Center Countdown Display -->
                     <div class="my-3 text-center">
                         <p class="font-mono text-[11px] font-medium uppercase tracking-widest text-neutral-300">Sisa Waktu Sewa</p>
+                        @php
+                            $activeDur = (int) ($slot['active_duration'] ?? $slot['duration_seconds'] ?? 0);
+                        @endphp
                         <p class="mt-1 font-mono text-4xl font-bold tracking-tight text-neutral-300" id="countdown-slot-{{ $i }}">
-                            {{ $status === 'ACTIVE' ? '14:59' : ($status === 'WAITING_PAYMENT' ? 'SCAN QR' : '00:00') }}
+                            @if ($status === 'ACTIVE')
+                                {{ $activeDur == 0 ? 'MANUAL ON' : '14:59' }}
+                            @elseif ($status === 'WAITING_PAYMENT')
+                                SCAN QR
+                            @else
+                                00:00
+                            @endif
                         </p>
                         <!-- Indikator Beban Listrik (Idle / Terhubung) -->
                         <div id="load-status-slot-{{ $i }}" class="mt-2 min-h-[24px]">
@@ -114,26 +123,66 @@
                         <div class="flex items-center justify-between">
                             <span class="text-neutral-300">Durasi</span>
                             <span class="font-mono text-white font-medium" id="duration-slot-{{ $i }}">
-                                {{ $status === 'ACTIVE' ? round(($slot['active_duration'] ?? 0) / 60) . ' Menit' : ($status === 'WAITING_PAYMENT' ? 'Menunggu' : 'Standby') }}
+                                @if ($status === 'ACTIVE')
+                                    {{ $activeDur == 0 ? 'Kontinu (Tanpa Batas)' : round($activeDur / 60) . ' Menit' }}
+                                @elseif ($status === 'WAITING_PAYMENT')
+                                    Menunggu
+                                @else
+                                    Standby
+                                @endif
                             </span>
                         </div>
                         <div class="flex items-center justify-between">
                             <span class="text-neutral-300">Dibayar</span>
                             <span class="font-mono text-white font-medium" id="paid-slot-{{ $i }}">
-                                {{ $status === 'ACTIVE' ? 'Rp ' . (isset($slot['nominal_paid']) ? number_format($slot['nominal_paid'], 0, ',', '.') : '1.000') : ($status === 'WAITING_PAYMENT' ? 'Menunggu' : 'Rp 0') }}
+                                @if ($status === 'ACTIVE')
+                                    {{ $activeDur == 0 ? 'Bypass (Rp 0)' : 'Rp ' . (isset($slot['nominal_paid']) ? number_format($slot['nominal_paid'], 0, ',', '.') : '1.000') }}
+                                @elseif ($status === 'WAITING_PAYMENT')
+                                    Menunggu
+                                @else
+                                    Rp 0
+                                @endif
                             </span>
                         </div>
                     </div>
 
-                    <!-- Action Button: Matikan Manual -->
-                    <div class="mt-4">
-                        <form action="{{ route('dashboard.slots.stop', $i) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin mematikan Slot {{ $i }}?')">
-                            @csrf
-                            <button type="submit" id="btn-stop-slot-{{ $i }}" {{ $status === 'STANDBY' ? 'disabled' : '' }}
-                                class="w-full text-xs font-semibold py-2 rounded-lg transition-colors {{ $status === 'ACTIVE' ? 'bg-crimson/10 border border-crimson/30 text-crimson hover:bg-crimson/20' : ($status === 'WAITING_PAYMENT' ? 'bg-surface2 border border-hairline text-neutral-300 hover:bg-white/[0.04]' : 'bg-surface2/60 text-neutral-300/80 border border-hairline/80 cursor-not-allowed') }}">
-                                Matikan Manual
-                            </button>
-                        </form>
+                    <!-- Action Buttons: Kontrol Admin (Nyalakan Manual / Matikan) -->
+                    <div class="mt-4" id="slot-actions-{{ $i }}">
+                        @if ($status === 'ACTIVE')
+                            <form action="{{ route('dashboard.slots.stop', $i) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin mematikan Slot {{ $i }}?')">
+                                @csrf
+                                <button type="submit" id="btn-action-slot-{{ $i }}"
+                                    class="w-full text-xs font-semibold py-2 rounded-lg bg-crimson/15 border border-crimson/40 text-crimson hover:bg-crimson/25 flex items-center justify-center space-x-1.5 transition-colors">
+                                    <i class="fa-solid fa-power-off"></i>
+                                    <span>Matikan Manual</span>
+                                </button>
+                            </form>
+                        @elseif ($status === 'WAITING_PAYMENT')
+                            <div class="grid grid-cols-2 gap-2">
+                                <form action="{{ route('dashboard.slots.stop', $i) }}" method="POST" onsubmit="return confirm('Batalkan sesi scan QR Slot {{ $i }}?')">
+                                    @csrf
+                                    <button type="submit" class="w-full text-xs font-semibold py-2 rounded-lg bg-surface2 border border-hairline text-neutral-300 hover:bg-white/[0.04] transition-colors">
+                                        Batal
+                                    </button>
+                                </form>
+                                <form action="{{ route('dashboard.slots.start', $i) }}" method="POST" onsubmit="return confirm('Bypass bayar & nyalakan Slot {{ $i }} tanpa batas durasi?')">
+                                    @csrf
+                                    <button type="submit" class="w-full text-xs font-semibold py-2 rounded-lg bg-mint/15 border border-mint/40 text-mint hover:bg-mint/25 transition-colors flex items-center justify-center space-x-1">
+                                        <i class="fa-solid fa-bolt"></i>
+                                        <span>Bypass ON</span>
+                                    </button>
+                                </form>
+                            </div>
+                        @else
+                            <form action="{{ route('dashboard.slots.start', $i) }}" method="POST" onsubmit="return confirm('Nyalakan Slot {{ $i }} secara manual tanpa bayar (Mode Kontinu / Tanpa Batas Waktu)?')">
+                                @csrf
+                                <button type="submit" id="btn-action-slot-{{ $i }}"
+                                    class="w-full text-xs font-semibold py-2 rounded-lg bg-mint/15 border border-mint/40 text-mint hover:bg-mint/25 flex items-center justify-center space-x-1.5 transition-colors">
+                                    <i class="fa-solid fa-bolt"></i>
+                                    <span>Nyalakan Manual (Bypass)</span>
+                                </button>
+                            </form>
+                        @endif
                     </div>
                 </div>
             @endfor
@@ -203,6 +252,7 @@
     window.hasCustomDashboardLoop = true;
     // Polling Realtime Engine (setiap 2 detik sinkron dengan Firebase & Database)
     const OVERHEAT_LIMIT = {{ $overheatThreshold }};
+    const CSRF_TOKEN = '{{ csrf_token() }}';
     const ESP32_OFFLINE_THRESHOLD_MS = 10000; // 10 detik tanpa update = offline
 
     // Menyimpan Unix timestamp (seconds) dari updated_at terakhir yang diterima
@@ -268,8 +318,8 @@
                     const duration = document.getElementById('duration-slot-' + i);
                     const paid = document.getElementById('paid-slot-' + i);
                     const card = document.getElementById('card-slot-' + i);
-                    const btnStop = document.getElementById('btn-stop-slot-' + i);
                     const loadStatusEl = document.getElementById('load-status-slot-' + i);
+                    const actionsEl = document.getElementById('slot-actions-' + i);
 
                     if (!card) continue;
 
@@ -278,8 +328,20 @@
                         badge.className = 'font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-mint/10 border border-mint/25 text-mint uppercase tracking-wide';
                         badge.innerText = 'AKTIF';
                         card.className = 'rounded-xl bg-surface2 border border-mint/40 p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300';
-                        btnStop.disabled = false;
-                        btnStop.className = 'w-full text-xs font-semibold py-2 rounded-lg bg-crimson/10 border border-crimson/30 text-crimson hover:bg-crimson/20 transition-colors';
+
+                        // Tombol Aksi Admin: Matikan Manual
+                        if (actionsEl) {
+                            actionsEl.innerHTML = `
+                                <form action="/dashboard/slots/${i}/stop" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin mematikan Slot ${i}?')">
+                                    <input type="hidden" name="_token" value="${CSRF_TOKEN}">
+                                    <button type="submit" id="btn-action-slot-${i}"
+                                        class="w-full text-xs font-semibold py-2 rounded-lg bg-crimson/15 border border-crimson/40 text-crimson hover:bg-crimson/25 flex items-center justify-center space-x-1.5 transition-colors">
+                                        <i class="fa-solid fa-power-off"></i>
+                                        <span>Matikan Manual</span>
+                                    </button>
+                                </form>
+                            `;
+                        }
 
                         // Indikator Status Beban Listrik (Idle vs Ada Beban)
                         if (loadStatusEl) {
@@ -306,42 +368,80 @@
                             }
                         }
 
-                        // Hitung Countdown
+                        // Hitung Countdown atau Mode Kontinu
                         const startedAt = parseInt(slot.started_at) || 0;
                         const durationSec = parseInt(slot.active_duration) || 0;
                         const nowSec = Math.floor(Date.now() / 1000);
                         const elapsed = nowSec - startedAt;
-                        const remaining = Math.max(0, durationSec - elapsed);
 
-                        const m = Math.floor(remaining / 60).toString().padStart(2, '0');
-                        const s = (remaining % 60).toString().padStart(2, '0');
-                        countdown.innerText = `${m}:${s}`;
-                        countdown.className = 'mt-1 font-mono text-4xl font-bold tracking-tight text-mint';
-
-                        duration.innerText = Math.round(durationSec / 60) + ' Menit';
-                        paid.innerText = 'Rp ' + (slot.nominal_paid ? Number(slot.nominal_paid).toLocaleString('id-ID') : '1.000');
+                        if (durationSec === 0) {
+                            // Mode Manual Kontinu (Tanpa Batas Durasi)
+                            countdown.innerText = 'MANUAL ON';
+                            countdown.className = 'mt-1 font-mono text-3xl font-bold tracking-tight text-amber animate-pulse';
+                            duration.innerText = 'Kontinu (Tanpa Batas)';
+                            paid.innerText = 'Bypass (Rp 0)';
+                        } else {
+                            const remaining = Math.max(0, durationSec - elapsed);
+                            const m = Math.floor(remaining / 60).toString().padStart(2, '0');
+                            const s = (remaining % 60).toString().padStart(2, '0');
+                            countdown.innerText = `${m}:${s}`;
+                            countdown.className = 'mt-1 font-mono text-4xl font-bold tracking-tight text-mint';
+                            duration.innerText = Math.round(durationSec / 60) + ' Menit';
+                            paid.innerText = 'Rp ' + (slot.nominal_paid ? Number(slot.nominal_paid).toLocaleString('id-ID') : '1.000');
+                        }
                     } else if (status === 'WAITING_PAYMENT') {
                         if (loadStatusEl) loadStatusEl.innerHTML = '';
                         badge.className = 'pulse-amber font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-amber/10 border border-amber/25 text-amber uppercase tracking-wide';
                         badge.innerText = 'MENUNGGU BAYAR';
                         card.className = 'rounded-xl bg-surface border border-amber/30 p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300';
-                        btnStop.disabled = false;
-                        btnStop.className = 'w-full text-xs font-semibold py-2 rounded-lg bg-surface2 border border-hairline text-neutral-200 hover:bg-white/[0.04] transition-colors';
                         countdown.innerText = 'SCAN QR';
                         countdown.className = 'mt-1 font-mono text-4xl font-bold tracking-tight text-amber';
                         duration.innerText = 'Menunggu';
                         paid.innerText = 'Menunggu';
+
+                        // Tombol Batal & Bypass ON
+                        if (actionsEl) {
+                            actionsEl.innerHTML = `
+                                <div class="grid grid-cols-2 gap-2">
+                                    <form action="/dashboard/slots/${i}/stop" method="POST" onsubmit="return confirm('Batalkan sesi scan QR Slot ${i}?')">
+                                        <input type="hidden" name="_token" value="${CSRF_TOKEN}">
+                                        <button type="submit" class="w-full text-xs font-semibold py-2 rounded-lg bg-surface2 border border-hairline text-neutral-300 hover:bg-white/[0.04] transition-colors">
+                                            Batal
+                                        </button>
+                                    </form>
+                                    <form action="/dashboard/slots/${i}/start" method="POST" onsubmit="return confirm('Bypass bayar & nyalakan Slot ${i} tanpa batas durasi?')">
+                                        <input type="hidden" name="_token" value="${CSRF_TOKEN}">
+                                        <button type="submit" class="w-full text-xs font-semibold py-2 rounded-lg bg-mint/15 border border-mint/40 text-mint hover:bg-mint/25 transition-colors flex items-center justify-center space-x-1">
+                                            <i class="fa-solid fa-bolt"></i>
+                                            <span>Bypass ON</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            `;
+                        }
                     } else {
                         if (loadStatusEl) loadStatusEl.innerHTML = '';
                         badge.className = 'font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-surface2 border border-hairline text-neutral-300 uppercase tracking-wide';
                         badge.innerText = 'SIAP';
                         card.className = 'rounded-xl bg-surface border border-hairline p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300';
-                        btnStop.disabled = true;
-                        btnStop.className = 'w-full text-xs font-semibold py-2 rounded-lg bg-surface2/60 text-neutral-300/80 border border-hairline/80 cursor-not-allowed';
                         countdown.innerText = '00:00';
                         countdown.className = 'mt-1 font-mono text-4xl font-bold tracking-tight text-neutral-300';
                         duration.innerText = 'Standby';
                         paid.innerText = 'Rp 0';
+
+                        // Tombol Nyalakan Manual (Bypass Bayar)
+                        if (actionsEl) {
+                            actionsEl.innerHTML = `
+                                <form action="/dashboard/slots/${i}/start" method="POST" onsubmit="return confirm('Nyalakan Slot ${i} secara manual tanpa bayar (Mode Kontinu / Tanpa Batas Waktu)?')">
+                                    <input type="hidden" name="_token" value="${CSRF_TOKEN}">
+                                    <button type="submit" id="btn-action-slot-${i}"
+                                        class="w-full text-xs font-semibold py-2 rounded-lg bg-mint/15 border border-mint/40 text-mint hover:bg-mint/25 flex items-center justify-center space-x-1.5 transition-colors">
+                                        <i class="fa-solid fa-bolt"></i>
+                                        <span>Nyalakan Manual (Bypass)</span>
+                                    </button>
+                                </form>
+                            `;
+                        }
                     }
                 }
 

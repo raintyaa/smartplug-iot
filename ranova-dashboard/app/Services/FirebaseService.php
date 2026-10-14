@@ -103,6 +103,25 @@ class FirebaseService
     }
 
     /**
+     * Aktivasi manual stop kontak oleh Admin (Tanpa bayar & Tanpa batas waktu / Kontinu)
+     */
+    public function manualStartSlot(int $slotNumber): bool
+    {
+        $now = now()->timestamp;
+        return $this->updateSlot($slotNumber, [
+            'status' => 'ACTIVE',
+            'active_duration' => 0,     // 0 = Mode tanpa batas waktu (kontinu sampai dimatikan manual)
+            'duration_seconds' => 0,    // 0 = Mode tanpa batas waktu
+            'started_at' => $now,
+            'nominal_paid' => 0,
+            'amount_paid' => 0,
+            'activated_at' => $now,
+            'expires_at' => 0,          // Tidak kedaluwarsa otomatis
+            'mode' => 'MANUAL_OVERRIDE',
+        ]);
+    }
+
+    /**
      * Force Stop slot (matikan sewa lebih awal oleh admin)
      */
     public function forceStopSlot(int $slotNumber): bool

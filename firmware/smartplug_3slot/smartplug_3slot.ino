@@ -1,37 +1,14 @@
 // ============================================================
 // SMART PLUG 3-Slot — Firmware Final (Production)
-// ESP32 + Firebase RTDB + PZEM-004T + DHT22 + LCD I2C + 3 Relay
-// ============================================================
-//
-// PIN GPIO MAP:
-//  ┌─────────────────────────────────────────────────────────┐
-//  │ Tombol (INPUT_PULLUP)   : BTN1=27, BTN2=14, BTN3=12   │
-//  │ LED Ring (OUTPUT)       : LED1=32, LED2=33, LED3=25    │
-//  │ Relay 4-Ch (Active-LOW) : IN1=23, IN2=19, IN3=18      │
-//  │                           IN4=26 (spare, selalu OFF)   │
-//  │ LCD I2C 16x2            : SDA=21, SCL=22, Addr=0x27   │
-//  │ DHT22                   : DATA=GPIO4                   │
-//  │ PZEM-004T (UART2)       : RX2=GPIO16, TX2=GPIO17      │
-//  └─────────────────────────────────────────────────────────┘
-//
-// Alur Kerja Per Slot:
-//  STANDBY → [Tombol Ditekan] → WAITING_PAYMENT
-//          → [QRIS Dibayar via Webhook Mayar] → ACTIVE (relay ON, countdown)
-//          → [Countdown Habis / Force Stop Dashboard] → STANDBY
-//
-// Firebase RTDB Structure (Dual-Node Kompatibilitas):
-//  /slots/slotX   { status, duration_seconds, amount_paid, activated_at, expires_at }
-//  /slotX         { status, active_duration, started_at, nominal_paid }
-//  /system/active_selection  { slot, status, timestamp }
-//  /sensors       { voltage, current, power, energy, temperature, humidity, updated_at }
-//  /config/pricing { base_price, base_duration_seconds }
-//
-// Libraries (Install via Arduino IDE Library Manager):
-//  - ArduinoJson (Benoit Blanchon) v6.x
-//  - LiquidCrystal I2C (Frank de Brabander)
-//  - DHT sensor library (Adafruit)
-//  - Adafruit Unified Sensor
-//  - PZEM-004T-v30 (Jakub Mandula)
+// Dual-Run: Firebase RTDB + EMQX Cloud MQTTS (TLS Port 8883)
+// Fitur:
+// - 3 Slot Broco Relay (Active-LOW) & Metal Buttons (50ms Debounce)
+// - Sensor PZEM-004T v3.0 (UART2 RX16/TX17) & DHT22 (GPIO 4)
+// - LCD 16x2 I2C (0x27)
+// - Proteksi Termal Histeresis (Overheat >= 50°C, Resume < 40°C)
+// - Mode Sewa Otomatis (Durasi Countdown via Webhook Mayar)
+// - Mode Admin Bypass Kontinu (Nyalakan Manual tanpa batas waktu)
+// - Streaming Telemetri Realtime MQTTS ke EMQX Cloud
 // ============================================================
 
 #include <WiFi.h>
@@ -43,16 +20,31 @@
 #include <LiquidCrystal_I2C.h>
 #include <DHT.h>
 #include <PZEM004Tv30.h>
+#include <PubSubClient.h>
 
 // ============================================================
-// KONFIGURASI — WiFi & Firebase
+// 1. KONFIGURASI WIFI & FIREBASE
 // ============================================================
-const char* WIFI_SSID     = "hujan";          // Nama WiFi / Hotspot HP
-const char* WIFI_PASSWORD = "02082006";       // Password WiFi
+const char* WIFI_SSID     = "hujan";
+const char* WIFI_PASSWORD = "02082006";
 const char* FIREBASE_HOST = "https://smartplug-4442d-default-rtdb.asia-southeast1.firebasedatabase.app";
 
 // ============================================================
-// PIN HARDWARE
+// 2. KONFIGURASI MQTT (EMQX Cloud Serverless)
+// ============================================================
+#define ENABLE_MQTT          true
+const char* MQTT_BROKER      = "o2f6eb8b.ala.asia-southeast1.emqxsl.com";
+const int   MQTT_PORT        = 8883;             // MQTTS TLS/SSL
+const char* MQTT_USER        = "ranova_esp32";
+const char* MQTT_PASSWORD    = "02082006";       // Password autentikasi EMQX
+const char* MQTT_CLIENT_ID   = "ranova-esp32-node1";
+
+const char* TOPIC_TELEMETRY  = "ranova/device_001/telemetry";
+const char* TOPIC_COMMAND    = "ranova/device_001/command";
+const char* TOPIC_STATUS     = "ranova/device_001/status";
+
+// ============================================================
+// 3. PIN HARDWARE
 // ============================================================
 #define NUM_SLOTS 3
 
@@ -70,54 +62,48 @@ const int PIN_RELAY_SPARE      = 26;            // Relay cadangan (selalu OFF)
 #define LCD_ROWS   2
 
 // ============================================================
-// PARAMETER OPERASI
+// 4. PARAMETER OPERASI
 // ============================================================
-#define OVERHEAT_LIMIT_C     50.0     // Batas suhu darurat (°C) — Matikan semua relay
-#define OVERHEAT_SAFE_C      40.0     // Batas suhu pemulihan histeresis (°C) — Kembali ke STANDBY
-#define QRIS_TIMEOUT_MS      300000   // Timeout menunggu bayar: 5 menit (ms)
+#define OVERHEAT_LIMIT_C     50.0     // Suhu kritis pemutus darurat (°C)
+#define OVERHEAT_SAFE_C      40.0     // Suhu pemulihan histeresis (°C)
+#define QRIS_TIMEOUT_MS      300000   // Timeout bayar: 5 menit (300.000 ms)
 
-// Interval waktu (ms)
-#define INTERVAL_FIREBASE_POLL  2000   // Poll Firebase saat menunggu bayar (ms)
-#define INTERVAL_TELEMETRY      5000   // Upload PZEM + DHT22 tiap 5 detik
-#define INTERVAL_LCD_REFRESH    500    // Refresh LCD tiap 0.5 detik
-#define INTERVAL_BLINK          400    // Kecepatan kedip LED
-#define INTERVAL_WIFI_CHECK     30000  // Cek WiFi tiap 30 detik
-#define INTERVAL_LCD_ROTATE     3000   // Rotasi tampilan multi-slot tiap 3 detik
-#define INTERVAL_DHT_READ       1500   // Sampling DHT22 tiap 1.5 detik
+#define INTERVAL_FIREBASE_POLL  2000  // Polling Firebase saat menunggu bayar
+#define INTERVAL_TELEMETRY      5000  // Upload PZEM + DHT22 tiap 5 detik
+#define INTERVAL_LCD_REFRESH    500   // Refresh LCD tiap 0.5 detik
+#define INTERVAL_BLINK          400   // Kecepatan kedip LED saat menunggu bayar
+#define INTERVAL_WIFI_CHECK     30000 // Cek koneksi WiFi tiap 30 detik
+#define INTERVAL_DHT_READ       1500  // Sampling DHT22 tiap 1.5 detik
+#define DEBOUNCE_DELAY_MS       50    // Debounce tombol fisik software 50ms
 
 // ============================================================
-// OBJEK GLOBAL
+// 5. OBJEK GLOBAL
 // ============================================================
 LiquidCrystal_I2C lcd(LCD_ADDR, LCD_COLS, LCD_ROWS);
 DHT dht(PIN_DHT, DHTTYPE);
 PZEM004Tv30 pzem(Serial2, PZEM_RX, PZEM_TX);
 WiFiClientSecure secureClient;
 
-// ============================================================
-// STATE MACHINE PER SLOT
-// ============================================================
+#if ENABLE_MQTT
+WiFiClientSecure mqttNetClient;
+PubSubClient mqttClient(mqttNetClient);
+unsigned long lastMqttReconnect = 0;
+#endif
+
 enum SlotState { STANDBY, WAITING_PAYMENT, ACTIVE, EMERGENCY_STOP };
 
 struct Slot {
   volatile SlotState state  = STANDBY;
-  unsigned long waitStart   = 0;       // millis() saat mulai menunggu bayar
-  unsigned long activeStart = 0;       // millis() saat relay diaktifkan
-  unsigned long durationSec = 0;       // Durasi sewa dalam detik
+  unsigned long waitStart   = 0;
+  unsigned long activeStart = 0;
+  unsigned long durationSec = 0; // 0 = Mode manual tanpa batas waktu (kontinu)
 };
 Slot slots[NUM_SLOTS];
 
-// ============================================================
-// ============================================================
-// DEBOUNCE FILTER TOMBOL (Anti-Noise EMI 220V AC & Inductive Glitch)
-// ============================================================
 unsigned long lastBtnDebounceTime[NUM_SLOTS] = {0, 0, 0};
 bool lastBtnPhysical[NUM_SLOTS]              = {HIGH, HIGH, HIGH};
 bool btnState[NUM_SLOTS]                     = {HIGH, HIGH, HIGH};
-#define DEBOUNCE_DELAY_MS 50 // Validasi 50ms untuk menolak lonjakan listrik / noise induktif (<1ms)
 
-// ============================================================
-// DATA SENSOR TERAKHIR
-// ============================================================
 float sensorVoltage = 0.0;
 float sensorCurrent = 0.0;
 float sensorPower   = 0.0;
@@ -125,28 +111,20 @@ float sensorEnergy  = 0.0;
 float sensorTemp    = 0.0;
 float sensorHumid   = 0.0;
 
-// ============================================================
-// TIMING & UI
-// ============================================================
 unsigned long tFirebasePoll = 0;
 unsigned long tTelemetry    = 0;
 unsigned long tLcdRefresh   = 0;
 unsigned long tBlink        = 0;
 unsigned long tWifiCheck    = 0;
-unsigned long tLcdRotate    = 0;
 unsigned long tDhtRead      = 0;
 bool blinkState             = false;
 bool isOverheated           = false;
-int  lcdRotateIdx           = 0;
 
-// Notifikasi sukses bayar di LCD
-int      successSlot = -1;
-unsigned long tSuccess = 0;
-#define SUCCESS_DISPLAY_MS  4000  // Tampilkan "BAYAR BERHASIL" 4 detik
+int           successSlot = -1;
+unsigned long tSuccess    = 0;
+#define SUCCESS_DISPLAY_MS 3500
 
-// ============================================================
-// DEKLARASI FUNGSI
-// ============================================================
+// Deklarasi Fungsi
 void connectWiFi();
 void checkWiFi();
 void checkButtons();
@@ -157,37 +135,42 @@ void updateLcdDisplay();
 void updateTelemetry();
 void handleOverheat();
 void setSlotStandby(int idx);
+void publishSlotState(int idx);
 String fbGet(const String& path);
 bool fbPut(const String& path, const String& body);
 bool fbPatch(const String& path, const String& body);
 
+#if ENABLE_MQTT
+void mqttCallback(char* topic, byte* payload, unsigned int length);
+#endif
+
 // ============================================================
-// SETUP
+// 6. SETUP
 // ============================================================
 void setup() {
   Serial.begin(115200);
   delay(500);
 
   Serial.println("\n==============================================");
-  Serial.println("  SMART PLUG 3-Slot — Firmware Final v1.0");
+  Serial.println("  RANOVA Smart Plug 3-Slot — Hybrid MQTT v2.0 ");
   Serial.println("==============================================");
 
-  // 1. Init Relay (4 channel) — SEMUA OFF saat boot
+  // Inisialisasi Relay (Active-LOW, Default OFF = HIGH)
   for (int i = 0; i < NUM_SLOTS; i++) {
     pinMode(PIN_RELAY[i], OUTPUT);
-    digitalWrite(PIN_RELAY[i], HIGH);  // Active-LOW: HIGH = OFF
+    digitalWrite(PIN_RELAY[i], HIGH);
   }
   pinMode(PIN_RELAY_SPARE, OUTPUT);
   digitalWrite(PIN_RELAY_SPARE, HIGH);
 
-  // 2. Init Tombol & LED Ring (Input Pullup & Low Output)
+  // Inisialisasi Tombol & LED Ring
   for (int i = 0; i < NUM_SLOTS; i++) {
     pinMode(PIN_BTN[i], INPUT_PULLUP);
     pinMode(PIN_LED[i], OUTPUT);
     digitalWrite(PIN_LED[i], LOW);
   }
 
-  // 3. Init LCD
+  // Inisialisasi LCD
   Wire.begin(21, 22);
   lcd.init();
   lcd.backlight();
@@ -195,23 +178,28 @@ void setup() {
   lcd.setCursor(0, 0); lcd.print("  SMART  PLUG   ");
   lcd.setCursor(0, 1); lcd.print("  Memulai...    ");
 
-  // 4. Init Sensor
+  // Inisialisasi Sensor
   dht.begin();
   Serial2.begin(9600, SERIAL_8N1, PZEM_RX, PZEM_TX);
   Serial.println("[INIT] DHT22 GPIO4 | PZEM Serial2 RX16/TX17");
 
-  // 5. SSL bypass (dev mode)
+  // Konfigurasi TLS Client
   secureClient.setInsecure();
 
-  // 6. Koneksi WiFi
+#if ENABLE_MQTT
+  mqttNetClient.setInsecure();
+  mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
+  mqttClient.setCallback(mqttCallback);
+  mqttClient.setBufferSize(512); // Buffer lega untuk JSON telemetri
+#endif
+
   connectWiFi();
 
-  // 7. Reset semua slot di Firebase ke STANDBY
+  // Reset seluruh slot ke STANDBY
   for (int i = 0; i < NUM_SLOTS; i++) {
     setSlotStandby(i);
   }
 
-  // 8. Tampilan siap
   lcd.clear();
   lcd.setCursor(0, 0); lcd.print("  SMART  PLUG   ");
   lcd.setCursor(0, 1); lcd.print(" Tekan Tombol...");
@@ -220,28 +208,28 @@ void setup() {
 }
 
 // ============================================================
-// LOOP UTAMA
+// 7. LOOP UTAMA
 // ============================================================
 void loop() {
   unsigned long now = millis();
 
-  // 1. Proteksi overheat (DHT22)
+  // 1. Proteksi Overheat (Prioritas 0)
   handleOverheat();
 
-  // 2. Cek tombol fisik (setiap loop — responsif)
+  // 2. Pembacaan Tombol Fisik (Debounced 50ms)
   checkButtons();
 
-  // 3. LED berkedip untuk slot WAITING_PAYMENT
+  // 3. Kedip LED Ring saat WAITING_PAYMENT
   if (now - tBlink >= INTERVAL_BLINK) {
     tBlink = now;
     blinkState = !blinkState;
   }
 
-  // 4. Poll status slot dari Firebase (adaptif: 2 detik jika waiting payment, 7 detik jika aktif)
+  // 4. Polling Firebase RTDB
   unsigned long currentPollInterval = 7000;
   for (int i = 0; i < NUM_SLOTS; i++) {
     if (slots[i].state == WAITING_PAYMENT) {
-      currentPollInterval = INTERVAL_FIREBASE_POLL;  // 2000 ms
+      currentPollInterval = INTERVAL_FIREBASE_POLL;
       break;
     }
   }
@@ -250,41 +238,67 @@ void loop() {
     pollFirebaseSlots();
   }
 
-  // 5. Update countdown timer semua slot
+  // 5. Update Timer & Countdown Slot
   updateTimers();
 
-  // 6. Update relay & LED berdasarkan state
+  // 6. Update Fisik Hardware (Relay & LED Ring)
   updateHardware();
 
-  // 7. Refresh tampilan LCD (tiap 0.5 detik)
+  // 7. Refresh Tampilan LCD 16x2
   if (now - tLcdRefresh >= INTERVAL_LCD_REFRESH) {
     tLcdRefresh = now;
     updateLcdDisplay();
   }
 
-  // 8. Upload telemetri sensor ke Firebase (tiap 3 detik)
+  // 8. Upload Telemetri Sensor (Firebase + MQTT)
   if (now - tTelemetry >= INTERVAL_TELEMETRY) {
     tTelemetry = now;
     updateTelemetry();
   }
 
-  // 9. Auto-reconnect WiFi (tiap 30 detik)
+  // 9. Cek Rutin Koneksi WiFi
   if (now - tWifiCheck >= INTERVAL_WIFI_CHECK) {
     tWifiCheck = now;
     checkWiFi();
   }
+
+#if ENABLE_MQTT
+  // 10. Manajemen Koneksi MQTT (Non-Blocking)
+  if (WiFi.status() == WL_CONNECTED) {
+    if (!mqttClient.connected()) {
+      if (now - lastMqttReconnect >= 7000) {
+        lastMqttReconnect = now;
+        Serial.print("[MQTT] Menghubungkan ke EMQX Cloud...");
+        if (mqttClient.connect(MQTT_CLIENT_ID, MQTT_USER, MQTT_PASSWORD, TOPIC_STATUS, 1, true, "{\"state\":\"offline\"}")) {
+          Serial.println(" OK! Terhubung.");
+          mqttClient.subscribe(TOPIC_COMMAND);
+          mqttClient.publish(TOPIC_STATUS, "{\"state\":\"online\"}", true);
+          for (int i = 0; i < NUM_SLOTS; i++) publishSlotState(i);
+        } else {
+          Serial.printf(" Gagal (rc=%d)\n", mqttClient.state());
+        }
+      }
+    } else {
+      mqttClient.loop();
+    }
+  }
+#endif
 }
 
 // ============================================================
-// WiFi: Koneksi awal
+// 8. KONEKSI & REKONEKSI WIFI
 // ============================================================
 void connectWiFi() {
-  Serial.print("[WiFi] Menghubungkan ke ");
+  Serial.print("\n[WiFi] Menghubungkan ke ");
   Serial.println(WIFI_SSID);
 
-  lcd.setCursor(0, 1); lcd.print("WiFi...         ");
+  lcd.clear();
+  lcd.setCursor(0, 0); lcd.print("Connect WiFi...");
+  lcd.setCursor(0, 1); lcd.print(WIFI_SSID);
 
+  WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
   int retry = 0;
   while (WiFi.status() != WL_CONNECTED && retry < 25) {
     delay(500);
@@ -296,7 +310,6 @@ void connectWiFi() {
     Serial.println("\n[WiFi] Terhubung! IP: " + WiFi.localIP().toString());
     lcd.setCursor(0, 1); lcd.print("WiFi OK!        ");
 
-    // Sinkronisasi waktu NTP (WIB = UTC+7)
     configTime(7 * 3600, 0, "pool.ntp.org", "time.nist.gov");
     Serial.print("[NTP] Sinkronisasi waktu");
     struct tm timeinfo;
@@ -312,9 +325,6 @@ void connectWiFi() {
   delay(1000);
 }
 
-// ============================================================
-// WiFi: Auto-reconnect
-// ============================================================
 void checkWiFi() {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("[WiFi] Terputus! Reconnect...");
@@ -329,7 +339,7 @@ void checkWiFi() {
 }
 
 // ============================================================
-// Firebase: GET
+// 9. HTTP REST FIREBASE HELPER
 // ============================================================
 String fbGet(const String& path) {
   if (WiFi.status() != WL_CONNECTED) return "null";
@@ -340,16 +350,11 @@ String fbGet(const String& path) {
   String res = "null";
   if (code == 200) {
     res = http.getString();
-  } else if (code > 0 && code != 200) {
-    Serial.printf("[FB GET ERR] %s -> Code: %d\n", path.c_str(), code);
   }
   http.end();
   return res;
 }
 
-// ============================================================
-// Firebase: PUT
-// ============================================================
 bool fbPut(const String& path, const String& body) {
   if (WiFi.status() != WL_CONNECTED) return false;
   HTTPClient http;
@@ -357,16 +362,10 @@ bool fbPut(const String& path, const String& body) {
   http.addHeader("Content-Type", "application/json");
   http.setTimeout(3000);
   int code = http.PUT(body);
-  if (code != 200) {
-    Serial.printf("[FB PUT ERR] %s -> Code: %d\n", path.c_str(), code);
-  }
   http.end();
   return (code == 200);
 }
 
-// ============================================================
-// Firebase: PATCH (Multi-node atomic update dalam 1 request)
-// ============================================================
 bool fbPatch(const String& path, const String& body) {
   if (WiFi.status() != WL_CONNECTED) return false;
   HTTPClient http;
@@ -375,48 +374,40 @@ bool fbPatch(const String& path, const String& body) {
   http.addHeader("Content-Type", "application/json");
   http.setTimeout(3000);
   int code = http.PATCH(body);
-  if (code != 200) {
-    Serial.printf("[FB PATCH ERR] Code: %d\n", code);
-  }
   http.end();
   return (code == 200);
 }
 
 // ============================================================
-// Cek Tombol — Debounce Stabil & Anti-Noise EMI (Filter Glitch AC 220V)
+// 10. PEMBACAAN TOMBOL FISIK (50ms Software Debounce)
 // ============================================================
 void checkButtons() {
-  if (isOverheated) return;  // Proteksi: Selama kondisi overheat, tombol fisik dikunci total!
+  if (isOverheated) return;
 
   unsigned long now = millis();
 
   for (int i = 0; i < NUM_SLOTS; i++) {
     bool raw = digitalRead(PIN_BTN[i]);
 
-    // Jika terjadi perubahan sinyal (bisa noise atau tombol ditekan)
     if (raw != lastBtnPhysical[i]) {
       lastBtnDebounceTime[i] = now;
     }
     lastBtnPhysical[i] = raw;
 
-    // Sinyal harus stabil minimal 50ms untuk menolak noise listrik / induksi relay (<1ms)
     if ((now - lastBtnDebounceTime[i]) > DEBOUNCE_DELAY_MS) {
       if (raw != btnState[i]) {
         btnState[i] = raw;
 
-        // Event: Tombol valid DITEKAN (Active-LOW: transisi ke LOW)
         if (btnState[i] == LOW) {
-          // --- Aksi berdasarkan state slot saat ini ---
           if (slots[i].state == STANDBY) {
-            Serial.printf("\n[BTN %d] Ditekan Valid -> WAITING_PAYMENT\n", i + 1);
+            Serial.printf("\n[BTN %d] Ditekan -> WAITING_PAYMENT\n", i + 1);
             slots[i].state = WAITING_PAYMENT;
             slots[i].waitStart = millis();
 
-            // 1. Update fisik (LED mulai kedip, LCD berganti) SEKETIKA (0ms delay)
             updateHardware();
             updateLcdDisplay();
+            publishSlotState(i);
 
-            // 2. Kirim update ke Firebase tanpa menimpa slot lain
             String slotKey = "slot" + String(i + 1);
             String body = "{\"status\":\"WAITING_PAYMENT\",\"active_duration\":0,\"duration_seconds\":0,\"started_at\":0,\"amount_paid\":0}";
             fbPut(slotKey, body);
@@ -426,12 +417,10 @@ void checkButtons() {
             Serial.printf("[FIREBASE] Slot %d -> WAITING_PAYMENT terkirim.\n", i + 1);
           }
           else if (slots[i].state == WAITING_PAYMENT) {
-            // Tekan lagi saat menunggu → batalkan seleksi
             Serial.printf("[BTN %d] Batal seleksi.\n", i + 1);
             setSlotStandby(i);
           }
           else if (slots[i].state == ACTIVE) {
-            // Early Stop: matikan sewa lebih awal
             Serial.printf("[BTN %d] Early Stop oleh pengguna.\n", i + 1);
             setSlotStandby(i);
           }
@@ -442,10 +431,10 @@ void checkButtons() {
 }
 
 // ============================================================
-// Poll semua slot dari Firebase (1 request batch /slots.json)
+// 11. POLLING STATUS FIREBASE
 // ============================================================
 void pollFirebaseSlots() {
-  if (isOverheated) return;  // Proteksi: Selama overheat, jangan terima aktivasi slot baru!
+  if (isOverheated) return;
 
   bool hasWaiting = false;
   bool hasActive  = false;
@@ -454,10 +443,8 @@ void pollFirebaseSlots() {
     if (slots[i].state == ACTIVE)          hasActive  = true;
   }
 
-  // Jika semua slot STANDBY, hemat jaringan & CPU
   if (!hasWaiting && !hasActive) return;
 
-  // 1 KALI REQUEST: Ambil seluruh data node /slots (hanya ~200ms)
   String raw = fbGet("slots");
   if (raw != "null" && raw.length() >= 10) {
     StaticJsonDocument<1024> doc;
@@ -470,29 +457,39 @@ void pollFirebaseSlots() {
         const char* status = sObj["status"];
         if (!status) continue;
 
-        uint32_t durSec = sObj["duration_seconds"] | sObj["active_duration"] | 0;
+        uint32_t durSec  = sObj["duration_seconds"] | sObj["active_duration"] | 0;
+        const char* mode = sObj["mode"];
 
-        // Transisi: WAITING_PAYMENT -> ACTIVE (pembayaran berhasil)
+        // Transisi ke ACTIVE (Pembayaran Webhook Mayar ATAU Bypass Admin)
         if (strcmp(status, "ACTIVE") == 0 && slots[i].state != ACTIVE) {
           slots[i].state = ACTIVE;
-          slots[i].durationSec = durSec > 0 ? durSec : 900;  // default 15 menit
+
+          // Mode Kontinu (Admin Bypass tanpa batas waktu) vs Mode Sewa Bertarif
+          if ((mode != nullptr && strcmp(mode, "MANUAL_OVERRIDE") == 0) || durSec == 0) {
+            slots[i].durationSec = 0; // 0 = Kontinu (tanpa batas durasi)
+          } else {
+            slots[i].durationSec = durSec > 0 ? durSec : 900;
+          }
           slots[i].activeStart = millis();
 
-          // Nyalakan relay & LED
-          digitalWrite(PIN_RELAY[i], LOW);   // Active-LOW: LOW = ON
+          digitalWrite(PIN_RELAY[i], LOW);
           digitalWrite(PIN_LED[i], HIGH);
 
-          // Trigger notifikasi sukses di LCD
           successSlot = i;
           tSuccess = millis();
+          publishSlotState(i);
 
           Serial.println("\n=================================================");
-          Serial.printf("  PEMBAYARAN DITERIMA! RELAY %d AKTIF!\n", i + 1);
-          Serial.printf("  Durasi: %lu detik (%lu menit)\n", slots[i].durationSec, slots[i].durationSec / 60);
+          if (slots[i].durationSec == 0) {
+            Serial.printf("  ADMIN BYPASS AKTIF! RELAY %d ON (KONTINU)!\n", i + 1);
+          } else {
+            Serial.printf("  PEMBAYARAN DITERIMA! RELAY %d AKTIF!\n", i + 1);
+            Serial.printf("  Durasi: %lu detik (%lu menit)\n", slots[i].durationSec, slots[i].durationSec / 60);
+          }
           Serial.println("=================================================");
         }
 
-        // Transisi: ACTIVE -> STANDBY (dihentikan dari remote dashboard)
+        // Transisi ke STANDBY (Remote Stop oleh Dashboard Web)
         if (strcmp(status, "STANDBY") == 0 && slots[i].state == ACTIVE) {
           Serial.printf("[REMOTE] Dashboard mematikan Slot %d.\n", i + 1);
           setSlotStandby(i);
@@ -501,8 +498,7 @@ void pollFirebaseSlots() {
     }
   }
 
-  // Fallback cadangan khusus slot yang sedang menunggu bayar
-  // Jika webhook Mayar hanya mengupdate root /slotX
+  // Fallback kompatibilitas node root (/slot1, /slot2, /slot3)
   if (hasWaiting) {
     for (int i = 0; i < NUM_SLOTS; i++) {
       if (slots[i].state == WAITING_PAYMENT) {
@@ -515,7 +511,13 @@ void pollFirebaseSlots() {
             if (st && strcmp(st, "ACTIVE") == 0) {
               slots[i].state = ACTIVE;
               uint32_t durSec = docRoot["duration_seconds"] | docRoot["active_duration"] | 0;
-              slots[i].durationSec = durSec > 0 ? durSec : 900;
+              const char* md = docRoot["mode"];
+
+              if ((md != nullptr && strcmp(md, "MANUAL_OVERRIDE") == 0) || durSec == 0) {
+                slots[i].durationSec = 0;
+              } else {
+                slots[i].durationSec = durSec > 0 ? durSec : 900;
+              }
               slots[i].activeStart = millis();
 
               digitalWrite(PIN_RELAY[i], LOW);
@@ -523,10 +525,10 @@ void pollFirebaseSlots() {
 
               successSlot = i;
               tSuccess = millis();
+              publishSlotState(i);
 
               Serial.println("\n=================================================");
               Serial.printf("  PEMBAYARAN DITERIMA (ROOT)! RELAY %d AKTIF!\n", i + 1);
-              Serial.printf("  Durasi: %lu detik (%lu menit)\n", slots[i].durationSec, slots[i].durationSec / 60);
               Serial.println("=================================================");
             }
           }
@@ -537,13 +539,13 @@ void pollFirebaseSlots() {
 }
 
 // ============================================================
-// Update countdown timer semua slot
+// 12. UPDATE TIMERS & HITUNG MUNDUR SEWA
 // ============================================================
 void updateTimers() {
-  if (isOverheated) return; // Thermal Pause: Timer dibekukan selama fase pendinginan overheat
+  if (isOverheated) return;
 
   for (int i = 0; i < NUM_SLOTS; i++) {
-    // Cek timeout WAITING_PAYMENT (5 menit)
+    // Timeout 5 menit saat menunggu pembayaran QRIS
     if (slots[i].state == WAITING_PAYMENT) {
       if (millis() - slots[i].waitStart >= QRIS_TIMEOUT_MS) {
         Serial.printf("[TIMEOUT] Slot %d: 5 menit tanpa bayar. Reset.\n", i + 1);
@@ -551,68 +553,62 @@ void updateTimers() {
       }
     }
 
-    // Cek countdown ACTIVE
+    // Countdown sewa: HANYA jika durationSec > 0
     if (slots[i].state == ACTIVE) {
-      unsigned long elapsed = (millis() - slots[i].activeStart) / 1000;
-      if (elapsed >= slots[i].durationSec) {
-        Serial.printf("[SELESAI] Slot %d: Waktu sewa habis!\n", i + 1);
-        setSlotStandby(i);
+      if (slots[i].durationSec > 0) {
+        unsigned long elapsed = (millis() - slots[i].activeStart) / 1000;
+        if (elapsed >= slots[i].durationSec) {
+          Serial.printf("[SELESAI] Slot %d: Waktu sewa habis!\n", i + 1);
+          setSlotStandby(i);
+        }
       }
+      // Jika durationSec == 0 (Mode Bypass Kontinu): Relay tetap ON tanpa batas waktu!
     }
   }
 }
 
 // ============================================================
-// Update relay & LED ring berdasarkan state
+// 13. KONTROL RELAY & LED RING FISIK
 // ============================================================
 void updateHardware() {
   if (isOverheated) {
-    // Matikan seluruh relay dan seluruh LED seketika
     for (int i = 0; i < NUM_SLOTS; i++) {
       digitalWrite(PIN_RELAY[i], HIGH);
       digitalWrite(PIN_LED[i], LOW);
     }
-    digitalWrite(PIN_RELAY_SPARE, HIGH);
     return;
   }
 
   for (int i = 0; i < NUM_SLOTS; i++) {
     switch (slots[i].state) {
-      case ACTIVE:
-        digitalWrite(PIN_RELAY[i], LOW);   // Relay ON
-        digitalWrite(PIN_LED[i], HIGH);    // LED solid
+      case STANDBY:
+        digitalWrite(PIN_RELAY[i], HIGH);
+        digitalWrite(PIN_LED[i], LOW);
         break;
       case WAITING_PAYMENT:
-        digitalWrite(PIN_RELAY[i], HIGH);  // Relay OFF
-        digitalWrite(PIN_LED[i], blinkState ? HIGH : LOW);  // LED berkedip
+        digitalWrite(PIN_RELAY[i], HIGH);
+        digitalWrite(PIN_LED[i], blinkState ? HIGH : LOW);
         break;
-      default:  // STANDBY
-        digitalWrite(PIN_RELAY[i], HIGH);  // Relay OFF
-        digitalWrite(PIN_LED[i], LOW);     // LED mati
+      case ACTIVE:
+        digitalWrite(PIN_RELAY[i], LOW);
+        digitalWrite(PIN_LED[i], HIGH);
+        break;
+      case EMERGENCY_STOP:
+        digitalWrite(PIN_RELAY[i], HIGH);
+        digitalWrite(PIN_LED[i], LOW);
         break;
     }
   }
-  // Relay spare selalu OFF
-  digitalWrite(PIN_RELAY_SPARE, HIGH);
 }
 
 // ============================================================
-// Helper: Format detik -> "MM:SS"
-// ============================================================
-void fmtTime(unsigned long totalSec, char* buf, size_t len) {
-  unsigned long m = totalSec / 60;
-  unsigned long s = totalSec % 60;
-  snprintf(buf, len, "%02lu:%02lu", m, s);
-}
-
-// ============================================================
-// Update LCD 16x2 — Multi-prioritas & multi-slot rotation
+// 14. TAMPILAN LCD 16x2 I2C
 // ============================================================
 void updateLcdDisplay() {
   char r1[17], r2[17];
   unsigned long now = millis();
 
-  // ── PRIORITAS 0: Kondisi Overheat Darurat (Live Monitoring Suhu) ──
+  // 1. Kondisi Overheat (Prioritas 0)
   if (isOverheated) {
     snprintf(r1, 17, "! OVERHEAT >50C!");
     snprintf(r2, 17, "Suhu Box: %4.1f C", sensorTemp);
@@ -621,11 +617,16 @@ void updateLcdDisplay() {
     return;
   }
 
-  // ── PRIORITAS 1: Notifikasi "BAYAR BERHASIL" (4 detik) ──
+  // 2. Banner Notifikasi Sukses Aktivasi
   if (successSlot >= 0) {
     if (now - tSuccess < SUCCESS_DISPLAY_MS) {
-      snprintf(r1, 17, " BAYAR BERHASIL ");
-      snprintf(r2, 17, "  SLOT %d AKTIF  ", successSlot + 1);
+      if (slots[successSlot].durationSec == 0) {
+        snprintf(r1, 17, "  MANUAL BYPASS ");
+        snprintf(r2, 17, " SLOT %d ON (INF)", successSlot + 1);
+      } else {
+        snprintf(r1, 17, " BAYAR BERHASIL ");
+        snprintf(r2, 17, "  SLOT %d AKTIF  ", successSlot + 1);
+      }
       lcd.setCursor(0, 0); lcd.print(r1);
       lcd.setCursor(0, 1); lcd.print(r2);
       return;
@@ -633,7 +634,7 @@ void updateLcdDisplay() {
     successSlot = -1;
   }
 
-  // ── PRIORITAS 2: Slot menunggu pembayaran ──
+  // 3. Tampilan Menunggu Pembayaran QRIS
   for (int i = 0; i < NUM_SLOTS; i++) {
     if (slots[i].state == WAITING_PAYMENT) {
       unsigned long elapsed = (now - slots[i].waitStart) / 1000;
@@ -647,16 +648,13 @@ void updateLcdDisplay() {
     }
   }
 
-  // ── PRIORITAS 3: Slot aktif -> Tampilkan Telemetri Sensor Daya PZEM ──
+  // 4. Tampilan Slot Aktif (Telemetri Daya PZEM-004T)
   int activeCount = 0;
   for (int i = 0; i < NUM_SLOTS; i++) {
-    if (slots[i].state == ACTIVE) {
-      activeCount++;
-    }
+    if (slots[i].state == ACTIVE) activeCount++;
   }
 
   if (activeCount == 0) {
-    // Tidak ada slot aktif — IDLE
     snprintf(r1, 17, "  SMART  PLUG   ");
     snprintf(r2, 17, " Tekan Tombol...");
     lcd.setCursor(0, 0); lcd.print(r1);
@@ -664,22 +662,16 @@ void updateLcdDisplay() {
     return;
   }
 
-  // Jika ada slot aktif -> Tampilkan data sensor daya bersih & presisi 16 karakter
-  // Baris 1: Tegangan (V) & Arus (A)
   snprintf(r1, 17, "V: %3.0fV  I:%4.2fA", sensorVoltage, sensorCurrent);
-
-  // Baris 2: Daya Nyata (Watt)
   snprintf(r2, 17, "Daya: %5.1f Watt", sensorPower);
-
   lcd.setCursor(0, 0); lcd.print(r1);
   lcd.setCursor(0, 1); lcd.print(r2);
 }
 
 // ============================================================
-// Baca PZEM-004T + DHT22 & upload ke Firebase /sensors
+// 15. BACA SENSOR & UPLOAD TELEMETRI (Dual-Run: Firebase + MQTT)
 // ============================================================
 void updateTelemetry() {
-  // 1. Baca PZEM-004T
   float v = pzem.voltage();
   if (!isnan(v)) {
     sensorVoltage = v;
@@ -693,13 +685,11 @@ void updateTelemetry() {
     Serial.println("[PZEM] Tidak ada respons (NAN). Cek steker 220V & kabel.");
   }
 
-  // 2. Baca DHT22
   float t = dht.readTemperature();
   float h = dht.readHumidity();
   if (!isnan(t)) sensorTemp  = t;
   if (!isnan(h)) sensorHumid = h;
 
-  // 3. Upload ke Firebase /sensors (node tunggal gabungan)
   if (WiFi.status() == WL_CONNECTED) {
     String json = "{";
     json += "\"voltage\":"     + String(sensorVoltage, 1) + ",";
@@ -711,22 +701,24 @@ void updateTelemetry() {
     json += "\"updated_at\":"  + String((unsigned long)time(nullptr));
     json += "}";
 
-    bool ok = fbPut("sensors", json);
-    if (ok) {
-      Serial.println("[FIREBASE] Telemetri sensor berhasil di-update!");
-    } else {
-      Serial.println("[FIREBASE] GAGAL upload telemetri! Pastikan Rules Firebase aktif.");
+    // Upload ke Firebase RTDB
+    fbPut("sensors", json);
+
+#if ENABLE_MQTT
+    // Publish ke EMQX Cloud Broker secara paralel
+    if (mqttClient.connected()) {
+      mqttClient.publish(TOPIC_TELEMETRY, json.c_str());
     }
+#endif
   }
 }
 
 // ============================================================
-// Proteksi Overheat (>=50°C) dengan Histeresis Termal (<40°C)
+// 16. PROTEKSI OVERHEAT (>50°C) DENGAN PENDINGINAN (<40°C)
 // ============================================================
 void handleOverheat() {
   unsigned long now = millis();
 
-  // 1. Sampling DHT22 tiap 1.5 detik untuk deteksi & monitoring live
   if (now - tDhtRead >= INTERVAL_DHT_READ) {
     tDhtRead = now;
     float t = dht.readTemperature();
@@ -735,71 +727,61 @@ void handleOverheat() {
     if (!isnan(h)) sensorHumid = h;
   }
 
-  // 2. FASE 1: Suhu >= 50°C -> AKTIFKAN EMERGENCY STOP & THERMAL PAUSE
+  // Pemicu Darurat: Suhu mencapai >= 50.0°C
   if (!isOverheated && sensorTemp >= OVERHEAT_LIMIT_C) {
     isOverheated = true;
 
     Serial.println("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-    Serial.printf("  DARURAT: SUHU %.1f°C >= 50°C — EMERGENCY STOP!\n", sensorTemp);
-    Serial.println("  Seluruh relay & LED dimatikan! Tombol dikunci.");
-    Serial.println("  Membekukan (PAUSE) sisa durasi sewa pengguna...");
-    Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    Serial.printf("  ALARM OVERHEAT! Suhu: %.1f°C >= 50.0°C!\n", sensorTemp);
+    Serial.println("  THERMAL PAUSE: Mematikan semua relay seketika!");
+    Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 
-    // Matikan seluruh relay beban (Active-LOW: HIGH = OFF) & LED seketika
     for (int i = 0; i < NUM_SLOTS; i++) {
       if (slots[i].state == ACTIVE) {
-        unsigned long elapsed = (millis() - slots[i].activeStart) / 1000;
-        if (elapsed < slots[i].durationSec) {
-          slots[i].durationSec -= elapsed; // Simpan sisa detik
-        } else {
-          slots[i].durationSec = 0;
+        if (slots[i].durationSec > 0) {
+          unsigned long elapsed = (now - slots[i].activeStart) / 1000;
+          if (elapsed < slots[i].durationSec) {
+            slots[i].durationSec -= elapsed; // Sisa durasi dibekukan
+          } else {
+            slots[i].durationSec = 0;
+          }
         }
-        Serial.printf("[THERMAL PAUSE] Slot %d dijeda. Sisa durasi: %lu detik.\n", i + 1, slots[i].durationSec);
-      } else {
-        slots[i].durationSec = 0;
+        publishSlotState(i);
       }
+    }
 
-      slots[i].state = EMERGENCY_STOP;
+    for (int i = 0; i < NUM_SLOTS; i++) {
       digitalWrite(PIN_RELAY[i], HIGH);
       digitalWrite(PIN_LED[i], LOW);
     }
-    digitalWrite(PIN_RELAY_SPARE, HIGH);
 
-    // Kirim notifikasi darurat ke Firebase
     fbPut("system/emergency_alert", "true");
-    for (int i = 0; i < NUM_SLOTS; i++) {
-      String slotKey = "slot" + String(i + 1);
-      fbPut("slots/" + slotKey + "/status", "\"EMERGENCY_STOP\"");
-      fbPut(slotKey + "/status", "\"EMERGENCY_STOP\"");
-    }
+    updateLcdDisplay();
   }
-  // 3. FASE 2: Histeresis Termal (Suhu Turun < 40°C) -> AUTO RECOVERY & THERMAL RESUME
+  // Pemulihan Otomatis: Suhu turun ke < 40.0°C
   else if (isOverheated && sensorTemp > 0 && sensorTemp < OVERHEAT_SAFE_C) {
     isOverheated = false;
 
     Serial.println("\n============================================");
     Serial.printf("  SUHU SUDAH AMAN (%.1f°C < 40°C) — AUTO RECOVERY!\n", sensorTemp);
-    Serial.println("  Melanjutkan sesi pengguna aktif & stand-by slot kosong...");
     Serial.println("============================================");
 
-    // Bersihkan alert di Firebase
     fbPut("system/emergency_alert", "false");
 
     for (int i = 0; i < NUM_SLOTS; i++) {
       if (slots[i].durationSec > 0) {
-        // RESUME: Melanjutkan sisa waktu sewa pengguna
         slots[i].state = ACTIVE;
-        slots[i].activeStart = millis(); // Mulai timer dari sisa detik tersimpan
-        digitalWrite(PIN_RELAY[i], LOW);  // Relay ON kembali
-        digitalWrite(PIN_LED[i], HIGH); // LED solid ON
-        Serial.printf("[THERMAL RESUME] Slot %d aktif kembali! Sisa waktu: %lu detik.\n", i + 1, slots[i].durationSec);
+        slots[i].activeStart = millis();
+        digitalWrite(PIN_RELAY[i], LOW);
+        digitalWrite(PIN_LED[i], HIGH);
+        Serial.printf("[THERMAL RESUME] Slot %d aktif kembali! Sisa: %lu dtk.\n", i + 1, slots[i].durationSec);
+        publishSlotState(i);
 
         String slotKey = "slot" + String(i + 1);
         fbPut("slots/" + slotKey + "/status", "\"ACTIVE\"");
         fbPut("slots/" + slotKey + "/duration_seconds", String(slots[i].durationSec));
         fbPut(slotKey + "/status", "\"ACTIVE\"");
       } else {
-        // Tidak ada sewa aktif sebelumnya -> Reset ke STANDBY
         setSlotStandby(i);
       }
     }
@@ -807,17 +789,17 @@ void handleOverheat() {
 }
 
 // ============================================================
-// Reset slot ke STANDBY (lokal + Firebase dual-node)
+// 17. RESET SLOT KE STANDBY
 // ============================================================
 void setSlotStandby(int idx) {
   slots[idx].state = STANDBY;
   slots[idx].durationSec = 0;
 
-  // Hardware: relay OFF, LED OFF seketika
   digitalWrite(PIN_RELAY[idx], HIGH);
   digitalWrite(PIN_LED[idx], LOW);
   updateHardware();
   updateLcdDisplay();
+  publishSlotState(idx);
 
   if (WiFi.status() != WL_CONNECTED) return;
 
@@ -829,3 +811,95 @@ void setSlotStandby(int idx) {
 
   Serial.printf("[SLOT %d] Reset -> STANDBY terkirim.\n", idx + 1);
 }
+
+// ============================================================
+// 18. BROADCAST STATUS SLOT KE MQTT
+// ============================================================
+void publishSlotState(int idx) {
+#if ENABLE_MQTT
+  if (!mqttClient.connected()) return;
+
+  StaticJsonDocument<128> doc;
+  doc["slot"] = idx + 1;
+  const char* stStr = "STANDBY";
+  if (slots[idx].state == ACTIVE) stStr = "ACTIVE";
+  else if (slots[idx].state == WAITING_PAYMENT) stStr = "WAITING_PAYMENT";
+  else if (slots[idx].state == EMERGENCY_STOP) stStr = "EMERGENCY_STOP";
+
+  doc["status"]       = stStr;
+  doc["duration_sec"] = slots[idx].durationSec;
+
+  if (slots[idx].state == ACTIVE && slots[idx].durationSec > 0) {
+    unsigned long elapsed = (millis() - slots[idx].activeStart) / 1000;
+    doc["remaining_sec"] = (elapsed < slots[idx].durationSec) ? (slots[idx].durationSec - elapsed) : 0;
+  } else {
+    doc["remaining_sec"] = 0;
+  }
+
+  char buf[128];
+  serializeJson(doc, buf);
+  String top = "ranova/device_001/slots/" + String(idx + 1) + "/state";
+  mqttClient.publish(top.c_str(), buf, true);
+#endif
+}
+
+// ============================================================
+// 19. HANDLER PERINTAH MQTT MASUK (Downlink Control)
+// ============================================================
+#if ENABLE_MQTT
+void mqttCallback(char* topic, byte* payload, unsigned int length) {
+  String msg = "";
+  for (unsigned int i = 0; i < length; i++) msg += (char)payload[i];
+  Serial.printf("\n[MQTT RX] Topik: %s | Payload: %s\n", topic, msg.c_str());
+
+  StaticJsonDocument<256> doc;
+  DeserializationError err = deserializeJson(doc, msg);
+  String action = "";
+  int targetSlot = 0;
+
+  if (!err) {
+    action = doc["action"] | "";
+    targetSlot = doc["slot"] | 0;
+  } else {
+    if (msg.startsWith("START_")) {
+      action = "START";
+      targetSlot = msg.substring(6).toInt();
+    } else if (msg.startsWith("STOP_")) {
+      action = "STOP";
+      targetSlot = msg.substring(5).toInt();
+    }
+  }
+
+  // Perintah Aktivasi Manual (Admin Bypass Tanpa Batas Waktu)
+  if (action == "START" && targetSlot >= 1 && targetSlot <= NUM_SLOTS) {
+    int idx = targetSlot - 1;
+    if (!isOverheated) {
+      slots[idx].state = ACTIVE;
+      slots[idx].durationSec = 0; // Mode kontinu
+      slots[idx].activeStart = millis();
+
+      digitalWrite(PIN_RELAY[idx], LOW);
+      digitalWrite(PIN_LED[idx], HIGH);
+
+      successSlot = idx;
+      tSuccess = millis();
+      publishSlotState(idx);
+
+      // Sinkronkan ke Firebase agar dashboard web juga ter-update seketika
+      String slotKey = "slot" + String(targetSlot);
+      String body = "{\"status\":\"ACTIVE\",\"active_duration\":0,\"duration_seconds\":0,\"mode\":\"MANUAL_OVERRIDE\"}";
+      fbPatch(slotKey, body);
+      fbPatch("slots/" + slotKey, body);
+
+      Serial.printf("[MQTT CMD] Slot %d BERHASIL DIAKTIFKAN (Mode Kontinu)!\n", targetSlot);
+    }
+  }
+  // Perintah Matikan Manual
+  else if (action == "STOP" && targetSlot >= 1 && targetSlot <= NUM_SLOTS) {
+    int idx = targetSlot - 1;
+    setSlotStandby(idx);
+    publishSlotState(idx);
+    Serial.printf("[MQTT CMD] Slot %d BERHASIL DIMATIKAN!\n", targetSlot);
+  }
+}
+#endif

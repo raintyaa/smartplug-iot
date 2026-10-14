@@ -25,7 +25,7 @@ const char* WIFI_PASSWORD = "02082006";       // Password WiFi
 const char* MQTT_BROKER   = "o2f6eb8b.ala.asia-southeast1.emqxsl.com";
 const int   MQTT_PORT     = 8883;             // Port MQTTS (TLS/SSL)
 const char* MQTT_USER     = "ranova_esp32";
-const char* MQTT_PASSWORD = "PASSWORD_ANDA";  // GANTI DENGAN PASSWORD YANG ANDA BUAT DI EMQX
+const char* MQTT_PASSWORD = "02082006";  // GANTI DENGAN PASSWORD YANG ANDA BUAT DI EMQX
 const char* MQTT_CLIENT_ID= "ranova-esp32-tester";
 
 // --- 3. TOPIK MQTT ---
