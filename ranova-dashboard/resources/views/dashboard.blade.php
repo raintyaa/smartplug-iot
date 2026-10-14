@@ -85,11 +85,28 @@
                     </div>
 
                     <!-- Center Countdown Display -->
-                    <div class="my-4 text-center">
+                    <div class="my-3 text-center">
                         <p class="font-mono text-[11px] font-medium uppercase tracking-widest text-neutral-300">Sisa Waktu Sewa</p>
                         <p class="mt-1 font-mono text-4xl font-bold tracking-tight text-neutral-300" id="countdown-slot-{{ $i }}">
                             {{ $status === 'ACTIVE' ? '14:59' : ($status === 'WAITING_PAYMENT' ? 'SCAN QR' : '00:00') }}
                         </p>
+                        <!-- Indikator Beban Listrik (Idle / Terhubung) -->
+                        <div id="load-status-slot-{{ $i }}" class="mt-2 min-h-[24px]">
+                            @if ($status === 'ACTIVE')
+                                @php
+                                    $pzemPower = (float) ($firebaseData['sensors']['power'] ?? 0);
+                                @endphp
+                                @if ($pzemPower < 2.0)
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-amber/15 text-amber border border-amber/30 animate-pulse">
+                                        <i class="fa-solid fa-triangle-exclamation mr-1.5 text-xs"></i> Tanpa Beban (0.0 W)
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-mint/15 text-mint border border-mint/30">
+                                        <i class="fa-solid fa-bolt mr-1.5 text-xs"></i> Beban: {{ number_format($pzemPower, 1) }} W
+                                    </span>
+                                @endif
+                            @endif
+                        </div>
                     </div>
 
                     <!-- Details: Durasi & Dibayar -->
@@ -233,6 +250,15 @@
                 if (syncEl) syncEl.innerText = timeStr;
 
                 // 1. Update 3 Slot Stop Kontak
+                let activeSlotsCount = 0;
+                for (let k = 1; k <= 3; k++) {
+                    const s = data.slots['slot' + k] || {};
+                    if ((s.status || '').toUpperCase() === 'ACTIVE') activeSlotsCount++;
+                }
+
+                const currentPzemPower = parseFloat(data.sensors?.power || 0);
+                const currentPzemCurr = parseFloat(data.sensors?.current || 0);
+
                 for (let i = 1; i <= 3; i++) {
                     const slot = data.slots['slot' + i] || { status: 'STANDBY', active_duration: 0, started_at: 0 };
                     const status = (slot.status || 'STANDBY').toUpperCase();
@@ -242,6 +268,7 @@
                     const paid = document.getElementById('paid-slot-' + i);
                     const card = document.getElementById('card-slot-' + i);
                     const btnStop = document.getElementById('btn-stop-slot-' + i);
+                    const loadStatusEl = document.getElementById('load-status-slot-' + i);
 
                     if (!card) continue;
 
@@ -252,6 +279,31 @@
                         card.className = 'rounded-xl bg-surface2 border border-mint/40 p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300';
                         btnStop.disabled = false;
                         btnStop.className = 'w-full text-xs font-semibold py-2 rounded-lg bg-crimson/10 border border-crimson/30 text-crimson hover:bg-crimson/20 transition-colors';
+
+                        // Indikator Status Beban Listrik (Idle vs Ada Beban)
+                        if (loadStatusEl) {
+                            if (currentPzemPower < 2.0 && currentPzemCurr < 0.03) {
+                                loadStatusEl.innerHTML = `
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-amber/15 text-amber border border-amber/30 animate-pulse" title="Tidak ada arus listrik terdeteksi. Pengguna mungkin telah mencabut charger.">
+                                        <i class="fa-solid fa-triangle-exclamation mr-1.5 text-xs"></i> Tanpa Beban (0.0 W)
+                                    </span>
+                                `;
+                            } else {
+                                if (activeSlotsCount === 1) {
+                                    loadStatusEl.innerHTML = `
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-mint/15 text-mint border border-mint/30">
+                                            <i class="fa-solid fa-bolt mr-1.5 text-xs"></i> Beban: ${currentPzemPower.toFixed(1)} W
+                                        </span>
+                                    `;
+                                } else {
+                                    loadStatusEl.innerHTML = `
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-mint/15 text-mint border border-mint/30" title="Daya terukur adalah total agregat seluruh slot aktif.">
+                                            <i class="fa-solid fa-bolt mr-1.5 text-xs"></i> Total: ${currentPzemPower.toFixed(1)} W
+                                        </span>
+                                    `;
+                                }
+                            }
+                        }
 
                         // Hitung Countdown
                         const startedAt = parseInt(slot.started_at) || 0;
@@ -268,6 +320,7 @@
                         duration.innerText = Math.round(durationSec / 60) + ' Menit';
                         paid.innerText = 'Rp ' + (slot.nominal_paid ? Number(slot.nominal_paid).toLocaleString('id-ID') : '1.000');
                     } else if (status === 'WAITING_PAYMENT') {
+                        if (loadStatusEl) loadStatusEl.innerHTML = '';
                         badge.className = 'pulse-amber font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-amber/10 border border-amber/25 text-amber uppercase tracking-wide';
                         badge.innerText = 'MENUNGGU BAYAR';
                         card.className = 'rounded-xl bg-surface border border-amber/30 p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300';
@@ -278,6 +331,7 @@
                         duration.innerText = 'Menunggu';
                         paid.innerText = 'Menunggu';
                     } else {
+                        if (loadStatusEl) loadStatusEl.innerHTML = '';
                         badge.className = 'font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-surface2 border border-hairline text-neutral-300 uppercase tracking-wide';
                         badge.innerText = 'SIAP';
                         card.className = 'rounded-xl bg-surface border border-hairline p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300';

@@ -30,6 +30,7 @@ Sistem IoT pengisian daya cerdas terintegrasi dari hulu ke hilir: tombol fisik l
 - **Pricing:** Default sewa Rp 1.000 per 15 menit (dapat disesuaikan di pengaturan).
 - **Tarif Dasar Listrik PLN:** Rp 1.444,70 / kWh untuk perhitungan otomatis estimasi biaya listrik PLN dan margin laba bersih.
 - **Keselamatan Listrik:** Fitur pemutus darurat terpusat (*Emergency Shutdown*) yang mematikan seluruh relay seketika dari dashboard web maupun sakelar fisik.
+- **Batasan Sensor Daya Tunggal (Single-CT Busbar Topologi):** Menggunakan 1 modul PZEM-004T pada jalur Fasa utama PLN sebelum percabangan relay untuk efisiensi biaya perakitan. Sistem mendeteksi kondisi tanpa beban (*idle / unplugged*) secara definitif pada skenario *single-active slot* atau saat seluruh slot aktif tidak terhubung beban ($P_{\text{total}} < 2.0\text{ W}$) dengan peringatan otomatis pada dashboard. Pada skenario *multi-slot* aktif bersamaan, dashboard menampilkan daya total agregat stasiun; isolasi arus beban independen per-slot menjadi batasan sistem saat ini dan direncanakan sebagai pengembangan hardware lanjutan (sensor arus mikro per-cabang relay).
 
 ## Brand Commitments
 

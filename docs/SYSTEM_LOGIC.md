@@ -83,6 +83,15 @@ Layar LCD dirancang dengan sistem prioritas bertingkat (*Priority-Based State Ma
      $$\text{Laba Bersih} = \text{Total Pendapatan} - \text{Biaya PLN}$$
    * Data ini dikirim ke Firebase dan ditampilkan pada Web Dashboard Admin untuk mengevaluasi kewajaran tarif sewa per menit.
 
+3. **Deteksi Beban Kosong (Idle / Unplugged Load Detection):**
+   * **Skenario Single-Slot:** Jika hanya ada 1 slot yang berstatus `ACTIVE` dan PZEM membaca daya $P < 2.0\text{ W}$ ($I < 0.02\text{ A}$), sistem secara definitif mendeteksi bahwa beban/charger belum dicolokkan atau telah dicabut oleh pengguna.
+   * **Peringatan Visual Dashboard:** Kartu slot menampilkan indikator `⚠️ Tanpa Beban (0.0 W)` untuk memberikan kepastian bagi operator. Operator dapat menekan tombol **"Matikan Manual"** di dashboard untuk mereset slot yang ditinggalkan pengguna sebelum waktu sewa habis.
+   * **Skenario Multi-Slot Bersamaan:** Jika seluruh slot aktif tidak terhubung beban ($P_{\text{total}} < 2.0\text{ W}$), seluruh slot ditandai tanpa beban. Jika ada beban mengalir, dashboard menampilkan daya total agregat stasiun.
+
+4. **Batasan Sistem & Rencana Pengembangan Hardware (System Boundaries & Future Work):**
+   * Karena topologi donat CT berada pada kabel Fasa busbar utama, sistem saat ini mengukur akumulasi penjumlahan paralel ($P_{\text{total}} = P_1 + P_2 + P_3$).
+   * Untuk memisahkan pembacaan daya beban masing-masing stop kontak secara independen saat multi-slot aktif bersamaan, solusi pengembangan hardware lanjutan adalah memasang sensor arus mikro (seperti modul Hall-effect ACS712 atau donat CT mikro CT-101) pada masing-masing kabel output relay sebelum stop kontak Broco.
+
 ---
 
 ## 4. Sistem Proteksi Keselamatan Termal (Thermal Hysteresis Protection)

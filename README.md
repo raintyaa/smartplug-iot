@@ -61,7 +61,7 @@ Sistem menggunakan **Mayar Payment Gateway (Mayar.id)** sebagai infrastruktur ut
 * **Aktuator:** Modul Relay 4-Channel 5V Optocoupler (Active LOW)
 * **Sensor 1 (Daya Listrik):** **PZEM-004T V3.0 / V4.0 100A** dengan Koil CT (Pin Header 4-Pin, Modbus RTU via UART)
   * Mengukur: Tegangan (V), Arus (A), Daya (W), Energi (kWh), Frekuensi (Hz), Power Factor
-  * Fungsi: Monitoring konsumsi daya, analisis biaya listrik, dan deteksi idle (auto-shutdown jika arus ≈ 0A selama 5 menit)
+  * Fungsi: Monitoring konsumsi daya total stasiun, analisis biaya listrik PLN, dan deteksi kondisi tanpa beban (*idle / unplugged*) dengan notifikasi visual di web dashboard operator.
 * **Sensor 2 (Suhu & Kelembaban):** **DHT22 Modul 3-Pin** (Built-in Pull-Up Resistor)
   * Mengukur: Suhu (°C) dan Kelembaban (%)
   * Fungsi: Proteksi keselamatan terhadap overheating di dalam casing (emergency shutdown jika suhu > 50°C)
@@ -190,7 +190,7 @@ Setiap tombol memiliki 5 kaki di bagian belakang: `+` (Anoda LED), `-` (Katoda L
 | Skenario | Pemicu | Sensor Terlibat |
 |---|---|---|
 | **Timer Habis** | Durasi waktu yang dibeli pengguna sudah berakhir | Logika timer ESP32 (`millis()`) |
-| **Auto-Shutdown Idle** | Tidak ada perangkat dicolokkan selama 5 menit (arus ≈ 0A) | **Sensor PZEM-004T** |
+| **Peringatan Idle (Tanpa Beban)** | Perangkat tidak dicolokkan / dicabut saat aktif (Daya < 2.0W) | **Sensor PZEM-004T & Dashboard Operator** |
 | **Emergency Shutdown Suhu** | Suhu internal casing melebihi 50°C | **Sensor DHT22** |
 
 ---
