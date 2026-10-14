@@ -1,4 +1,5 @@
 #include <WiFi.h>
+#include <WiFiManager.h>
 #include <time.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
@@ -8,8 +9,9 @@
 #include <DHT.h>
 #include <PZEM004Tv30.h>
 
-const char* WIFI_SSID     = "RedmiNote";
-const char* WIFI_PASSWORD = "12345678";
+#define AP_SSID            "Ranova-SmartPlug-AP"
+#define AP_PASSWORD        ""
+#define AP_CONFIG_TIMEOUT  120
 const char* FIREBASE_HOST = "https://smartplug-4442d-default-rtdb.asia-southeast1.firebasedatabase.app";
 
 #define NUM_SLOTS 3
@@ -167,6 +169,19 @@ void setup() {
 
   secureClient.setInsecure();
 
+  if (digitalRead(PIN_BTN[0]) == LOW) {
+    lcd.clear();
+    lcd.setCursor(0, 0); lcd.print("RESET WIFI...");
+    lcd.setCursor(0, 1); lcd.print("Tahan 2 detik...");
+    delay(2000);
+    if (digitalRead(PIN_BTN[0]) == LOW) {
+      WiFiManager wm;
+      wm.resetSettings();
+      lcd.setCursor(0, 1); lcd.print("Reset Sukses!   ");
+      delay(1500);
+    }
+  }
+
   connectWiFi();
 
   for (int i = 0; i < NUM_SLOTS; i++) {
@@ -225,21 +240,33 @@ void loop() {
 }
 
 void connectWiFi() {
-  Serial.print("[WiFi] Menghubungkan ke ");
-  Serial.println(WIFI_SSID);
+  Serial.println("[WiFi] Memulai inisialisasi jaringan...");
+  lcd.setCursor(0, 1); lcd.print("WiFi Cek...     ");
 
-  lcd.setCursor(0, 1); lcd.print("WiFi...         ");
+  WiFiManager wm;
+  wm.setConfigPortalTimeout(AP_CONFIG_TIMEOUT);
+  wm.setConnectTimeout(15);
+  wm.setShowStaticFields(true);
+  wm.setShowPassword(true);
 
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  int retry = 0;
-  while (WiFi.status() != WL_CONNECTED && retry < 25) {
-    delay(500);
-    Serial.print(".");
-    retry++;
-  }
+  wm.setAPCallback([](WiFiManager* myWiFiManager) {
+    Serial.println("\n[WiFiManager] Masuk ke Mode AP (Captive Portal)");
+    Serial.print("[WiFiManager] Hubungkan HP/Laptop ke SSID: ");
+    Serial.println(myWiFiManager->getConfigPortalSSID());
+    Serial.print("[WiFiManager] IP Konfigurasi: ");
+    Serial.println(WiFi.softAPIP().toString());
 
-  if (WiFi.status() == WL_CONNECTED) {
+    lcd.clear();
+    lcd.setCursor(0, 0); lcd.print("WiFi AP Mode:   ");
+    lcd.setCursor(0, 1); lcd.print("Ranova-Setup    ");
+  });
+
+  bool res = wm.autoConnect(AP_SSID, AP_PASSWORD);
+
+  if (res) {
     Serial.println("\n[WiFi] Terhubung! IP: " + WiFi.localIP().toString());
+    lcd.clear();
+    lcd.setCursor(0, 0); lcd.print("  SMART  PLUG   ");
     lcd.setCursor(0, 1); lcd.print("WiFi OK!        ");
 
     configTime(7 * 3600, 0, "pool.ntp.org", "time.nist.gov");
@@ -251,22 +278,18 @@ void connectWiFi() {
     }
     Serial.println(ntpRetry < 10 ? " OK!" : " Timeout.");
   } else {
-    Serial.println("\n[WiFi] GAGAL! Sistem tetap berjalan offline.");
-    lcd.setCursor(0, 1); lcd.print("WiFi GAGAL!     ");
+    Serial.println("\n[WiFi] Timeout atau gagal terhubung! Sistem tetap berjalan offline.");
+    lcd.clear();
+    lcd.setCursor(0, 0); lcd.print("  SMART  PLUG   ");
+    lcd.setCursor(0, 1); lcd.print("WiFi Offline    ");
   }
   delay(1000);
 }
 
 void checkWiFi() {
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("[WiFi] Terputus! Reconnect...");
-    WiFi.disconnect();
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    int retry = 0;
-    while (WiFi.status() != WL_CONNECTED && retry++ < 15) delay(500);
-    if (WiFi.status() == WL_CONNECTED) {
-      Serial.println("[WiFi] Reconnect berhasil!");
-    }
+    Serial.println("[WiFi] Koneksi terputus! Mencoba menyambung ulang...");
+    WiFi.reconnect();
   }
 }
 
