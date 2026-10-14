@@ -5,7 +5,7 @@
 // 1. Membaca nilai suhu (°C) dan kelembaban udara (%) dari sensor DHT22.
 // 2. Menampilkan pembacaan berkala ke Serial Monitor (115200 baud).
 // 3. Menampilkan pembacaan langsung di layar LCD 16x2 I2C.
-// 4. Menguji logika deteksi bahaya overheat (>= 50.0°C).
+// 4. Menguji logika deteksi bahaya overheat (>= 42.0°C).
 // ============================================================
 
 #include <Wire.h>
@@ -20,7 +20,7 @@
 #define LCD_COLS 16
 #define LCD_ROWS 2
 
-#define OVERHEAT_LIMIT 50.0 // Ambang batas suhu kritis (°C)
+#define OVERHEAT_LIMIT 42.0 // Ambang batas suhu kritis (°C)
 
 // Inisialisasi Objek
 DHT dht(DHTPIN, DHTTYPE);

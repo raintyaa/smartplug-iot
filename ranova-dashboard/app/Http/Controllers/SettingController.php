@@ -38,7 +38,7 @@ class SettingController extends Controller
         $minutes = (int) $validated['rental_duration_minutes'];
         $seconds = $minutes * 60;
         $plnTariff = (float) $validated['tariff_pln_per_kwh'];
-        $overheat = isset($validated['overheat_threshold_c']) ? (float) $validated['overheat_threshold_c'] : 50.0;
+        $overheat = isset($validated['overheat_threshold_c']) ? (float) $validated['overheat_threshold_c'] : 42.0;
 
         // 1. Simpan ke database lokal MySQL
         Setting::set('rental_price_per_15min', (string) $price, 'Harga Sewa Dasar (Rp)');

@@ -5,7 +5,7 @@
 // - 3 Slot Broco Relay (Active-LOW) & Metal Buttons (50ms Debounce)
 // - Sensor PZEM-004T v3.0 (UART2 RX16/TX17) & DHT22 (GPIO 4)
 // - LCD 16x2 I2C (0x27)
-// - Proteksi Termal Histeresis (Overheat >= 50°C, Resume < 40°C)
+// - Proteksi Termal Histeresis (Overheat >= 42°C, Resume < 37°C)
 // - Mode Sewa Otomatis (Durasi Countdown via Webhook Mayar)
 // - Mode Admin Bypass Kontinu (Nyalakan Manual tanpa batas waktu)
 // - Streaming Telemetri Realtime MQTTS ke EMQX Cloud
@@ -64,8 +64,8 @@ const int PIN_RELAY_SPARE      = 26;            // Relay cadangan (selalu OFF)
 // ============================================================
 // 4. PARAMETER OPERASI
 // ============================================================
-#define OVERHEAT_LIMIT_C     50.0     // Suhu kritis pemutus darurat (°C)
-#define OVERHEAT_SAFE_C      40.0     // Suhu pemulihan histeresis (°C)
+#define OVERHEAT_LIMIT_C     42.0     // Suhu kritis pemutus darurat (°C)
+#define OVERHEAT_SAFE_C      37.0     // Suhu pemulihan histeresis (°C)
 #define QRIS_TIMEOUT_MS      300000   // Timeout bayar: 5 menit (300.000 ms)
 
 #define INTERVAL_FIREBASE_POLL  2000  // Polling Firebase saat menunggu bayar
@@ -610,7 +610,7 @@ void updateLcdDisplay() {
 
   // 1. Kondisi Overheat (Prioritas 0)
   if (isOverheated) {
-    snprintf(r1, 17, "! OVERHEAT >50C!");
+    snprintf(r1, 17, "! OVERHEAT >%dC!", (int)OVERHEAT_LIMIT_C);
     snprintf(r2, 17, "Suhu Box: %4.1f C", sensorTemp);
     lcd.setCursor(0, 0); lcd.print(r1);
     lcd.setCursor(0, 1); lcd.print(r2);
@@ -714,7 +714,7 @@ void updateTelemetry() {
 }
 
 // ============================================================
-// 16. PROTEKSI OVERHEAT (>50°C) DENGAN PENDINGINAN (<40°C)
+// 16. PROTEKSI OVERHEAT (>42°C) DENGAN PENDINGINAN (<37°C)
 // ============================================================
 void handleOverheat() {
   unsigned long now = millis();
@@ -727,12 +727,12 @@ void handleOverheat() {
     if (!isnan(h)) sensorHumid = h;
   }
 
-  // Pemicu Darurat: Suhu mencapai >= 50.0°C
+  // Pemicu Darurat: Suhu mencapai >= OVERHEAT_LIMIT_C (42.0°C)
   if (!isOverheated && sensorTemp >= OVERHEAT_LIMIT_C) {
     isOverheated = true;
 
     Serial.println("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-    Serial.printf("  ALARM OVERHEAT! Suhu: %.1f°C >= 50.0°C!\n", sensorTemp);
+    Serial.printf("  ALARM OVERHEAT! Suhu: %.1f°C >= %.1f°C!\n", sensorTemp, OVERHEAT_LIMIT_C);
     Serial.println("  THERMAL PAUSE: Mematikan semua relay seketika!");
     Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 
@@ -758,12 +758,12 @@ void handleOverheat() {
     fbPut("system/emergency_alert", "true");
     updateLcdDisplay();
   }
-  // Pemulihan Otomatis: Suhu turun ke < 40.0°C
+  // Pemulihan Otomatis: Suhu turun ke < OVERHEAT_SAFE_C (37.0°C)
   else if (isOverheated && sensorTemp > 0 && sensorTemp < OVERHEAT_SAFE_C) {
     isOverheated = false;
 
     Serial.println("\n============================================");
-    Serial.printf("  SUHU SUDAH AMAN (%.1f°C < 40°C) — AUTO RECOVERY!\n", sensorTemp);
+    Serial.printf("  SUHU SUDAH AMAN (%.1f°C < %.1f°C) — AUTO RECOVERY!\n", sensorTemp, OVERHEAT_SAFE_C);
     Serial.println("============================================");
 
     fbPut("system/emergency_alert", "false");

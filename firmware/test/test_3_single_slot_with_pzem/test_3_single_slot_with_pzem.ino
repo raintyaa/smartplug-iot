@@ -6,7 +6,7 @@
 // 2. Relay 1 (Active-LOW, GPIO 23) ke Stop Kontak Broco 1
 // 3. LCD 16x2 I2C (0x27, SDA 21, SCL 22) - Tampilan Event-Based & Watt Realtime
 // 4. Sensor Daya PZEM-004T v3.0 (RX2 16, TX2 17) - Pengukuran Volt, Ampere, Watt, kWh
-// 5. Sensor Suhu DHT22 (GPIO 4) - Proteksi Overheat (>= 50°C)
+// 5. Sensor Suhu DHT22 (GPIO 4) - Proteksi Overheat (>= 42°C)
 // 6. Sinkronisasi Realtime ke Firebase RTDB & Web Dashboard Laravel
 // ============================================================
 
@@ -40,7 +40,7 @@ const char* FIREBASE_HOST = "https://smartplug-4442d-default-rtdb.asia-southeast
 #define LCD_COLS        16
 #define LCD_ROWS        2
 
-#define OVERHEAT_LIMIT  50.0 // Batas Darurat Suhu Box (°C)
+#define OVERHEAT_LIMIT  42.0 // Batas Darurat Suhu Box (°C)
 #define QRIS_TIMEOUT_MS 180000 // Timeout 180 detik (3 menit) menunggu bayar
 
 // Inisialisasi Objek
@@ -437,7 +437,7 @@ void handleEmergencyOverheat() {
   if (currentTemp >= OVERHEAT_LIMIT) {
     if (currentState != EMERGENCY_STOP) {
       Serial.println("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-      Serial.println("  PERINGATAN: SUHU OVERHEAT MELAMPAUI 50.0°C!      ");
+      Serial.println("  PERINGATAN: SUHU OVERHEAT MELAMPAUI 42.0°C!      ");
       Serial.println("  EMERGENCY SHUTDOWN: MEMATIKAN SEMUA RELAY!       ");
       Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 

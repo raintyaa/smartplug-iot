@@ -105,7 +105,7 @@
                     </label>
                     <div class="relative">
                         <input type="number" step="0.5" min="35" max="90" name="overheat_threshold_c" id="overheat_threshold_c" 
-                            value="{{ old('overheat_threshold_c', $settings['overheat_threshold_c']->value ?? '50.0') }}" required
+                            value="{{ old('overheat_threshold_c', $settings['overheat_threshold_c']->value ?? '42.0') }}" required
                             class="w-full pl-3.5 pr-12 py-2.5 bg-surface2 border border-hairline rounded-lg text-sm font-mono text-white focus:outline-none focus:border-mint/50 focus:ring-1 focus:ring-mint/20 transition">
                         <span class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs font-mono text-neutral-400">°C</span>
                     </div>
