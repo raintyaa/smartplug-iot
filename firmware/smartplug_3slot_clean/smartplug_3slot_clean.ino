@@ -54,45 +54,10 @@ struct Slot {
 };
 Slot slots[NUM_SLOTS];
 
-volatile bool btnTriggered[NUM_SLOTS] = {false, false, false};
-volatile unsigned long lastBtnTime[NUM_SLOTS] = {0, 0, 0};
-bool lastBtnPhysical[NUM_SLOTS] = {HIGH, HIGH, HIGH};
-
-void IRAM_ATTR isrBtn1() {
-  unsigned long now = millis();
-  if (now - lastBtnTime[0] > 200) {
-    lastBtnTime[0] = now;
-    btnTriggered[0] = true;
-    if (slots[0].state == ACTIVE) {
-      digitalWrite(PIN_RELAY[0], HIGH);
-      digitalWrite(PIN_LED[0], LOW);
-    }
-  }
-}
-
-void IRAM_ATTR isrBtn2() {
-  unsigned long now = millis();
-  if (now - lastBtnTime[1] > 200) {
-    lastBtnTime[1] = now;
-    btnTriggered[1] = true;
-    if (slots[1].state == ACTIVE) {
-      digitalWrite(PIN_RELAY[1], HIGH);
-      digitalWrite(PIN_LED[1], LOW);
-    }
-  }
-}
-
-void IRAM_ATTR isrBtn3() {
-  unsigned long now = millis();
-  if (now - lastBtnTime[2] > 200) {
-    lastBtnTime[2] = now;
-    btnTriggered[2] = true;
-    if (slots[2].state == ACTIVE) {
-      digitalWrite(PIN_RELAY[2], HIGH);
-      digitalWrite(PIN_LED[2], LOW);
-    }
-  }
-}
+unsigned long lastBtnDebounceTime[NUM_SLOTS] = {0, 0, 0};
+bool lastBtnPhysical[NUM_SLOTS]              = {HIGH, HIGH, HIGH};
+bool btnState[NUM_SLOTS]                     = {HIGH, HIGH, HIGH};
+#define DEBOUNCE_DELAY_MS 50
 
 float sensorVoltage = 0.0;
 float sensorCurrent = 0.0;
@@ -150,9 +115,6 @@ void setup() {
     pinMode(PIN_LED[i], OUTPUT);
     digitalWrite(PIN_LED[i], LOW);
   }
-  attachInterrupt(digitalPinToInterrupt(PIN_BTN[0]), isrBtn1, FALLING);
-  attachInterrupt(digitalPinToInterrupt(PIN_BTN[1]), isrBtn2, FALLING);
-  attachInterrupt(digitalPinToInterrupt(PIN_BTN[2]), isrBtn3, FALLING);
 
   Wire.begin(21, 22);
   lcd.init();
@@ -318,51 +280,47 @@ bool fbPatch(const String& path, const String& body) {
 void checkButtons() {
   if (isOverheated) return;
 
+  unsigned long now = millis();
+
   for (int i = 0; i < NUM_SLOTS; i++) {
     bool raw = digitalRead(PIN_BTN[i]);
-    bool pressEvent = false;
 
-    if (btnTriggered[i]) {
-      btnTriggered[i] = false;
-      pressEvent = true;
-    }
-
-    else if (lastBtnPhysical[i] == HIGH && raw == LOW) {
-      delay(20);
-      if (digitalRead(PIN_BTN[i]) == LOW) {
-        pressEvent = true;
-      }
+    if (raw != lastBtnPhysical[i]) {
+      lastBtnDebounceTime[i] = now;
     }
     lastBtnPhysical[i] = raw;
 
-    if (!pressEvent) continue;
+    if ((now - lastBtnDebounceTime[i]) > DEBOUNCE_DELAY_MS) {
+      if (raw != btnState[i]) {
+        btnState[i] = raw;
 
-    if (slots[i].state == STANDBY) {
+        if (btnState[i] == LOW) {
+          if (slots[i].state == STANDBY) {
+            Serial.printf("\n[BTN %d] Ditekan -> WAITING_PAYMENT\n", i + 1);
+            slots[i].state = WAITING_PAYMENT;
+            slots[i].waitStart = millis();
 
-      Serial.printf("\n[BTN %d] Ditekan -> WAITING_PAYMENT\n", i + 1);
-      slots[i].state = WAITING_PAYMENT;
-      slots[i].waitStart = millis();
+            updateHardware();
+            updateLcdDisplay();
 
-      updateHardware();
-      updateLcdDisplay();
+            String slotKey = "slot" + String(i + 1);
+            String body = "{\"status\":\"WAITING_PAYMENT\",\"active_duration\":0,\"duration_seconds\":0,\"started_at\":0,\"amount_paid\":0}";
+            fbPut(slotKey, body);
+            fbPut("slots/" + slotKey, body);
+            fbPut("system/active_selection", "{\"slot\":\"" + slotKey + "\",\"status\":\"WAITING_PAYMENT\",\"timestamp\":0}");
 
-      String slotKey = "slot" + String(i + 1);
-      String body = "{\"status\":\"WAITING_PAYMENT\",\"active_duration\":0,\"duration_seconds\":0,\"started_at\":0,\"amount_paid\":0}";
-      fbPut(slotKey, body);
-      fbPut("slots/" + slotKey, body);
-      fbPut("system/active_selection", "{\"slot\":\"" + slotKey + "\",\"status\":\"WAITING_PAYMENT\",\"timestamp\":0}");
-
-      Serial.printf("[FIREBASE] Slot %d -> WAITING_PAYMENT terkirim.\n", i + 1);
-    }
-    else if (slots[i].state == WAITING_PAYMENT) {
-
-      Serial.printf("[BTN %d] Batal seleksi.\n", i + 1);
-      setSlotStandby(i);
-    }
-    else if (slots[i].state == ACTIVE) {
-
-      Serial.printf("[BTN %d] Early Stop oleh pengguna.\n", i + 1);
-      setSlotStandby(i);
+            Serial.printf("[FIREBASE] Slot %d -> WAITING_PAYMENT terkirim.\n", i + 1);
+          }
+          else if (slots[i].state == WAITING_PAYMENT) {
+            Serial.printf("[BTN %d] Batal seleksi.\n", i + 1);
+            setSlotStandby(i);
+          }
+          else if (slots[i].state == ACTIVE) {
+            Serial.printf("[BTN %d] Early Stop oleh pengguna.\n", i + 1);
+            setSlotStandby(i);
+          }
+        }
+      }
     }
   }
 }

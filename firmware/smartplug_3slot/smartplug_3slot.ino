@@ -107,47 +107,13 @@ struct Slot {
 Slot slots[NUM_SLOTS];
 
 // ============================================================
-// HARDWARE INTERRUPT UNTUK TOMBOL (Anti-Miss & Early Stop Seketika)
 // ============================================================
-volatile bool btnTriggered[NUM_SLOTS] = {false, false, false};
-volatile unsigned long lastBtnTime[NUM_SLOTS] = {0, 0, 0};
-bool lastBtnPhysical[NUM_SLOTS] = {HIGH, HIGH, HIGH};
-
-void IRAM_ATTR isrBtn1() {
-  unsigned long now = millis();
-  if (now - lastBtnTime[0] > 200) {
-    lastBtnTime[0] = now;
-    btnTriggered[0] = true;
-    if (slots[0].state == ACTIVE) {
-      digitalWrite(PIN_RELAY[0], HIGH); // Relay OFF seketika (0ms)
-      digitalWrite(PIN_LED[0], LOW);    // LED OFF seketika (0ms)
-    }
-  }
-}
-
-void IRAM_ATTR isrBtn2() {
-  unsigned long now = millis();
-  if (now - lastBtnTime[1] > 200) {
-    lastBtnTime[1] = now;
-    btnTriggered[1] = true;
-    if (slots[1].state == ACTIVE) {
-      digitalWrite(PIN_RELAY[1], HIGH); // Relay OFF seketika (0ms)
-      digitalWrite(PIN_LED[1], LOW);    // LED OFF seketika (0ms)
-    }
-  }
-}
-
-void IRAM_ATTR isrBtn3() {
-  unsigned long now = millis();
-  if (now - lastBtnTime[2] > 200) {
-    lastBtnTime[2] = now;
-    btnTriggered[2] = true;
-    if (slots[2].state == ACTIVE) {
-      digitalWrite(PIN_RELAY[2], HIGH); // Relay OFF seketika (0ms)
-      digitalWrite(PIN_LED[2], LOW);    // LED OFF seketika (0ms)
-    }
-  }
-}
+// DEBOUNCE FILTER TOMBOL (Anti-Noise EMI 220V AC & Inductive Glitch)
+// ============================================================
+unsigned long lastBtnDebounceTime[NUM_SLOTS] = {0, 0, 0};
+bool lastBtnPhysical[NUM_SLOTS]              = {HIGH, HIGH, HIGH};
+bool btnState[NUM_SLOTS]                     = {HIGH, HIGH, HIGH};
+#define DEBOUNCE_DELAY_MS 50 // Validasi 50ms untuk menolak lonjakan listrik / noise induktif (<1ms)
 
 // ============================================================
 // DATA SENSOR TERAKHIR
@@ -214,15 +180,12 @@ void setup() {
   pinMode(PIN_RELAY_SPARE, OUTPUT);
   digitalWrite(PIN_RELAY_SPARE, HIGH);
 
-  // 2. Init Tombol & LED Ring (dengan Hardware Interrupts)
+  // 2. Init Tombol & LED Ring (Input Pullup & Low Output)
   for (int i = 0; i < NUM_SLOTS; i++) {
     pinMode(PIN_BTN[i], INPUT_PULLUP);
     pinMode(PIN_LED[i], OUTPUT);
     digitalWrite(PIN_LED[i], LOW);
   }
-  attachInterrupt(digitalPinToInterrupt(PIN_BTN[0]), isrBtn1, FALLING);
-  attachInterrupt(digitalPinToInterrupt(PIN_BTN[1]), isrBtn2, FALLING);
-  attachInterrupt(digitalPinToInterrupt(PIN_BTN[2]), isrBtn3, FALLING);
 
   // 3. Init LCD
   Wire.begin(21, 22);
@@ -420,60 +383,60 @@ bool fbPatch(const String& path, const String& body) {
 }
 
 // ============================================================
-// Cek Tombol — Deteksi tekan dengan interrupt & edge detection
+// Cek Tombol — Debounce Stabil & Anti-Noise EMI (Filter Glitch AC 220V)
 // ============================================================
 void checkButtons() {
   if (isOverheated) return;  // Proteksi: Selama kondisi overheat, tombol fisik dikunci total!
 
+  unsigned long now = millis();
+
   for (int i = 0; i < NUM_SLOTS; i++) {
     bool raw = digitalRead(PIN_BTN[i]);
-    bool pressEvent = false;
 
-    // Prioritas 1: Flag dari hardware interrupt
-    if (btnTriggered[i]) {
-      btnTriggered[i] = false;
-      pressEvent = true;
-    }
-    // Prioritas 2: Deteksi falling edge langsung (anti-miss)
-    else if (lastBtnPhysical[i] == HIGH && raw == LOW) {
-      delay(20);
-      if (digitalRead(PIN_BTN[i]) == LOW) {
-        pressEvent = true;
-      }
+    // Jika terjadi perubahan sinyal (bisa noise atau tombol ditekan)
+    if (raw != lastBtnPhysical[i]) {
+      lastBtnDebounceTime[i] = now;
     }
     lastBtnPhysical[i] = raw;
 
-    if (!pressEvent) continue;
+    // Sinyal harus stabil minimal 50ms untuk menolak noise listrik / induksi relay (<1ms)
+    if ((now - lastBtnDebounceTime[i]) > DEBOUNCE_DELAY_MS) {
+      if (raw != btnState[i]) {
+        btnState[i] = raw;
 
-    // --- Aksi berdasarkan state slot saat ini ---
-    if (slots[i].state == STANDBY) {
-      // Mulai proses sewa — respon hardware INSTAN sebelum kirim internet!
-      Serial.printf("\n[BTN %d] Ditekan -> WAITING_PAYMENT\n", i + 1);
-      slots[i].state = WAITING_PAYMENT;
-      slots[i].waitStart = millis();
+        // Event: Tombol valid DITEKAN (Active-LOW: transisi ke LOW)
+        if (btnState[i] == LOW) {
+          // --- Aksi berdasarkan state slot saat ini ---
+          if (slots[i].state == STANDBY) {
+            Serial.printf("\n[BTN %d] Ditekan Valid -> WAITING_PAYMENT\n", i + 1);
+            slots[i].state = WAITING_PAYMENT;
+            slots[i].waitStart = millis();
 
-      // 1. Update fisik (LED mulai kedip, LCD berganti) SEKETIKA (0ms delay)
-      updateHardware();
-      updateLcdDisplay();
+            // 1. Update fisik (LED mulai kedip, LCD berganti) SEKETIKA (0ms delay)
+            updateHardware();
+            updateLcdDisplay();
 
-      // 2. Kirim update ke Firebase tanpa menimpa slot lain
-      String slotKey = "slot" + String(i + 1);
-      String body = "{\"status\":\"WAITING_PAYMENT\",\"active_duration\":0,\"duration_seconds\":0,\"started_at\":0,\"amount_paid\":0}";
-      fbPut(slotKey, body);
-      fbPut("slots/" + slotKey, body);
-      fbPut("system/active_selection", "{\"slot\":\"" + slotKey + "\",\"status\":\"WAITING_PAYMENT\",\"timestamp\":0}");
+            // 2. Kirim update ke Firebase tanpa menimpa slot lain
+            String slotKey = "slot" + String(i + 1);
+            String body = "{\"status\":\"WAITING_PAYMENT\",\"active_duration\":0,\"duration_seconds\":0,\"started_at\":0,\"amount_paid\":0}";
+            fbPut(slotKey, body);
+            fbPut("slots/" + slotKey, body);
+            fbPut("system/active_selection", "{\"slot\":\"" + slotKey + "\",\"status\":\"WAITING_PAYMENT\",\"timestamp\":0}");
 
-      Serial.printf("[FIREBASE] Slot %d -> WAITING_PAYMENT terkirim.\n", i + 1);
-    }
-    else if (slots[i].state == WAITING_PAYMENT) {
-      // Tekan lagi saat menunggu → batalkan seleksi
-      Serial.printf("[BTN %d] Batal seleksi.\n", i + 1);
-      setSlotStandby(i);
-    }
-    else if (slots[i].state == ACTIVE) {
-      // Early Stop: matikan sewa lebih awal
-      Serial.printf("[BTN %d] Early Stop oleh pengguna.\n", i + 1);
-      setSlotStandby(i);
+            Serial.printf("[FIREBASE] Slot %d -> WAITING_PAYMENT terkirim.\n", i + 1);
+          }
+          else if (slots[i].state == WAITING_PAYMENT) {
+            // Tekan lagi saat menunggu → batalkan seleksi
+            Serial.printf("[BTN %d] Batal seleksi.\n", i + 1);
+            setSlotStandby(i);
+          }
+          else if (slots[i].state == ACTIVE) {
+            // Early Stop: matikan sewa lebih awal
+            Serial.printf("[BTN %d] Early Stop oleh pengguna.\n", i + 1);
+            setSlotStandby(i);
+          }
+        }
+      }
     }
   }
 }
