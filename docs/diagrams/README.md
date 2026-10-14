@@ -10,7 +10,7 @@ Direktori ini berisi diagram interaktif profesional berbasis file HTML mandiri (
 |---|---|---|
 | 🌐 [**`ranova-system-architecture.html`**](ranova-system-architecture.html) | **Architecture Diagram** | Pemetaan topologi menyeluruh: User Smartphone, Mayar QRIS Gateway, Vercel Serverless Webhook, Firebase RTDB, Mikrokontroler ESP32, Sensor PZEM-004T & DHT22, Modul Relay 4-Ch, Stop Kontak AC 220V, serta Operator Web Dashboard & MySQL. |
 | ⚡ [**`ranova-payment-sequence.html`**](ranova-payment-sequence.html) | **Sequence Diagram** | Alur panggilan data berurutan (*step-by-step trace*): Penekanan tombol fisik slot -> Kunci Mutex -> Scan QRIS & Bayar -> Webhook HTTP POST -> Update Firebase ACTIVE -> Relay ON -> Aliran listrik & Streaming telemetri daya. |
-| 🔄 [**`ranova-slot-lifecycle.html`**](ranova-slot-lifecycle.html) | **Lifecycle / State Machine** | Siklus transisi status slot: `STANDBY` -> `WAITING_PAYMENT` (300s timeout) -> `ACTIVE` -> `COMPLETED`, dilengkapi interupsi pembatalan (`CANCELLED`), penghentian awal (`FORCE_STOP`), serta proteksi suhu `EMERGENCY_STOP` (Overheat $\ge 60^\circ\text{C}$). |
+| 🔄 [**`ranova-slot-lifecycle.html`**](ranova-slot-lifecycle.html) | **Lifecycle / State Machine** | Siklus transisi status slot: `STANDBY` -> `WAITING_PAYMENT` (300s timeout) -> `ACTIVE` -> `COMPLETED`, dilengkapi interupsi pembatalan (`CANCELLED`), penghentian awal (`FORCE_STOP`), serta proteksi suhu `EMERGENCY_STOP` (Overheat $\ge 50^\circ\text{C}$). |
 
 ---
 

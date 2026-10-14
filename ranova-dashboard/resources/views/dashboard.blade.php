@@ -182,7 +182,7 @@
                     {{ number_format($firebaseData['sensors']['temperature'] ?? 0, 1) }}°C
                 </p>
                 <div class="mt-1" id="temp-badge">
-                    <span class="inline-block font-mono text-[11px] font-semibold px-1.5 py-0.5 rounded bg-mint/10 text-mint border border-mint/25">Normal &lt; {{ $overheatThreshold }}°C</span>
+                    <span class="inline-block font-mono text-[11px] font-semibold px-1.5 py-0.5 rounded bg-mint/10 text-mint border border-mint/25">Normal &lt; {{ round($overheatThreshold) }}°C</span>
                 </div>
             </div>
             <!-- Kelembapan -->
@@ -376,7 +376,7 @@
                             if (temp >= OVERHEAT_LIMIT && OVERHEAT_LIMIT > 0) {
                                 tempBadge.innerHTML = '<span class="inline-block font-mono text-[11px] font-bold px-1.5 py-0.5 rounded bg-crimson/20 text-crimson border border-crimson/30">OVERHEAT!</span>';
                             } else if (temp > 0) {
-                                tempBadge.innerHTML = '<span class="inline-block font-mono text-[11px] font-semibold px-1.5 py-0.5 rounded bg-mint/10 text-mint border border-mint/25">Normal &lt; ' + OVERHEAT_LIMIT + '°C</span>';
+                                tempBadge.innerHTML = '<span class="inline-block font-mono text-[11px] font-semibold px-1.5 py-0.5 rounded bg-mint/10 text-mint border border-mint/25">Normal &lt; ' + Math.round(OVERHEAT_LIMIT) + '°C</span>';
                             } else {
                                 tempBadge.innerHTML = '<span class="inline-block font-mono text-[11px] font-semibold px-1.5 py-0.5 rounded bg-surface2 text-neutral-300 border border-hairline">Standby</span>';
                             }

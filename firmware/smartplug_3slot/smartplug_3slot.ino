@@ -721,7 +721,7 @@ void updateTelemetry() {
 }
 
 // ============================================================
-// Proteksi Overheat (>60°C) dengan Histeresis Termal (<50°C)
+// Proteksi Overheat (>=50°C) dengan Histeresis Termal (<40°C)
 // ============================================================
 void handleOverheat() {
   unsigned long now = millis();

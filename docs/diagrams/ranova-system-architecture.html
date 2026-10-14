@@ -5067,7 +5067,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         </g>
         <g data-graph-role="automatic-crossover" style="--step:11">
           <path data-graph-role="automatic-crossover-underlay" d="M 1270 172 L 1202 172 Q 1194 172 1194 180 L 1194 312 Q 1194 320 1186 320 L 1170 320" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="dht" data-edge-to="esp32" data-edge-label="Proteksi Overheat &gt;60C" data-edge-key="11" data-edge-id="c-dht-esp32" data-composition-points="1270,172;1194,172;1194,320;1170,320" data-composition-crossover="halo" data-composition-independent="true" d="M 1270 172 L 1202 172 Q 1194 172 1194 180 L 1194 312 Q 1194 320 1186 320 L 1170 320" class="a-security" data-animate="edge" style="--step:11" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
+          <path data-edge-from="dht" data-edge-to="esp32" data-edge-label="Proteksi Overheat &gt;50C" data-edge-key="11" data-edge-id="c-dht-esp32" data-composition-points="1270,172;1194,172;1194,320;1170,320" data-composition-crossover="halo" data-composition-independent="true" d="M 1270 172 L 1202 172 Q 1194 172 1194 180 L 1194 312 Q 1194 320 1186 320 L 1170 320" class="a-security" data-animate="edge" style="--step:11" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:12">
           <path data-graph-role="automatic-crossover-underlay" d="M 670 482 L 712 482 Q 720 482 720 474 L 720 347 Q 720 339 728 339 L 770 339" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
@@ -5290,9 +5290,9 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <rect x="1181.4" y="395" width="77.2" height="14" rx="3" class="c-mask"/>
           <text x="1220" y="405" class="t-edge-default" font-size="8" text-anchor="middle">UART Telemetri</text>
         </g>
-        <g data-detail="context" data-edge-from="dht" data-edge-to="esp32" data-edge-label="Proteksi Overheat &gt;60C" data-edge-key="11" data-edge-id="c-dht-esp32">
+        <g data-detail="context" data-edge-from="dht" data-edge-to="esp32" data-edge-label="Proteksi Overheat &gt;50C" data-edge-key="11" data-edge-id="c-dht-esp32">
           <rect x="1136.2" y="226" width="115.6" height="14" rx="3" class="c-mask"/>
-          <text x="1194" y="236" class="t-edge-security" font-size="8" text-anchor="middle">Proteksi Overheat &gt;60C</text>
+          <text x="1194" y="236" class="t-edge-security" font-size="8" text-anchor="middle">Proteksi Overheat &gt;50C</text>
         </g>
         <g data-detail="context" data-edge-from="dashboard" data-edge-to="firebase" data-edge-label="Polling REST API" data-edge-key="12" data-edge-id="c-dashboard-firebase">
           <rect x="676.6" y="390.5" width="86.8" height="14" rx="3" class="c-mask"/>
@@ -5541,8 +5541,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <h3>Keselamatan &amp; Kontrol Fisik</h3>
         </div>
         <ul>
-          <li>Sensor DHT22 memicu Emergency Cutoff seketika jika suhu box &gt;= 60°C</li>
-          <li>Interupsi hardware (GPIO falling) memproses pembatalan atau early stop</li>
+          <li>Sensor DHT22 memicu Emergency Cutoff seketika jika suhu box &gt;= 50°C</li>
+          <li>Tombol metal debounced memproses pembatalan atau early stop</li>
           <li>Relay 4-channel active-LOW mengisolasi tegangan AC 220V secara aman</li>
         </ul>
       </div>

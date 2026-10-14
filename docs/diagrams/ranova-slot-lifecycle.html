@@ -5045,7 +5045,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         </g>
         <g data-graph-role="automatic-crossover" style="--step:5">
           <path data-graph-role="automatic-crossover-underlay" d="M 461 164 L 477 164 Q 485 164 485 172 L 485 377 Q 485 385 493 385 L 647 385" fill="none" stroke="var(--mask)" stroke-width="5.1" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="active" data-edge-to="overheat" data-edge-label="Overheat &gt;= 60C" data-edge-key="5" data-edge-id="t-overheat-trip" data-composition-points="461,164;485,164;485,385;647,385" data-composition-crossover="halo" d="M 461 164 L 477 164 Q 485 164 485 172 L 485 377 Q 485 385 493 385 L 647 385" class="a-security" data-animate="edge" style="--step:5" stroke-width="1.1" marker-end="url(#arrowhead-security)"/>
+          <path data-edge-from="active" data-edge-to="overheat" data-edge-label="Overheat &gt;= 50C" data-edge-key="5" data-edge-id="t-overheat-trip" data-composition-points="461,164;485,164;485,385;647,385" data-composition-crossover="halo" d="M 461 164 L 477 164 Q 485 164 485 172 L 485 377 Q 485 385 493 385 L 647 385" class="a-security" data-animate="edge" style="--step:5" stroke-width="1.1" marker-end="url(#arrowhead-security)"/>
         </g>
 
         <!-- States -->
@@ -5133,8 +5133,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <text data-detail="fine" x="710" y="325" class="t-cloud" font-size="7" text-anchor="middle">interrupt</text>
         </g>
 
-        <g id="node-overheat" data-node-id="overheat" data-node-label="EMERGENCY_STOP" tabindex="0" role="button" aria-label="Focus EMERGENCY_STOP, Suhu &gt;= 60°C (Cutoff), Proteksi Keselamatan Termal" aria-pressed="false" data-node-kind="failure" data-node-sublabel="Suhu &gt;= 60°C (Cutoff)" data-node-tag="danger" data-node-context="Proteksi Keselamatan Termal">
-          <title>EMERGENCY_STOP · Suhu &gt;= 60°C (Cutoff) · Proteksi Keselamatan Termal · danger</title>
+        <g id="node-overheat" data-node-id="overheat" data-node-label="EMERGENCY_STOP" tabindex="0" role="button" aria-label="Focus EMERGENCY_STOP, Suhu &gt;= 50°C (Cutoff), Proteksi Keselamatan Termal" aria-pressed="false" data-node-kind="failure" data-node-sublabel="Suhu &gt;= 50°C (Cutoff)" data-node-tag="danger" data-node-context="Proteksi Keselamatan Termal">
+          <title>EMERGENCY_STOP · Suhu &gt;= 50°C (Cutoff) · Proteksi Keselamatan Termal · danger</title>
           <rect x="647" y="356" width="126" height="58" rx="7" class="c-mask"/>
           <rect x="647" y="356" width="126" height="58" rx="7" class="c-security" data-animate="node" style="--step:6" stroke-width="1.5"/>
           <rect x="650" y="359" width="120" height="52" rx="4" class="c-security" style="fill: none" stroke-width="1"/>
@@ -5143,7 +5143,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <path d="m5.7 5.7 4.6 4.6m0-4.6-4.6 4.6"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="710" y="377" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">EMERGENCY_STOP</text>
-          <text data-detail="context" x="710" y="393" class="t-muted" font-size="7" text-anchor="middle">Suhu &gt;= 60°C (Cutoff)</text>
+          <text data-detail="context" x="710" y="393" class="t-muted" font-size="7" text-anchor="middle">Suhu &gt;= 50°C (Cutoff)</text>
         <text data-detail="fine" x="710" y="403" class="t-security" font-size="7" text-anchor="middle">danger</text>
         </g>
 
@@ -5168,9 +5168,9 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <rect x="523.05" y="191" width="65.9" height="16" rx="4" class="c-mask"/>
           <text x="556" y="202" class="t-edge-default" font-size="8" text-anchor="middle">Stop Manual</text>
         </g>
-        <g data-detail="context" data-edge-from="active" data-edge-to="overheat" data-edge-label="Overheat &gt;= 60C" data-edge-key="5" data-edge-id="t-overheat-trip">
+        <g data-detail="context" data-edge-from="active" data-edge-to="overheat" data-edge-label="Overheat &gt;= 50C" data-edge-key="5" data-edge-id="t-overheat-trip">
           <rect x="442.25" y="253.5" width="85.5" height="16" rx="4" class="c-mask"/>
-          <text x="485" y="264.5" class="t-edge-security" font-size="8" text-anchor="middle">Overheat &gt;= 60C</text>
+          <text x="485" y="264.5" class="t-edge-security" font-size="8" text-anchor="middle">Overheat &gt;= 50C</text>
         </g>
 
         <!-- Legend -->
@@ -5396,8 +5396,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         </div>
         <ul>
           <li>Pengguna dapat membatalkan pilihan sebelum membayar (CANCELLED)</li>
-          <li>Hardware interrupt mendukung penghentian manual instan (FORCE_STOP)</li>
-          <li>Sensor DHT22 memicu EMERGENCY_STOP jika suhu box mencapai 60°C</li>
+          <li>Tombol fisik mendukung penghentian manual instan (FORCE_STOP)</li>
+          <li>Sensor DHT22 memicu EMERGENCY_STOP jika suhu box mencapai 50°C</li>
         </ul>
       </div>
     </div>

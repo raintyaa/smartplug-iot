@@ -41,7 +41,7 @@
     { "id": "c-relay-loads", "from": "relay", "to": "loads", "label": "Alirkan AC 220V", "variant": "emphasis" },
     { "id": "c-loads-pzem", "from": "loads", "to": "pzem", "label": "Arus Beban (CT)", "variant": "dashed" },
     { "id": "c-pzem-esp32", "from": "pzem", "to": "esp32", "label": "UART Telemetri", "variant": "default" },
-    { "id": "c-dht-esp32", "from": "dht", "to": "esp32", "label": "Proteksi Overheat >60C", "variant": "security" },
+    { "id": "c-dht-esp32", "from": "dht", "to": "esp32", "label": "Proteksi Overheat >50C", "variant": "security" },
     { "id": "c-dashboard-firebase", "from": "dashboard", "to": "firebase", "label": "Polling REST API", "variant": "default" },
     { "id": "c-dashboard-mysql", "from": "dashboard", "to": "mysql", "label": "Simpan Audit Log", "variant": "default" }
   ],
@@ -59,8 +59,8 @@
       "dot": "rose",
       "title": "Keselamatan & Kontrol Fisik",
       "items": [
-        "Sensor DHT22 memicu Emergency Cutoff seketika jika suhu box >= 60°C",
-        "Interupsi hardware (GPIO falling) memproses pembatalan atau early stop",
+        "Sensor DHT22 memicu Emergency Cutoff seketika jika suhu box >= 50°C",
+        "Tombol metal debounced memproses pembatalan atau early stop",
         "Relay 4-channel active-LOW mengisolasi tegangan AC 220V secara aman"
       ]
     },

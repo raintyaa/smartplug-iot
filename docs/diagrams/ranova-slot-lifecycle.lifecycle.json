@@ -23,7 +23,7 @@
     { "id": "cancelled", "type": "waiting", "label": "CANCELLED", "sublabel": "Batal sewa", "lane": "waiting", "col": 1, "tag": "cancel" },
     { "id": "force_stop", "type": "waiting", "label": "FORCE_STOP", "sublabel": "Early stop tombol/web", "lane": "waiting", "col": 2, "tag": "interrupt" },
 
-    { "id": "overheat", "type": "failure", "label": "EMERGENCY_STOP", "sublabel": "Suhu >= 60°C (Cutoff)", "lane": "exceptions", "col": 2, "yOffset": 78, "tag": "danger" }
+    { "id": "overheat", "type": "failure", "label": "EMERGENCY_STOP", "sublabel": "Suhu >= 50°C (Cutoff)", "lane": "exceptions", "col": 2, "yOffset": 78, "tag": "danger" }
   ],
   "transitions": [
     { "id": "t-press", "from": "standby", "to": "waiting", "label": "Tekan Tombol", "variant": "emphasis" },
@@ -31,7 +31,7 @@
     { "id": "t-done", "from": "active", "to": "completed", "label": "Timer Selesai", "variant": "emphasis" },
     { "id": "t-cancel", "from": "waiting", "to": "cancelled", "label": "Batal (Tombol)", "variant": "default", "fromSide": "bottom", "toSide": "top" },
     { "id": "t-early-stop", "from": "active", "to": "force_stop", "label": "Stop Manual", "variant": "default", "fromSide": "bottom", "toSide": "top" },
-    { "id": "t-overheat-trip", "from": "active", "to": "overheat", "label": "Overheat >= 60C", "variant": "security" }
+    { "id": "t-overheat-trip", "from": "active", "to": "overheat", "label": "Overheat >= 50C", "variant": "security" }
   ],
   "cards": [
     {
@@ -48,8 +48,8 @@
       "title": "Proteksi Multi-Lapis",
       "items": [
         "Pengguna dapat membatalkan pilihan sebelum membayar (CANCELLED)",
-        "Hardware interrupt mendukung penghentian manual instan (FORCE_STOP)",
-        "Sensor DHT22 memicu EMERGENCY_STOP jika suhu box mencapai 60°C"
+        "Tombol fisik mendukung penghentian manual instan (FORCE_STOP)",
+        "Sensor DHT22 memicu EMERGENCY_STOP jika suhu box mencapai 50°C"
       ]
     }
   ]
