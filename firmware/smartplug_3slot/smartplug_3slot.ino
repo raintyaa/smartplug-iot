@@ -27,7 +27,6 @@
 //  /config/pricing { base_price, base_duration_seconds }
 //
 // Libraries (Install via Arduino IDE Library Manager):
-//  - WiFiManager (tzapu) v2.0.16+
 //  - ArduinoJson (Benoit Blanchon) v6.x
 //  - LiquidCrystal I2C (Frank de Brabander)
 //  - DHT sensor library (Adafruit)
@@ -36,7 +35,6 @@
 // ============================================================
 
 #include <WiFi.h>
-#include <WiFiManager.h> // Captive Portal WiFi Configuration
 #include <time.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
@@ -47,11 +45,10 @@
 #include <PZEM004Tv30.h>
 
 // ============================================================
-// KONFIGURASI — Hotspot Captive Portal & Firebase
+// KONFIGURASI — WiFi & Firebase
 // ============================================================
-#define AP_SSID            "Ranova-SmartPlug-AP" // Hotspot AP saat konfigurasi WiFi
-#define AP_PASSWORD        ""                    // Password AP (kosongkan untuk open network)
-#define AP_CONFIG_TIMEOUT  120                   // Timeout portal jika tidak ada input (120 detik)
+const char* WIFI_SSID     = "hujan";          // Nama WiFi / Hotspot HP
+const char* WIFI_PASSWORD = "02082006";       // Password WiFi
 const char* FIREBASE_HOST = "https://smartplug-4442d-default-rtdb.asia-southeast1.firebasedatabase.app";
 
 // ============================================================
@@ -243,26 +240,10 @@ void setup() {
   // 5. SSL bypass (dev mode)
   secureClient.setInsecure();
 
-  // 6. Cek Reset WiFi (Tahan Tombol Slot 1 saat alat dinyalakan untuk reset WiFi)
-  if (digitalRead(PIN_BTN[0]) == LOW) {
-    lcd.clear();
-    lcd.setCursor(0, 0); lcd.print("RESET WIFI...");
-    lcd.setCursor(0, 1); lcd.print("Tahan 2 detik...");
-    Serial.println("[WiFi] Tombol Slot 1 ditekan saat boot. Menghapus data WiFi tersimpan...");
-    delay(2000);
-    if (digitalRead(PIN_BTN[0]) == LOW) {
-      WiFiManager wm;
-      wm.resetSettings();
-      Serial.println("[WiFi] Pengaturan WiFi berhasil di-reset!");
-      lcd.setCursor(0, 1); lcd.print("Reset Sukses!   ");
-      delay(1500);
-    }
-  }
-
-  // 7. Koneksi WiFi (WiFiManager Captive Portal)
+  // 6. Koneksi WiFi
   connectWiFi();
 
-  // 8. Reset semua slot di Firebase ke STANDBY
+  // 7. Reset semua slot di Firebase ke STANDBY
   for (int i = 0; i < NUM_SLOTS; i++) {
     setSlotStandby(i);
   }
@@ -332,42 +313,24 @@ void loop() {
 }
 
 // ============================================================
-// WiFi: Koneksi awal dengan WiFiManager (AutoConnect + Captive Portal)
+// WiFi: Koneksi awal
 // ============================================================
 void connectWiFi() {
-  Serial.println("[WiFi] Memulai inisialisasi jaringan...");
-  lcd.setCursor(0, 1); lcd.print("WiFi Cek...     ");
+  Serial.print("[WiFi] Menghubungkan ke ");
+  Serial.println(WIFI_SSID);
 
-  WiFiManager wm;
+  lcd.setCursor(0, 1); lcd.print("WiFi...         ");
 
-  // Optimasi sistem: Batas waktu agar tidak memblokir alat jika router mati
-  wm.setConfigPortalTimeout(AP_CONFIG_TIMEOUT); // 120 detik timeout portal jika tidak ada input
-  wm.setConnectTimeout(15);                     // 15 detik timeout mencoba konek ke WiFi
-  wm.setShowStaticFields(true);
-  wm.setShowPassword(true);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  int retry = 0;
+  while (WiFi.status() != WL_CONNECTED && retry < 25) {
+    delay(500);
+    Serial.print(".");
+    retry++;
+  }
 
-  // Callback visual saat ESP32 masuk mode Access Point (Captive Portal)
-  wm.setAPCallback([](WiFiManager* myWiFiManager) {
-    Serial.println("\n==============================================");
-    Serial.println("[WiFiManager] Masuk ke Mode AP (Captive Portal)");
-    Serial.print("[WiFiManager] Hubungkan HP/Laptop ke SSID: ");
-    Serial.println(myWiFiManager->getConfigPortalSSID());
-    Serial.print("[WiFiManager] IP Konfigurasi: ");
-    Serial.println(WiFi.softAPIP().toString());
-    Serial.println("==============================================\n");
-
-    lcd.clear();
-    lcd.setCursor(0, 0); lcd.print("WiFi AP Mode:   ");
-    lcd.setCursor(0, 1); lcd.print("Ranova-Setup    ");
-  });
-
-  // Hubungkan ke WiFi tersimpan di flash NVS. Jika belum ada/gagal, aktifkan portal AP
-  bool res = wm.autoConnect(AP_SSID, AP_PASSWORD);
-
-  if (res) {
+  if (WiFi.status() == WL_CONNECTED) {
     Serial.println("\n[WiFi] Terhubung! IP: " + WiFi.localIP().toString());
-    lcd.clear();
-    lcd.setCursor(0, 0); lcd.print("  SMART  PLUG   ");
     lcd.setCursor(0, 1); lcd.print("WiFi OK!        ");
 
     // Sinkronisasi waktu NTP (WIB = UTC+7)
@@ -380,21 +343,25 @@ void connectWiFi() {
     }
     Serial.println(ntpRetry < 10 ? " OK!" : " Timeout.");
   } else {
-    Serial.println("\n[WiFi] Timeout atau gagal terhubung! Sistem tetap berjalan offline.");
-    lcd.clear();
-    lcd.setCursor(0, 0); lcd.print("  SMART  PLUG   ");
-    lcd.setCursor(0, 1); lcd.print("WiFi Offline    ");
+    Serial.println("\n[WiFi] GAGAL! Sistem tetap berjalan offline.");
+    lcd.setCursor(0, 1); lcd.print("WiFi GAGAL!     ");
   }
   delay(1000);
 }
 
 // ============================================================
-// WiFi: Auto-reconnect non-blocking (tiap 30 detik di loop)
+// WiFi: Auto-reconnect
 // ============================================================
 void checkWiFi() {
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("[WiFi] Koneksi terputus! Mencoba menyambung ulang...");
-    WiFi.reconnect();
+    Serial.println("[WiFi] Terputus! Reconnect...");
+    WiFi.disconnect();
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    int retry = 0;
+    while (WiFi.status() != WL_CONNECTED && retry++ < 15) delay(500);
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("[WiFi] Reconnect berhasil!");
+    }
   }
 }
 
