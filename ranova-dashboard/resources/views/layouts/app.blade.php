@@ -139,7 +139,7 @@
             <div class="flex items-center space-x-3">
                 <!-- Sync Clock -->
                 <span id="last-sync-time" class="font-mono text-xs text-neutral-300 px-2.5 py-1.5 rounded-lg bg-surface2 border border-hairline">
-                    Sinkron: 00:00:00
+                    Sinkron: {{ date('H:i:s') }}
                 </span>
 
                 <!-- Status ESP32 Badge (Dynamic JS) -->
@@ -224,6 +224,84 @@
                             /* storage unavailable: keep UI-only toggle */
                         }
                     });
+                }
+            });
+        })();
+    </script>
+
+    <!-- Global Sync Heartbeat across All Tabs -->
+    <script>
+        (function() {
+            var globalSyncTimer = null;
+            var lastGlobalSensorUpdate = 0;
+
+            function setEsp32BadgeOnline() {
+                var badge = document.getElementById('esp32-badge');
+                if (badge) {
+                    badge.className = 'font-mono text-xs font-medium px-3 py-1.5 rounded-lg bg-mint/10 border border-mint/25 text-mint';
+                    badge.innerText = 'ESP32';
+                }
+            }
+
+            function setEsp32BadgeOffline() {
+                var badge = document.getElementById('esp32-badge');
+                if (badge) {
+                    badge.className = 'font-mono text-xs font-medium px-3 py-1.5 rounded-lg bg-surface2 border border-hairline text-neutral-400';
+                    badge.innerText = 'ESP32 Offline';
+                }
+            }
+
+            function updateGlobalSync() {
+                if (window.hasCustomDashboardLoop) return;
+
+                fetch("{{ route('api.realtime') }}")
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        var now = new Date();
+                        var timeStr = now.toTimeString().split(' ')[0];
+                        var syncEl = document.getElementById('last-sync-time');
+                        if (syncEl) syncEl.innerText = 'Sinkron: ' + timeStr;
+
+                        if (data && data.sensors) {
+                            var incomingUpdate = parseInt(data.sensors.updated_at) || 0;
+                            if (incomingUpdate > lastGlobalSensorUpdate) {
+                                lastGlobalSensorUpdate = incomingUpdate;
+                            }
+                            var nowUnix = Math.floor(Date.now() / 1000);
+                            var diff = (lastGlobalSensorUpdate > 0) ? (nowUnix - lastGlobalSensorUpdate) : 9999;
+
+                            if (lastGlobalSensorUpdate === 0 || diff > 25) {
+                                setEsp32BadgeOffline();
+                            } else {
+                                setEsp32BadgeOnline();
+                            }
+
+                            var elVolt = document.getElementById('sensor-page-volt');
+                            if (elVolt) elVolt.innerHTML = parseFloat(data.sensors.voltage || 0).toFixed(1) + ' <span class="text-sm font-normal text-neutral-400">V</span>';
+
+                            var elCurr = document.getElementById('sensor-page-curr');
+                            if (elCurr) elCurr.innerHTML = parseFloat(data.sensors.current || 0).toFixed(2) + ' <span class="text-sm font-normal text-neutral-400">A</span>';
+
+                            var elPower = document.getElementById('sensor-page-power');
+                            if (elPower) elPower.innerHTML = parseFloat(data.sensors.power || 0).toFixed(1) + ' <span class="text-sm font-normal text-neutral-400">W</span>';
+
+                            var elTemp = document.getElementById('sensor-page-temp');
+                            if (elTemp) elTemp.innerHTML = parseFloat(data.sensors.temperature || 0).toFixed(1) + '<span class="text-sm font-normal text-neutral-400">°C</span>';
+
+                            var elHumid = document.getElementById('sensor-page-humid');
+                            if (elHumid) elHumid.innerHTML = parseFloat(data.sensors.humidity || 0).toFixed(0) + '<span class="text-sm font-normal text-neutral-400">%</span>';
+                        }
+                    })
+                    .catch(function(err) {
+                        var syncEl = document.getElementById('last-sync-time');
+                        if (syncEl) syncEl.innerText = 'Koneksi terputus...';
+                    });
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                if (!window.hasCustomDashboardLoop) {
+                    updateGlobalSync();
+                    globalSyncTimer = setInterval(updateGlobalSync, 3000);
                 }
             });
         })();

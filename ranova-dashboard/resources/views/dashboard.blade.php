@@ -200,6 +200,7 @@
 
 @push('scripts')
 <script>
+    window.hasCustomDashboardLoop = true;
     // Polling Realtime Engine (setiap 2 detik sinkron dengan Firebase & Database)
     const OVERHEAT_LIMIT = {{ $overheatThreshold }};
     const ESP32_OFFLINE_THRESHOLD_MS = 10000; // 10 detik tanpa update = offline
@@ -222,8 +223,8 @@
     function setEsp32Offline() {
         const badge = getEsp32Badge();
         if (badge) {
-            badge.className = 'font-mono text-xs font-medium px-3 py-1.5 rounded-lg bg-surface2 border border-hairline text-neutral-300';
-            badge.innerText = 'ESP32';
+            badge.className = 'font-mono text-xs font-medium px-3 py-1.5 rounded-lg bg-surface2 border border-hairline text-neutral-400';
+            badge.innerText = 'ESP32 Offline';
         }
         // Nol-kan semua nilai sensor
         if (document.getElementById('sensor-temp')) {
@@ -247,7 +248,7 @@
                 const now = new Date();
                 const timeStr = now.toTimeString().split(' ')[0];
                 const syncEl = document.getElementById('last-sync-time');
-                if (syncEl) syncEl.innerText = timeStr;
+                if (syncEl) syncEl.innerText = 'Sinkron: ' + timeStr;
 
                 // 1. Update 3 Slot Stop Kontak
                 let activeSlotsCount = 0;
