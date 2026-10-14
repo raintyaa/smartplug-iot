@@ -82,20 +82,37 @@
                 </div>
             </div>
 
-            <!-- 3. Tarif Dasar Listrik PLN -->
-            <div class="pt-5 border-t border-hairline">
-                <label for="tariff_pln_per_kwh" class="block text-xs font-medium text-neutral-200 mb-1.5">
-                    Tarif Dasar Listrik PLN untuk Laporan Laba Rugi (Rp / kWh)
-                </label>
-                <div class="relative max-w-sm">
-                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-mono text-neutral-400">Rp</span>
-                    <input type="number" step="0.01" name="tariff_pln_per_kwh" id="tariff_pln_per_kwh" 
-                        value="{{ old('tariff_pln_per_kwh', $settings['tariff_pln_per_kwh']->value ?? '1444.70') }}" required
-                        class="w-full pl-10 pr-4 py-2.5 bg-surface2 border border-hairline rounded-lg text-sm font-mono text-white focus:outline-none focus:border-mint/50 focus:ring-1 focus:ring-mint/20 transition">
+            <!-- 3. Tarif Dasar Listrik PLN & Batas Suhu Overheat -->
+            <div class="pt-5 border-t border-hairline grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label for="tariff_pln_per_kwh" class="block text-xs font-medium text-neutral-200 mb-1.5">
+                        Tarif Dasar Listrik PLN untuk Laporan Laba Rugi (Rp / kWh)
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-mono text-neutral-400">Rp</span>
+                        <input type="number" step="0.01" name="tariff_pln_per_kwh" id="tariff_pln_per_kwh" 
+                            value="{{ old('tariff_pln_per_kwh', $settings['tariff_pln_per_kwh']->value ?? '1444.70') }}" required
+                            class="w-full pl-10 pr-4 py-2.5 bg-surface2 border border-hairline rounded-lg text-sm font-mono text-white focus:outline-none focus:border-mint/50 focus:ring-1 focus:ring-mint/20 transition">
+                    </div>
+                    <p class="text-xs text-neutral-400 mt-1.5 leading-relaxed">
+                        Dasar kalkulasi biaya listrik pada laporan finansial menggunakan sensor PZEM-004T.
+                    </p>
                 </div>
-                <p class="text-xs text-neutral-400 max-w-md mt-1.5 leading-relaxed">
-                    Dasar kalkulasi biaya listrik pada laporan finansial menggunakan sensor PZEM-004T.
-                </p>
+
+                <div>
+                    <label for="overheat_threshold_c" class="block text-xs font-medium text-neutral-200 mb-1.5">
+                        Ambang Batas Suhu Bahaya Box (°C)
+                    </label>
+                    <div class="relative">
+                        <input type="number" step="0.5" min="35" max="90" name="overheat_threshold_c" id="overheat_threshold_c" 
+                            value="{{ old('overheat_threshold_c', $settings['overheat_threshold_c']->value ?? '50.0') }}" required
+                            class="w-full pl-3.5 pr-12 py-2.5 bg-surface2 border border-hairline rounded-lg text-sm font-mono text-white focus:outline-none focus:border-mint/50 focus:ring-1 focus:ring-mint/20 transition">
+                        <span class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs font-mono text-neutral-400">°C</span>
+                    </div>
+                    <p class="text-xs text-neutral-400 mt-1.5 leading-relaxed">
+                        Batas maksimum sensor DHT22 internal sebelum emergency shutdown aktif.
+                    </p>
+                </div>
             </div>
 
             <!-- Tombol Simpan -->

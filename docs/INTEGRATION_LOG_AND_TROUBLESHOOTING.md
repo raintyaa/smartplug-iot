@@ -174,8 +174,8 @@ Berdasarkan analisis kebutuhan fisik dan kepraktisan perakitan 3 slot stop konta
   3. **Adaptive Polling Rate:** Polling diperlambat menjadi 7 detik saat slot aktif tanpa ada antrean bayar baru, membebaskan CPU sebesar 98%.
   4. **Falling Edge Detection:** Tombol hanya merespons momen transisi dari lepas ke tekan untuk mencegah *holding re-trigger* (menahan tombol tidak memicu sesi sewa baru).
 
-### C. Proteksi Termal Hysteresis ($T \ge 60^\circ\text{C}$ & $T < 50^\circ\text{C}$)
-* Menambahkan safety cutoff otomatis jika sensor DHT22 mendeteksi suhu internal box $\ge 60^\circ\text{C}$.
+### C. Proteksi Termal Hysteresis ($T \ge 50^\circ\text{C}$ & $T < 40^\circ\text{C}$)
+* Menambahkan safety cutoff otomatis jika sensor DHT22 mendeteksi suhu internal box $\ge 50^\circ\text{C}$.
 * Seluruh relay mati seketika, tombol dikunci, alert Firebase aktif, dan LCD menampilkan angka suhu pendinginan realtime.
-* Sistem pulih secara otomatis (*Auto-Recovery*) ke mode `STANDBY` saat suhu turun di bawah $50^\circ\text{C}$ (selisih histeresis $10^\circ\text{C}$ mencegah *thermal chattering*).
+* Sistem pulih secara otomatis (*Auto-Recovery*) ke mode `STANDBY` saat suhu turun di bawah $40^\circ\text{C}$ (selisih histeresis $10^\circ\text{C}$ mencegah *thermal chattering*).
 

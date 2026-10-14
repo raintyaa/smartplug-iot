@@ -27,8 +27,8 @@ const int PIN_RELAY_SPARE      = 26;
 #define LCD_COLS   16
 #define LCD_ROWS   2
 
-#define OVERHEAT_LIMIT_C     60.0
-#define OVERHEAT_SAFE_C      50.0
+#define OVERHEAT_LIMIT_C     50.0
+#define OVERHEAT_SAFE_C      40.0
 #define QRIS_TIMEOUT_MS      300000
 
 #define INTERVAL_FIREBASE_POLL  2000
@@ -513,7 +513,7 @@ void updateLcdDisplay() {
   unsigned long now = millis();
 
   if (isOverheated) {
-    snprintf(r1, 17, "! OVERHEAT >60C!");
+    snprintf(r1, 17, "! OVERHEAT >50C!");
     snprintf(r2, 17, "Suhu Box: %4.1f C", sensorTemp);
     lcd.setCursor(0, 0); lcd.print(r1);
     lcd.setCursor(0, 1); lcd.print(r2);
@@ -623,7 +623,7 @@ void handleOverheat() {
     isOverheated = true;
 
     Serial.println("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-    Serial.printf("  DARURAT: SUHU %.1f°C >= 60°C — EMERGENCY STOP!\n", sensorTemp);
+    Serial.printf("  DARURAT: SUHU %.1f°C >= 50°C — EMERGENCY STOP!\n", sensorTemp);
     Serial.println("  Seluruh relay & LED dimatikan! Tombol dikunci.");
     Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 
@@ -646,7 +646,7 @@ void handleOverheat() {
     isOverheated = false;
 
     Serial.println("\n============================================");
-    Serial.printf("  SUHU SUDAH AMAN (%.1f°C < 50°C) — AUTO RECOVERY!\n", sensorTemp);
+    Serial.printf("  SUHU SUDAH AMAN (%.1f°C < 40°C) — AUTO RECOVERY!\n", sensorTemp);
     Serial.println("  Sistem kembali normal ke mode STANDBY.");
     Serial.println("============================================");
 

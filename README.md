@@ -64,7 +64,7 @@ Sistem menggunakan **Mayar Payment Gateway (Mayar.id)** sebagai infrastruktur ut
   * Fungsi: Monitoring konsumsi daya, analisis biaya listrik, dan deteksi idle (auto-shutdown jika arus ≈ 0A selama 5 menit)
 * **Sensor 2 (Suhu & Kelembaban):** **DHT22 Modul 3-Pin** (Built-in Pull-Up Resistor)
   * Mengukur: Suhu (°C) dan Kelembaban (%)
-  * Fungsi: Proteksi keselamatan terhadap overheating di dalam casing (emergency shutdown jika suhu > 60°C)
+  * Fungsi: Proteksi keselamatan terhadap overheating di dalam casing (emergency shutdown jika suhu > 50°C)
 * **Antarmuka Tombol & Indikator:** 3 unit **Metal Push Button 16mm Self-Reset (Momentary) 5V LED Ring** (Tombol fisik dan lampu status terintegrasi menjadi satu unit per stop kontak)
 * **Display Lokal:** Modul LCD 16x2 Karakter dengan I2C Backpack tersolder (PCFL8574)
 * **Catu Daya DC:** Switching Power Supply 5V (3A - 5A)
@@ -191,7 +191,7 @@ Setiap tombol memiliki 5 kaki di bagian belakang: `+` (Anoda LED), `-` (Katoda L
 |---|---|---|
 | **Timer Habis** | Durasi waktu yang dibeli pengguna sudah berakhir | Logika timer ESP32 (`millis()`) |
 | **Auto-Shutdown Idle** | Tidak ada perangkat dicolokkan selama 5 menit (arus ≈ 0A) | **Sensor PZEM-004T** |
-| **Emergency Shutdown Suhu** | Suhu internal casing melebihi 60°C | **Sensor DHT22** |
+| **Emergency Shutdown Suhu** | Suhu internal casing melebihi 50°C | **Sensor DHT22** |
 
 ---
 
@@ -230,7 +230,7 @@ Sensor PZEM-004T mengukur kWh secara akumulatif, sehingga sistem dapat menghitun
 - [x] **Fase 4: Integrasi Full System ke Cloud, Payment Trigger dan Safety — SELESAI 100%**
   - [x] ESP32 membaca trigger status ON/OFF dan durasi dari Firebase secara realtime (Dual-Node sync dan Batch Polling `/slots.json`).
   - [x] Implementasi logika *Early Stop* instan (0 ms delay) via **Hardware Interrupts (`attachInterrupt` mode `FALLING`)** dan *Falling Edge Detection*.
-  - [x] Implementasi sistem proteksi keselamatan termal **Thermal Hysteresis** (Emergency Stop $T \ge 60^\circ\text{C}$ dan Auto-Recovery $T < 50^\circ\text{C}$).
+  - [x] Implementasi sistem proteksi keselamatan termal **Thermal Hysteresis** (Emergency Stop $T \ge 50^\circ\text{C}$ dan Auto-Recovery $T < 40^\circ\text{C}$).
   - [x] Optimasi tampilan LCD 16x2: Telemetri daya PZEM-004T bersih ($V, A, W$) saat slot aktif dan live cooling alert saat overheat.
 - [x] **Fase 5: Pembuatan Realtime Hardware Web Dashboard (Laravel Operator) — SELESAI 100%**
   - [x] Web Dashboard Operator Laravel (`ranova-dashboard`) dengan MySQL + Firebase RTDB.

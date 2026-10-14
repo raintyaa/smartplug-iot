@@ -59,11 +59,11 @@ Layar LCD dirancang dengan sistem prioritas bertingkat (*Priority-Based State Ma
      [Line 2]: Daya: 110.0 Watt
      ```
    * *Catatan Desain:* Nomor slot aktif sengaja tidak dimampatkan ke baris LCD agar teks tidak terpotong. Indikator slot aktif fisik ditunjukkan secara elegan oleh **Lampu LED Ring Tombol** yang menyala solid di panel box, serta countdown detail di Web Dashboard.
-5. **State 5: Kondisi Darurat Overheat ($T \ge 60^\circ\text{C}$)**
+5. **State 5: Kondisi Darurat Overheat ($T \ge 50^\circ\text{C}$)**
    * Mengambil alih tampilan LCD untuk menampilkan peringatan bahaya dan angka suhu pendinginan realtime:
      ```text
-     [Line 1]: ! OVERHEAT >60C!
-     [Line 2]: Suhu Box: 62.4 C
+     [Line 1]: ! OVERHEAT >50C!
+     [Line 2]: Suhu Box: 52.4 C
      ```
 
 ---
@@ -87,7 +87,7 @@ Layar LCD dirancang dengan sistem prioritas bertingkat (*Priority-Based State Ma
 
 ## 4. Sistem Proteksi Keselamatan Termal (Thermal Hysteresis Protection)
 
-1. **Ambang Batas Suhu Bahaya:** $T \ge 60^\circ\text{C}$ di dalam casing.
+1. **Ambang Batas Suhu Bahaya:** $T \ge 50^\circ\text{C}$ di dalam casing.
 2. **Aksi Darurat (*Emergency Cut-off*):**
    * Seluruh relay beban (Channel 1, 2, 3 & Spare) **langsung diputus seketika (OFF)**. Aliran 220V ke seluruh stop kontak mati total.
    * Seluruh lampu LED indikator slot dimatikan.
@@ -95,12 +95,12 @@ Layar LCD dirancang dengan sistem prioritas bertingkat (*Priority-Based State Ma
    * Status darurat dikirim ke Firebase (`system/emergency_alert = true`, status slot = `EMERGENCY_STOP`).
    * LCD 16x2 tetap menyala menampilkan peringatan bahaya dan **angka suhu realtime** yang sedang mendingin:
      ```text
-     [Line 1]: ! OVERHEAT >60C!
+     [Line 1]: ! OVERHEAT >50C!
      [Line 2]: Suhu Box: xx.x C
      ```
 3. **Pemulihan Otomatis (*Auto Recovery / Thermal Hysteresis*):**
-   * **Ambang Batas Suhu Aman:** $T < 50^\circ\text{C}$ (selisih histeresis $10^\circ\text{C}$ untuk mencegah *thermal chattering*).
-   * Saat suhu turun di bawah $50^\circ\text{C}$, sistem secara otomatis mereset status darurat di Firebase (`system/emergency_alert = false`).
+   * **Ambang Batas Suhu Aman:** $T < 40^\circ\text{C}$ (selisih histeresis $10^\circ\text{C}$ untuk mencegah *thermal chattering*).
+   * Saat suhu turun di bawah $40^\circ\text{C}$, sistem secara otomatis mereset status darurat di Firebase (`system/emergency_alert = false`).
    * Seluruh slot kembali ke mode `STANDBY` (siap disewa kembali).
    * Tombol fisik diaktifkan kembali dan LCD kembali ke tampilan awal `SMART PLUG / Tekan Tombol...`.
 

@@ -72,8 +72,8 @@ const int PIN_RELAY_SPARE      = 26;            // Relay cadangan (selalu OFF)
 // ============================================================
 // PARAMETER OPERASI
 // ============================================================
-#define OVERHEAT_LIMIT_C     60.0     // Batas suhu darurat (°C) — Matikan semua relay
-#define OVERHEAT_SAFE_C      50.0     // Batas suhu pemulihan histeresis (°C) — Kembali ke STANDBY
+#define OVERHEAT_LIMIT_C     50.0     // Batas suhu darurat (°C) — Matikan semua relay
+#define OVERHEAT_SAFE_C      40.0     // Batas suhu pemulihan histeresis (°C) — Kembali ke STANDBY
 #define QRIS_TIMEOUT_MS      300000   // Timeout menunggu bayar: 5 menit (ms)
 
 // Interval waktu (ms)
@@ -649,7 +649,7 @@ void updateLcdDisplay() {
 
   // ── PRIORITAS 0: Kondisi Overheat Darurat (Live Monitoring Suhu) ──
   if (isOverheated) {
-    snprintf(r1, 17, "! OVERHEAT >60C!");
+    snprintf(r1, 17, "! OVERHEAT >50C!");
     snprintf(r2, 17, "Suhu Box: %4.1f C", sensorTemp);
     lcd.setCursor(0, 0); lcd.print(r1);
     lcd.setCursor(0, 1); lcd.print(r2);
@@ -770,12 +770,12 @@ void handleOverheat() {
     if (!isnan(h)) sensorHumid = h;
   }
 
-  // 2. FASE 1: Suhu >= 60°C -> AKTIFKAN EMERGENCY STOP
+  // 2. FASE 1: Suhu >= 50°C -> AKTIFKAN EMERGENCY STOP
   if (!isOverheated && sensorTemp >= OVERHEAT_LIMIT_C) {
     isOverheated = true;
 
     Serial.println("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-    Serial.printf("  DARURAT: SUHU %.1f°C >= 60°C — EMERGENCY STOP!\n", sensorTemp);
+    Serial.printf("  DARURAT: SUHU %.1f°C >= 50°C — EMERGENCY STOP!\n", sensorTemp);
     Serial.println("  Seluruh relay & LED dimatikan! Tombol dikunci.");
     Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 
@@ -795,12 +795,12 @@ void handleOverheat() {
       fbPut(slotKey + "/status", "\"EMERGENCY_STOP\"");
     }
   }
-  // 3. FASE 2: Histeresis Termal (Suhu Turun < 50°C) -> AUTO RECOVERY KE STANDBY
+  // 3. FASE 2: Histeresis Termal (Suhu Turun < 40°C) -> AUTO RECOVERY KE STANDBY
   else if (isOverheated && sensorTemp > 0 && sensorTemp < OVERHEAT_SAFE_C) {
     isOverheated = false;
 
     Serial.println("\n============================================");
-    Serial.printf("  SUHU SUDAH AMAN (%.1f°C < 50°C) — AUTO RECOVERY!\n", sensorTemp);
+    Serial.printf("  SUHU SUDAH AMAN (%.1f°C < 40°C) — AUTO RECOVERY!\n", sensorTemp);
     Serial.println("  Sistem kembali normal ke mode STANDBY.");
     Serial.println("============================================");
 

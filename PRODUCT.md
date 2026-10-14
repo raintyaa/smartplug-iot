@@ -22,7 +22,7 @@ Sistem IoT pengisian daya cerdas terintegrasi dari hulu ke hilir: tombol fisik l
 
 - **Lokasi Fisik:** Stasiun fisik 3 stop kontak (Broco Inbow) dengan relay active-LOW, tombol metal 16mm dengan LED ring indikator, sensor PZEM-004T (tegangan, arus, daya, energi kumulatif), sensor suhu DHT22 internal box, dan LCD 16x2 I2C.
 - **Lingkungan Software:** Dashboard web lokal berbasis Laravel 11 (PHP 8.4) & MySQL di Laragon, sinkronisasi realtime 2-3 detik dengan Firebase Realtime Database, dan webhook serverless di Vercel.
-- **Ritual Operator:** Membuka dashboard setiap hari, memantau apakah ESP32 online/offline, mengawasi suhu box agar di bawah ambang batas overheat (< 60°C), melihat margin laba bersih harian, serta melakukan pemutusan darurat jika terdeteksi anomali.
+- **Ritual Operator:** Membuka dashboard setiap hari, memantau apakah ESP32 online/offline, mengawasi suhu box agar di bawah ambang batas overheat (< 50°C), melihat margin laba bersih harian, serta melakukan pemutusan darurat jika terdeteksi anomali.
 
 ## Capabilities and Constraints
 

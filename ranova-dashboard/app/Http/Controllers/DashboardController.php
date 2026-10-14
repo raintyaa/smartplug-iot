@@ -47,7 +47,7 @@ class DashboardController extends Controller
 
         // 5. Suhu terbaru dari DHT22
         $latestTemp = TemperatureReading::latest('recorded_at')->first();
-        $overheatThreshold = (float) Setting::get('overheat_threshold_c', 60.0);
+        $overheatThreshold = (float) Setting::get('overheat_threshold_c', 50.0);
 
         // 6. Transaksi aktif
         $activeTransactions = Transaction::where('status', 'active')->get();
