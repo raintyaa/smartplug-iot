@@ -475,6 +475,8 @@ void pollFirebaseSlots() {
 }
 
 void updateTimers() {
+  if (isOverheated) return;
+
   for (int i = 0; i < NUM_SLOTS; i++) {
 
     if (slots[i].state == WAITING_PAYMENT) {
@@ -651,6 +653,18 @@ void handleOverheat() {
     Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 
     for (int i = 0; i < NUM_SLOTS; i++) {
+      if (slots[i].state == ACTIVE) {
+        unsigned long elapsed = (millis() - slots[i].activeStart) / 1000;
+        if (elapsed < slots[i].durationSec) {
+          slots[i].durationSec -= elapsed;
+        } else {
+          slots[i].durationSec = 0;
+        }
+        Serial.printf("[THERMAL PAUSE] Slot %d sisa: %lu dtk.\n", i + 1, slots[i].durationSec);
+      } else {
+        slots[i].durationSec = 0;
+      }
+
       slots[i].state = EMERGENCY_STOP;
       digitalWrite(PIN_RELAY[i], HIGH);
       digitalWrite(PIN_LED[i], LOW);
@@ -670,13 +684,25 @@ void handleOverheat() {
 
     Serial.println("\n============================================");
     Serial.printf("  SUHU SUDAH AMAN (%.1f°C < 40°C) — AUTO RECOVERY!\n", sensorTemp);
-    Serial.println("  Sistem kembali normal ke mode STANDBY.");
     Serial.println("============================================");
 
     fbPut("system/emergency_alert", "false");
 
     for (int i = 0; i < NUM_SLOTS; i++) {
-      setSlotStandby(i);
+      if (slots[i].durationSec > 0) {
+        slots[i].state = ACTIVE;
+        slots[i].activeStart = millis();
+        digitalWrite(PIN_RELAY[i], LOW);
+        digitalWrite(PIN_LED[i], HIGH);
+        Serial.printf("[THERMAL RESUME] Slot %d aktif! Sisa: %lu dtk.\n", i + 1, slots[i].durationSec);
+
+        String slotKey = "slot" + String(i + 1);
+        fbPut("slots/" + slotKey + "/status", "\"ACTIVE\"");
+        fbPut("slots/" + slotKey + "/duration_seconds", String(slots[i].durationSec));
+        fbPut(slotKey + "/status", "\"ACTIVE\"");
+      } else {
+        setSlotStandby(i);
+      }
     }
   }
 }

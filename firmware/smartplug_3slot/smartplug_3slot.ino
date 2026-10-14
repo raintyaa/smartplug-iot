@@ -610,6 +610,8 @@ void pollFirebaseSlots() {
 // Update countdown timer semua slot
 // ============================================================
 void updateTimers() {
+  if (isOverheated) return; // Thermal Pause: Timer dibekukan selama fase pendinginan overheat
+
   for (int i = 0; i < NUM_SLOTS; i++) {
     // Cek timeout WAITING_PAYMENT (5 menit)
     if (slots[i].state == WAITING_PAYMENT) {
@@ -803,17 +805,30 @@ void handleOverheat() {
     if (!isnan(h)) sensorHumid = h;
   }
 
-  // 2. FASE 1: Suhu >= 50°C -> AKTIFKAN EMERGENCY STOP
+  // 2. FASE 1: Suhu >= 50°C -> AKTIFKAN EMERGENCY STOP & THERMAL PAUSE
   if (!isOverheated && sensorTemp >= OVERHEAT_LIMIT_C) {
     isOverheated = true;
 
     Serial.println("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
     Serial.printf("  DARURAT: SUHU %.1f°C >= 50°C — EMERGENCY STOP!\n", sensorTemp);
     Serial.println("  Seluruh relay & LED dimatikan! Tombol dikunci.");
+    Serial.println("  Membekukan (PAUSE) sisa durasi sewa pengguna...");
     Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 
     // Matikan seluruh relay beban (Active-LOW: HIGH = OFF) & LED seketika
     for (int i = 0; i < NUM_SLOTS; i++) {
+      if (slots[i].state == ACTIVE) {
+        unsigned long elapsed = (millis() - slots[i].activeStart) / 1000;
+        if (elapsed < slots[i].durationSec) {
+          slots[i].durationSec -= elapsed; // Simpan sisa detik
+        } else {
+          slots[i].durationSec = 0;
+        }
+        Serial.printf("[THERMAL PAUSE] Slot %d dijeda. Sisa durasi: %lu detik.\n", i + 1, slots[i].durationSec);
+      } else {
+        slots[i].durationSec = 0;
+      }
+
       slots[i].state = EMERGENCY_STOP;
       digitalWrite(PIN_RELAY[i], HIGH);
       digitalWrite(PIN_LED[i], LOW);
@@ -828,21 +843,35 @@ void handleOverheat() {
       fbPut(slotKey + "/status", "\"EMERGENCY_STOP\"");
     }
   }
-  // 3. FASE 2: Histeresis Termal (Suhu Turun < 40°C) -> AUTO RECOVERY KE STANDBY
+  // 3. FASE 2: Histeresis Termal (Suhu Turun < 40°C) -> AUTO RECOVERY & THERMAL RESUME
   else if (isOverheated && sensorTemp > 0 && sensorTemp < OVERHEAT_SAFE_C) {
     isOverheated = false;
 
     Serial.println("\n============================================");
     Serial.printf("  SUHU SUDAH AMAN (%.1f°C < 40°C) — AUTO RECOVERY!\n", sensorTemp);
-    Serial.println("  Sistem kembali normal ke mode STANDBY.");
+    Serial.println("  Melanjutkan sesi pengguna aktif & stand-by slot kosong...");
     Serial.println("============================================");
 
     // Bersihkan alert di Firebase
     fbPut("system/emergency_alert", "false");
 
-    // Reset seluruh slot ke STANDBY (Relay tetap OFF, siap sewa baru)
     for (int i = 0; i < NUM_SLOTS; i++) {
-      setSlotStandby(i);
+      if (slots[i].durationSec > 0) {
+        // RESUME: Melanjutkan sisa waktu sewa pengguna
+        slots[i].state = ACTIVE;
+        slots[i].activeStart = millis(); // Mulai timer dari sisa detik tersimpan
+        digitalWrite(PIN_RELAY[i], LOW);  // Relay ON kembali
+        digitalWrite(PIN_LED[i], HIGH); // LED solid ON
+        Serial.printf("[THERMAL RESUME] Slot %d aktif kembali! Sisa waktu: %lu detik.\n", i + 1, slots[i].durationSec);
+
+        String slotKey = "slot" + String(i + 1);
+        fbPut("slots/" + slotKey + "/status", "\"ACTIVE\"");
+        fbPut("slots/" + slotKey + "/duration_seconds", String(slots[i].durationSec));
+        fbPut(slotKey + "/status", "\"ACTIVE\"");
+      } else {
+        // Tidak ada sewa aktif sebelumnya -> Reset ke STANDBY
+        setSlotStandby(i);
+      }
     }
   }
 }
