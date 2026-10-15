@@ -92,7 +92,7 @@
                         @endphp
                         <p class="mt-1 font-mono text-4xl font-bold tracking-tight text-neutral-300" id="countdown-slot-{{ $i }}">
                             @if ($status === 'ACTIVE')
-                                {{ $activeDur == 0 ? 'MANUAL ON' : '14:59' }}
+                                {{ $activeDur == 0 ? 'Menghitung…' : '--:--' }}
                             @elseif ($status === 'WAITING_PAYMENT')
                                 SCAN QR
                             @else
@@ -107,11 +107,11 @@
                                 @endphp
                                 @if ($pzemPower < 2.0)
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-amber/15 text-amber border border-amber/30 animate-pulse">
-                                        <i class="fa-solid fa-triangle-exclamation mr-1.5 text-xs"></i> Tanpa Beban (0.0 W)
+                                        <i class="fa-solid fa-triangle-exclamation mr-1.5 text-xs" aria-hidden="true"></i> Tanpa Beban (0.0 W)
                                     </span>
                                 @else
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-mint/15 text-mint border border-mint/30">
-                                        <i class="fa-solid fa-bolt mr-1.5 text-xs"></i> Beban: {{ number_format($pzemPower, 1) }} W
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-mint/15 text-mint border border-mint/30" title="Daya terukur adalah total gabungan seluruh slot aktif pada sensor utama.">
+                                        <i class="fa-solid fa-bolt mr-1.5 text-xs" aria-hidden="true"></i> Total Stasiun: {{ number_format($pzemPower, 1) }} W (Agregat)
                                     </span>
                                 @endif
                             @endif
@@ -149,37 +149,37 @@
                     <!-- Action Buttons: Kontrol Admin (Nyalakan Manual / Matikan) -->
                     <div class="mt-4" id="slot-actions-{{ $i }}">
                         @if ($status === 'ACTIVE')
-                            <form action="{{ route('dashboard.slots.stop', $i) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin mematikan Slot {{ $i }}?')">
+                            <form action="{{ route('dashboard.slots.stop', $i) }}" method="POST" class="js-confirm-form" data-confirm-title="Matikan Slot {{ $i }}?" data-confirm-message="Relay Slot {{ $i }} akan dimatikan. Sisa waktu sewa pelanggan ikut terhenti." data-confirm-text="Ya, Matikan" data-confirm-tone="crimson">
                                 @csrf
                                 <button type="submit" id="btn-action-slot-{{ $i }}"
-                                    class="w-full text-xs font-semibold py-2 rounded-lg bg-crimson/15 border border-crimson/40 text-crimson hover:bg-crimson/25 flex items-center justify-center space-x-1.5 transition-colors">
-                                    <i class="fa-solid fa-power-off"></i>
+                                    class="w-full min-h-[44px] text-xs font-semibold py-2.5 px-4 rounded-lg bg-crimson/15 border border-crimson/40 text-crimson hover:bg-crimson/25 flex items-center justify-center space-x-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-crimson focus-visible:ring-offset-2 focus-visible:ring-offset-base">
+                                    <i class="fa-solid fa-power-off" aria-hidden="true"></i>
                                     <span>Matikan Manual</span>
                                 </button>
                             </form>
                         @elseif ($status === 'WAITING_PAYMENT')
                             <div class="grid grid-cols-2 gap-2">
-                                <form action="{{ route('dashboard.slots.stop', $i) }}" method="POST" onsubmit="return confirm('Batalkan sesi scan QR Slot {{ $i }}?')">
+                                <form action="{{ route('dashboard.slots.stop', $i) }}" method="POST" class="js-confirm-form" data-confirm-title="Batalkan sesi Slot {{ $i }}?" data-confirm-message="Sesi scan QR Slot {{ $i }} akan dibatalkan dan slot kembali SIAP." data-confirm-text="Ya, Batalkan" data-confirm-tone="neutral">
                                     @csrf
-                                    <button type="submit" class="w-full text-xs font-semibold py-2 rounded-lg bg-surface2 border border-hairline text-neutral-300 hover:bg-white/[0.04] transition-colors">
+                                    <button type="submit" class="w-full min-h-[44px] text-xs font-semibold py-2.5 px-3 rounded-lg bg-surface2 border border-hairline text-neutral-300 hover:bg-white/[0.04] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint focus-visible:ring-offset-2 focus-visible:ring-offset-base">
                                         Batal
                                     </button>
                                 </form>
-                                <form action="{{ route('dashboard.slots.start', $i) }}" method="POST" onsubmit="return confirm('Bypass bayar & nyalakan Slot {{ $i }} tanpa batas durasi?')">
+                                <form action="{{ route('dashboard.slots.start', $i) }}" method="POST" class="js-confirm-form" data-confirm-title="Nyalakan gratis Slot {{ $i }}?" data-confirm-message="Slot {{ $i }} akan ON terus TANPA BAYAR dan TANPA BATAS WAKTU (Rp 0) sampai dimatikan manual. Lanjut?" data-confirm-text="Ya, Nyalakan Gratis" data-confirm-tone="mint">
                                     @csrf
-                                    <button type="submit" class="w-full text-xs font-semibold py-2 rounded-lg bg-mint/15 border border-mint/40 text-mint hover:bg-mint/25 transition-colors flex items-center justify-center space-x-1">
-                                        <i class="fa-solid fa-bolt"></i>
-                                        <span>Bypass ON</span>
+                                    <button type="submit" class="w-full min-h-[44px] text-xs font-semibold py-2.5 px-3 rounded-lg bg-mint/15 border border-mint/40 text-mint hover:bg-mint/25 transition-colors flex items-center justify-center space-x-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint focus-visible:ring-offset-2 focus-visible:ring-offset-base">
+                                        <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+                                        <span>Nyalakan Gratis</span>
                                     </button>
                                 </form>
                             </div>
                         @else
-                            <form action="{{ route('dashboard.slots.start', $i) }}" method="POST" onsubmit="return confirm('Nyalakan Slot {{ $i }} secara manual tanpa bayar (Mode Kontinu / Tanpa Batas Waktu)?')">
+                            <form action="{{ route('dashboard.slots.start', $i) }}" method="POST" class="js-confirm-form" data-confirm-title="Nyalakan gratis Slot {{ $i }}?" data-confirm-message="Slot {{ $i }} akan ON terus TANPA BAYAR dan TANPA BATAS WAKTU (Rp 0) sampai dimatikan manual. Lanjut?" data-confirm-text="Ya, Nyalakan Gratis" data-confirm-tone="mint">
                                 @csrf
                                 <button type="submit" id="btn-action-slot-{{ $i }}"
-                                    class="w-full text-xs font-semibold py-2 rounded-lg bg-mint/15 border border-mint/40 text-mint hover:bg-mint/25 flex items-center justify-center space-x-1.5 transition-colors">
-                                    <i class="fa-solid fa-bolt"></i>
-                                    <span>Nyalakan Manual (Bypass)</span>
+                                    class="w-full min-h-[44px] text-xs font-semibold py-2.5 px-4 rounded-lg bg-mint/15 border border-mint/40 text-mint hover:bg-mint/25 flex items-center justify-center space-x-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint focus-visible:ring-offset-2 focus-visible:ring-offset-base">
+                                    <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+                                    <span>Nyalakan Gratis (Tanpa Batas)</span>
                                 </button>
                             </form>
                         @endif
@@ -253,10 +253,73 @@
     // Polling Realtime Engine (setiap 2 detik sinkron dengan Firebase & Database)
     const OVERHEAT_LIMIT = {{ $overheatThreshold }};
     const CSRF_TOKEN = '{{ csrf_token() }}';
-    const ESP32_OFFLINE_THRESHOLD_MS = 10000; // 10 detik tanpa update = offline
+    const ESP32_OFFLINE_THRESHOLD_MS = 25000; // 25 detik tanpa update = offline (sinkron dengan diff > 25)
+    const ESP32_OFFLINE_THRESHOLD_S = Math.round(ESP32_OFFLINE_THRESHOLD_MS / 1000);
 
     // Menyimpan Unix timestamp (seconds) dari updated_at terakhir yang diterima
     let lastSensorUpdatedAt = 0;
+    // Cache status slot agar actionsEl.innerHTML HANYA di-rebuild saat status berubah (anti DOM-thrash, jaga fokus Alex)
+    const lastSlotStatus = { 1: null, 2: null, 3: null };
+
+    function fmtElapsed(totalSec) {
+        const h = Math.floor(totalSec / 3600).toString().padStart(2, '0');
+        const m = Math.floor((totalSec % 3600) / 60).toString().padStart(2, '0');
+        const s = (totalSec % 60).toString().padStart(2, '0');
+        return `${h}:${m}:${s}`;
+    }
+
+    function slotActionTemplate(i, status) {
+        const focusMint = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint focus-visible:ring-offset-2 focus-visible:ring-offset-base';
+        const focusCrimson = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-crimson focus-visible:ring-offset-2 focus-visible:ring-offset-base';
+        if (status === 'ACTIVE') {
+            return `
+                <form action="/dashboard/slots/${i}/stop" method="POST" class="js-confirm-form" data-confirm-title="Matikan Slot ${i}?" data-confirm-message="Relay Slot ${i} akan dimatikan. Sisa waktu sewa pelanggan ikut terhenti." data-confirm-text="Ya, Matikan" data-confirm-tone="crimson">
+                    <input type="hidden" name="_token" value="${CSRF_TOKEN}">
+                    <button type="submit" id="btn-action-slot-${i}"
+                        class="w-full min-h-[44px] text-xs font-semibold py-2.5 px-4 rounded-lg bg-crimson/15 border border-crimson/40 text-crimson hover:bg-crimson/25 flex items-center justify-center space-x-1.5 transition-colors ${focusCrimson}">
+                        <i class="fa-solid fa-power-off" aria-hidden="true"></i>
+                        <span>Matikan Manual</span>
+                    </button>
+                </form>
+            `;
+        }
+        if (status === 'WAITING_PAYMENT') {
+            return `
+                <div class="grid grid-cols-2 gap-2">
+                    <form action="/dashboard/slots/${i}/stop" method="POST" class="js-confirm-form" data-confirm-title="Batalkan sesi Slot ${i}?" data-confirm-message="Sesi scan QR Slot ${i} akan dibatalkan dan slot kembali SIAP." data-confirm-text="Ya, Batalkan" data-confirm-tone="neutral">
+                        <input type="hidden" name="_token" value="${CSRF_TOKEN}">
+                        <button type="submit" class="w-full min-h-[44px] text-xs font-semibold py-2.5 px-3 rounded-lg bg-surface2 border border-hairline text-neutral-300 hover:bg-white/[0.04] transition-colors ${focusMint}">
+                            Batal
+                        </button>
+                    </form>
+                    <form action="/dashboard/slots/${i}/start" method="POST" class="js-confirm-form" data-confirm-title="Nyalakan gratis Slot ${i}?" data-confirm-message="Slot ${i} akan ON terus TANPA BAYAR dan TANPA BATAS WAKTU (Rp 0) sampai dimatikan manual. Lanjut?" data-confirm-text="Ya, Nyalakan Gratis" data-confirm-tone="mint">
+                        <input type="hidden" name="_token" value="${CSRF_TOKEN}">
+                        <button type="submit" class="w-full min-h-[44px] text-xs font-semibold py-2.5 px-3 rounded-lg bg-mint/15 border border-mint/40 text-mint hover:bg-mint/25 transition-colors flex items-center justify-center space-x-1 ${focusMint}">
+                            <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+                            <span>Nyalakan Gratis</span>
+                        </button>
+                    </form>
+                </div>
+            `;
+        }
+        return `
+            <form action="/dashboard/slots/${i}/start" method="POST" class="js-confirm-form" data-confirm-title="Nyalakan gratis Slot ${i}?" data-confirm-message="Slot ${i} akan ON terus TANPA BAYAR dan TANPA BATAS WAKTU (Rp 0) sampai dimatikan manual. Lanjut?" data-confirm-text="Ya, Nyalakan Gratis" data-confirm-tone="mint">
+                <input type="hidden" name="_token" value="${CSRF_TOKEN}">
+                <button type="submit" id="btn-action-slot-${i}"
+                    class="w-full min-h-[44px] text-xs font-semibold py-2.5 px-4 rounded-lg bg-mint/15 border border-mint/40 text-mint hover:bg-mint/25 flex items-center justify-center space-x-1.5 transition-colors ${focusMint}">
+                    <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+                    <span>Nyalakan Gratis (Tanpa Batas)</span>
+                </button>
+            </form>
+        `;
+    }
+
+    function renderSlotActions(i, status) {
+        if (lastSlotStatus[i] === status) return; // status sama -> biarkan DOM utuh, fokus tidak hilang
+        lastSlotStatus[i] = status;
+        const actionsEl = document.getElementById('slot-actions-' + i);
+        if (actionsEl) actionsEl.innerHTML = slotActionTemplate(i, status);
+    }
 
     function getEsp32Badge() {
         return document.getElementById('esp32-badge');
@@ -265,16 +328,18 @@
     function setEsp32Online() {
         const badge = getEsp32Badge();
         if (badge) {
-            badge.className = 'font-mono text-xs font-medium px-3 py-1.5 rounded-lg bg-mint/10 border border-mint/25 text-mint';
-            badge.innerText = 'ESP32';
+            badge.className = 'font-mono text-xs font-medium px-2.5 sm:px-3 py-1.5 rounded-lg bg-mint/10 border border-mint/25 text-mint';
+            badge.setAttribute('title', 'ESP32 online — telemetri realtime');
+            badge.innerHTML = '<span aria-hidden="true">●</span><span class="hidden sm:inline ml-1.5">ESP32</span><span class="sr-only">ESP32 online</span>';
         }
     }
 
     function setEsp32Offline() {
         const badge = getEsp32Badge();
         if (badge) {
-            badge.className = 'font-mono text-xs font-medium px-3 py-1.5 rounded-lg bg-surface2 border border-hairline text-neutral-400';
-            badge.innerText = 'ESP32 Offline';
+            badge.className = 'font-mono text-xs font-medium px-2.5 sm:px-3 py-1.5 rounded-lg bg-surface2 border border-hairline text-neutral-400';
+            badge.setAttribute('title', 'ESP32 offline — data sensor basi');
+            badge.innerHTML = '<span aria-hidden="true">●</span><span class="hidden sm:inline ml-1.5">ESP32 Offline</span><span class="sr-only">ESP32 offline</span>';
         }
         // Nol-kan semua nilai sensor
         if (document.getElementById('sensor-temp')) {
@@ -329,39 +394,28 @@
                         badge.innerText = 'AKTIF';
                         card.className = 'rounded-xl bg-surface2 border border-mint/40 p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300';
 
-                        // Tombol Aksi Admin: Matikan Manual
-                        if (actionsEl) {
-                            actionsEl.innerHTML = `
-                                <form action="/dashboard/slots/${i}/stop" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin mematikan Slot ${i}?')">
-                                    <input type="hidden" name="_token" value="${CSRF_TOKEN}">
-                                    <button type="submit" id="btn-action-slot-${i}"
-                                        class="w-full text-xs font-semibold py-2 rounded-lg bg-crimson/15 border border-crimson/40 text-crimson hover:bg-crimson/25 flex items-center justify-center space-x-1.5 transition-colors">
-                                        <i class="fa-solid fa-power-off"></i>
-                                        <span>Matikan Manual</span>
-                                    </button>
-                                </form>
-                            `;
-                        }
+                        // Tombol Aksi Admin: hanya render ulang jika status berubah (anti DOM-thrash)
+                        renderSlotActions(i, status);
 
-                        // Indikator Status Beban Listrik (Idle vs Ada Beban)
+                        // Indikator Status Beban Listrik — jujur: 1 sensor PZEM total busbar, bukan per-slot
                         if (loadStatusEl) {
                             if (currentPzemPower < 2.0 && currentPzemCurr < 0.03) {
                                 loadStatusEl.innerHTML = `
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-amber/15 text-amber border border-amber/30 animate-pulse" title="Tidak ada arus listrik terdeteksi. Pengguna mungkin telah mencabut charger.">
-                                        <i class="fa-solid fa-triangle-exclamation mr-1.5 text-xs"></i> Tanpa Beban (0.0 W)
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-amber/15 text-amber border border-amber/30 animate-pulse" title="Arus < 0,03 A dan daya < 2,0 W. Charger belum dicolok atau sudah dicabut.">
+                                        <i class="fa-solid fa-triangle-exclamation mr-1.5 text-xs" aria-hidden="true"></i> Tanpa Beban (0.0 W)
                                     </span>
                                 `;
                             } else {
                                 if (activeSlotsCount === 1) {
                                     loadStatusEl.innerHTML = `
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-mint/15 text-mint border border-mint/30">
-                                            <i class="fa-solid fa-bolt mr-1.5 text-xs"></i> Beban: ${currentPzemPower.toFixed(1)} W
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-mint/15 text-mint border border-mint/30" title="Hanya 1 slot aktif, angka ini milik slot tersebut (sensor utama).">
+                                            <i class="fa-solid fa-bolt mr-1.5 text-xs" aria-hidden="true"></i> Beban Slot: ${currentPzemPower.toFixed(1)} W (Tunggal)
                                         </span>
                                     `;
                                 } else {
                                     loadStatusEl.innerHTML = `
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-mint/15 text-mint border border-mint/30" title="Daya terukur adalah total agregat seluruh slot aktif.">
-                                            <i class="fa-solid fa-bolt mr-1.5 text-xs"></i> Total: ${currentPzemPower.toFixed(1)} W
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-mint/15 text-mint border border-mint/30" title="Daya terukur adalah total gabungan seluruh slot aktif pada sensor utama.">
+                                            <i class="fa-solid fa-bolt mr-1.5 text-xs" aria-hidden="true"></i> Total Stasiun: ${currentPzemPower.toFixed(1)} W (Agregat ${activeSlotsCount} Slot)
                                         </span>
                                     `;
                                 }
@@ -375,11 +429,22 @@
                         const elapsed = nowSec - startedAt;
 
                         if (durationSec === 0) {
-                            // Mode Manual Kontinu (Tanpa Batas Durasi)
-                            countdown.innerText = 'MANUAL ON';
-                            countdown.className = 'mt-1 font-mono text-3xl font-bold tracking-tight text-amber animate-pulse';
+                            // Mode Manual Kontinu (Tanpa Batas Durasi) + elapsed timer + hazard > 1 jam
+                            const safeStartedAt = startedAt > 0 ? startedAt : nowSec;
+                            const manualElapsed = Math.max(0, nowSec - safeStartedAt);
+                            countdown.innerText = 'Menyala: ' + fmtElapsed(manualElapsed) + ' (Manual)';
+                            countdown.className = 'mt-1 font-mono text-2xl font-bold tracking-tight text-amber';
                             duration.innerText = 'Kontinu (Tanpa Batas)';
-                            paid.innerText = 'Bypass (Rp 0)';
+                            paid.innerText = 'Gratis (Rp 0)';
+                            if (loadStatusEl) {
+                                if (manualElapsed > 3600) {
+                                    loadStatusEl.innerHTML += `
+                                        <span class="mt-1 inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-amber/15 text-amber border border-amber/40 animate-pulse" role="alert" title="Slot manual menyala lebih dari 1 jam. Periksa beban dan matikan bila tidak dipakai.">
+                                            <i class="fa-solid fa-triangle-exclamation mr-1.5 text-xs" aria-hidden="true"></i> Menyala &gt; 1 Jam (Periksa Beban)
+                                        </span>
+                                    `;
+                                }
+                            }
                         } else {
                             const remaining = Math.max(0, durationSec - elapsed);
                             const m = Math.floor(remaining / 60).toString().padStart(2, '0');
@@ -399,26 +464,8 @@
                         duration.innerText = 'Menunggu';
                         paid.innerText = 'Menunggu';
 
-                        // Tombol Batal & Bypass ON
-                        if (actionsEl) {
-                            actionsEl.innerHTML = `
-                                <div class="grid grid-cols-2 gap-2">
-                                    <form action="/dashboard/slots/${i}/stop" method="POST" onsubmit="return confirm('Batalkan sesi scan QR Slot ${i}?')">
-                                        <input type="hidden" name="_token" value="${CSRF_TOKEN}">
-                                        <button type="submit" class="w-full text-xs font-semibold py-2 rounded-lg bg-surface2 border border-hairline text-neutral-300 hover:bg-white/[0.04] transition-colors">
-                                            Batal
-                                        </button>
-                                    </form>
-                                    <form action="/dashboard/slots/${i}/start" method="POST" onsubmit="return confirm('Bypass bayar & nyalakan Slot ${i} tanpa batas durasi?')">
-                                        <input type="hidden" name="_token" value="${CSRF_TOKEN}">
-                                        <button type="submit" class="w-full text-xs font-semibold py-2 rounded-lg bg-mint/15 border border-mint/40 text-mint hover:bg-mint/25 transition-colors flex items-center justify-center space-x-1">
-                                            <i class="fa-solid fa-bolt"></i>
-                                            <span>Bypass ON</span>
-                                        </button>
-                                    </form>
-                                </div>
-                            `;
-                        }
+                        // Tombol Batal & Nyalakan Gratis: hanya render ulang jika status berubah
+                        renderSlotActions(i, status);
                     } else {
                         if (loadStatusEl) loadStatusEl.innerHTML = '';
                         badge.className = 'font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-surface2 border border-hairline text-neutral-300 uppercase tracking-wide';
@@ -429,19 +476,8 @@
                         duration.innerText = 'Standby';
                         paid.innerText = 'Rp 0';
 
-                        // Tombol Nyalakan Manual (Bypass Bayar)
-                        if (actionsEl) {
-                            actionsEl.innerHTML = `
-                                <form action="/dashboard/slots/${i}/start" method="POST" onsubmit="return confirm('Nyalakan Slot ${i} secara manual tanpa bayar (Mode Kontinu / Tanpa Batas Waktu)?')">
-                                    <input type="hidden" name="_token" value="${CSRF_TOKEN}">
-                                    <button type="submit" id="btn-action-slot-${i}"
-                                        class="w-full text-xs font-semibold py-2 rounded-lg bg-mint/15 border border-mint/40 text-mint hover:bg-mint/25 flex items-center justify-center space-x-1.5 transition-colors">
-                                        <i class="fa-solid fa-bolt"></i>
-                                        <span>Nyalakan Manual (Bypass)</span>
-                                    </button>
-                                </form>
-                            `;
-                        }
+                        // Tombol Nyalakan Gratis: hanya render ulang jika status berubah
+                        renderSlotActions(i, status);
                     }
                 }
 
@@ -456,7 +492,7 @@
                     const nowUnix = Math.floor(Date.now() / 1000);
                     const secondsSinceUpdate = (lastSensorUpdatedAt > 0) ? (nowUnix - lastSensorUpdatedAt) : 9999;
 
-                    if (lastSensorUpdatedAt === 0 || secondsSinceUpdate > 25) {
+                    if (lastSensorUpdatedAt === 0 || secondsSinceUpdate > ESP32_OFFLINE_THRESHOLD_S) {
                         setEsp32Offline();
                     } else {
                         setEsp32Online();

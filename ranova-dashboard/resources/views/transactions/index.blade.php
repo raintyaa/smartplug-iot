@@ -147,11 +147,11 @@
                                 {{ $t->payment_reference ?? '-' }}
                             </td>
                             <td class="py-3.5 px-4 text-right">
-                                <form action="{{ route('transactions.destroy', $t->id) }}" method="POST" onsubmit="return confirm('Hapus riwayat transaksi ini?')">
+                                <form action="{{ route('transactions.destroy', $t->id) }}" method="POST" class="js-confirm-form" data-confirm-title="Hapus transaksi #{{ str_pad($t->id, 4, '0', STR_PAD_LEFT) }}?" data-confirm-message="Riwayat transaksi ini dihapus permanen dari laporan. Tindakan ini tidak bisa dibatalkan." data-confirm-text="Ya, Hapus" data-confirm-tone="crimson">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="p-1.5 text-neutral-400 hover:text-crimson transition" title="Hapus">
-                                        <i class="fa-solid fa-trash text-xs"></i>
+                                    <button type="submit" class="inline-flex items-center justify-center min-w-[44px] min-h-[44px] p-2.5 text-neutral-400 hover:text-crimson transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-crimson focus-visible:ring-offset-2 focus-visible:ring-offset-base rounded-lg" title="Hapus" aria-label="Hapus transaksi {{ str_pad($t->id, 4, '0', STR_PAD_LEFT) }}">
+                                        <i class="fa-solid fa-trash text-xs" aria-hidden="true"></i>
                                     </button>
                                 </form>
                             </td>
