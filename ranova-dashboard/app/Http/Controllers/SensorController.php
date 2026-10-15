@@ -12,7 +12,11 @@ class SensorController extends Controller
     public function index(FirebaseService $firebase)
     {
         $firebaseData = $firebase->getSystemData();
-        if (!empty($firebaseData['sensors'])) {
+        $sensorUpdatedAt = (int) ($firebaseData['sensors']['updated_at'] ?? 0);
+        $isEsp32Online = ($sensorUpdatedAt > 0) && ((now()->timestamp - $sensorUpdatedAt) <= 25);
+
+        // Hanya catat telemetri ke database jika ESP32 aktif online
+        if ($isEsp32Online && !empty($firebaseData['sensors'])) {
             $firebase->recordSensorReadings($firebaseData['sensors']);
         }
 
@@ -33,6 +37,7 @@ class SensorController extends Controller
         $humidityChartValues = $tempHistory->map(fn($r) => $r->humidity)->values();
 
         return view('sensors.index', compact(
+            'isEsp32Online',
             'latestPower',
             'latestTemp',
             'powerChartLabels',

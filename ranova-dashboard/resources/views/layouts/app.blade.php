@@ -303,26 +303,48 @@
                             var nowUnix = Math.floor(Date.now() / 1000);
                             var diff = (lastGlobalSensorUpdate > 0) ? (nowUnix - lastGlobalSensorUpdate) : 9999;
 
+                            var elVolt = document.getElementById('sensor-page-volt');
+                            var elCurr = document.getElementById('sensor-page-curr');
+                            var elPower = document.getElementById('sensor-page-power');
+                            var elTemp = document.getElementById('sensor-page-temp');
+                            var elHumid = document.getElementById('sensor-page-humid');
+
+                            var elVoltBadge = document.getElementById('sensor-page-volt-badge');
+                            var elCurrBadge = document.getElementById('sensor-page-curr-badge');
+                            var elPowerBadge = document.getElementById('sensor-page-power-badge');
+                            var elTempBadge = document.getElementById('sensor-page-temp-badge');
+                            var elHumidBadge = document.getElementById('sensor-page-humid-badge');
+
                             if (lastGlobalSensorUpdate === 0 || diff > 25) {
                                 setEsp32BadgeOffline();
+
+                                // Samakan dengan dashboard: saat ESP32 offline, nol-kan seluruh telemetri sensor
+                                if (elVolt) elVolt.innerHTML = '0.0 <span class="text-sm font-normal text-neutral-400">V</span>';
+                                if (elCurr) elCurr.innerHTML = '0.00 <span class="text-sm font-normal text-neutral-400">A</span>';
+                                if (elPower) elPower.innerHTML = '0.0 <span class="text-sm font-normal text-neutral-400">W</span>';
+                                if (elTemp) elTemp.innerHTML = '0.0<span class="text-sm font-normal text-neutral-400">°C</span>';
+                                if (elHumid) elHumid.innerHTML = '0<span class="text-sm font-normal text-neutral-400">%</span>';
+
+                                if (elVoltBadge) elVoltBadge.innerText = 'ESP32 Offline';
+                                if (elCurrBadge) elCurrBadge.innerText = 'ESP32 Offline';
+                                if (elPowerBadge) elPowerBadge.innerText = 'ESP32 Offline';
+                                if (elTempBadge) elTempBadge.innerText = 'ESP32 Offline';
+                                if (elHumidBadge) elHumidBadge.innerText = 'ESP32 Offline';
                             } else {
                                 setEsp32BadgeOnline();
+
+                                if (elVolt) elVolt.innerHTML = parseFloat(data.sensors.voltage || 0).toFixed(1) + ' <span class="text-sm font-normal text-neutral-400">V</span>';
+                                if (elCurr) elCurr.innerHTML = parseFloat(data.sensors.current || 0).toFixed(2) + ' <span class="text-sm font-normal text-neutral-400">A</span>';
+                                if (elPower) elPower.innerHTML = parseFloat(data.sensors.power || 0).toFixed(1) + ' <span class="text-sm font-normal text-neutral-400">W</span>';
+                                if (elTemp) elTemp.innerHTML = parseFloat(data.sensors.temperature || 0).toFixed(1) + '<span class="text-sm font-normal text-neutral-400">°C</span>';
+                                if (elHumid) elHumid.innerHTML = parseFloat(data.sensors.humidity || 0).toFixed(0) + '<span class="text-sm font-normal text-neutral-400">%</span>';
+
+                                if (elVoltBadge) elVoltBadge.innerText = 'AC 50Hz';
+                                if (elCurrBadge) elCurrBadge.innerText = 'Donat CT';
+                                if (elPowerBadge) elPowerBadge.innerText = 'Beban Realtime';
+                                if (elTempBadge) elTempBadge.innerText = 'Sensor DHT22';
+                                if (elHumidBadge) elHumidBadge.innerText = 'Udara Box';
                             }
-
-                            var elVolt = document.getElementById('sensor-page-volt');
-                            if (elVolt) elVolt.innerHTML = parseFloat(data.sensors.voltage || 0).toFixed(1) + ' <span class="text-sm font-normal text-neutral-400">V</span>';
-
-                            var elCurr = document.getElementById('sensor-page-curr');
-                            if (elCurr) elCurr.innerHTML = parseFloat(data.sensors.current || 0).toFixed(2) + ' <span class="text-sm font-normal text-neutral-400">A</span>';
-
-                            var elPower = document.getElementById('sensor-page-power');
-                            if (elPower) elPower.innerHTML = parseFloat(data.sensors.power || 0).toFixed(1) + ' <span class="text-sm font-normal text-neutral-400">W</span>';
-
-                            var elTemp = document.getElementById('sensor-page-temp');
-                            if (elTemp) elTemp.innerHTML = parseFloat(data.sensors.temperature || 0).toFixed(1) + '<span class="text-sm font-normal text-neutral-400">°C</span>';
-
-                            var elHumid = document.getElementById('sensor-page-humid');
-                            if (elHumid) elHumid.innerHTML = parseFloat(data.sensors.humidity || 0).toFixed(0) + '<span class="text-sm font-normal text-neutral-400">%</span>';
                         }
                         scheduleNextGlobalPoll(globalBackoffMs);
                     })

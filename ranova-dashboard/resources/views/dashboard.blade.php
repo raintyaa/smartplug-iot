@@ -200,21 +200,21 @@
             <div class="px-4 py-2 md:py-0 first:pl-0">
                 <p class="text-xs text-neutral-300 font-medium">Tegangan</p>
                 <p class="font-mono text-lg text-white font-semibold mt-1" id="sensor-volt">
-                    {{ number_format($firebaseData['sensors']['voltage'] ?? 0, 1) }} <span class="text-xs font-normal text-neutral-300">V</span>
+                    {{ number_format(($isEsp32Online ?? false) ? ($firebaseData['sensors']['voltage'] ?? 0) : 0, 1) }} <span class="text-xs font-normal text-neutral-300">V</span>
                 </p>
             </div>
             <!-- Arus -->
             <div class="px-4 py-2 md:py-0">
                 <p class="text-xs text-neutral-300 font-medium">Arus</p>
                 <p class="font-mono text-lg text-white font-semibold mt-1" id="sensor-curr">
-                    {{ number_format($firebaseData['sensors']['current'] ?? 0, 2) }} <span class="text-xs font-normal text-neutral-300">A</span>
+                    {{ number_format(($isEsp32Online ?? false) ? ($firebaseData['sensors']['current'] ?? 0) : 0, 2) }} <span class="text-xs font-normal text-neutral-300">A</span>
                 </p>
             </div>
             <!-- Daya Aktif -->
             <div class="px-4 py-2 md:py-0">
                 <p class="text-xs text-neutral-300 font-medium">Daya Aktif</p>
                 <p class="font-mono text-lg text-white font-semibold mt-1" id="sensor-power">
-                    {{ number_format($firebaseData['sensors']['power'] ?? 0, 1) }} <span class="text-xs font-normal text-neutral-300">W</span>
+                    {{ number_format(($isEsp32Online ?? false) ? ($firebaseData['sensors']['power'] ?? 0) : 0, 1) }} <span class="text-xs font-normal text-neutral-300">W</span>
                 </p>
             </div>
             <!-- Energi Kumulatif -->
@@ -228,17 +228,21 @@
             <div class="px-4 py-2 md:py-0">
                 <p class="text-xs text-neutral-300 font-medium">Suhu Box Internal</p>
                 <p class="font-mono text-lg text-white font-semibold mt-1" id="sensor-temp">
-                    {{ number_format($firebaseData['sensors']['temperature'] ?? 0, 1) }}°C
+                    {{ number_format(($isEsp32Online ?? false) ? ($firebaseData['sensors']['temperature'] ?? 0) : 0, 1) }}°C
                 </p>
                 <div class="mt-1" id="temp-badge">
-                    <span class="inline-block font-mono text-[11px] font-semibold px-1.5 py-0.5 rounded bg-mint/10 text-mint border border-mint/25">Normal &lt; {{ round($overheatThreshold) }}°C</span>
+                    @if($isEsp32Online ?? false)
+                        <span class="inline-block font-mono text-[11px] font-semibold px-1.5 py-0.5 rounded bg-mint/10 text-mint border border-mint/25">Normal &lt; {{ round($overheatThreshold) }}°C</span>
+                    @else
+                        <span class="inline-block font-mono text-[11px] font-medium px-1.5 py-0.5 rounded bg-surface2 text-neutral-300 border border-hairline">Offline</span>
+                    @endif
                 </div>
             </div>
             <!-- Kelembapan -->
             <div class="px-4 py-2 md:py-0">
                 <p class="text-xs text-neutral-300 font-medium">Kelembapan</p>
                 <p class="font-mono text-lg text-white font-semibold mt-1" id="sensor-hum">
-                    {{ round($firebaseData['sensors']['humidity'] ?? 0) }}%
+                    {{ round(($isEsp32Online ?? false) ? ($firebaseData['sensors']['humidity'] ?? 0) : 0) }}%
                 </p>
             </div>
         </div>

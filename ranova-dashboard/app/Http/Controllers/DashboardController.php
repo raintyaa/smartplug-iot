@@ -49,11 +49,15 @@ class DashboardController extends Controller
         $latestTemp = TemperatureReading::latest('recorded_at')->first();
         $overheatThreshold = (float) Setting::get('overheat_threshold_c', 42.0);
 
+        $sensorUpdatedAt = (int) ($firebaseData['sensors']['updated_at'] ?? 0);
+        $isEsp32Online = ($sensorUpdatedAt > 0) && ((now()->timestamp - $sensorUpdatedAt) <= 25);
+
         // 6. Transaksi aktif
         $activeTransactions = Transaction::where('status', 'active')->get();
 
         return view('dashboard', compact(
             'firebaseData',
+            'isEsp32Online',
             'todayRevenue',
             'totalRevenue',
             'totalKwh',
@@ -72,9 +76,11 @@ class DashboardController extends Controller
     public function apiRealtime()
     {
         $data = $this->firebase->getSystemData();
+        $sensorUpdatedAt = (int) ($data['sensors']['updated_at'] ?? 0);
+        $isEsp32Online = ($sensorUpdatedAt > 0) && ((now()->timestamp - $sensorUpdatedAt) <= 25);
 
-        // Rekam data sensor ke database lokal
-        if (!empty($data['sensors'])) {
+        // Rekam data sensor ke database lokal hanya jika ESP32 online
+        if ($isEsp32Online && !empty($data['sensors'])) {
             $this->firebase->recordSensorReadings($data['sensors']);
         }
 
@@ -89,14 +95,15 @@ class DashboardController extends Controller
                 'slot3' => $data['slot3'] ?? ['status' => 'STANDBY', 'active_duration' => 0, 'started_at' => 0],
             ],
             'active_selection' => $data['active_selection'] ?? 'IDLE',
+            'is_esp32_online' => $isEsp32Online,
             'sensors' => [
-                'temperature' => $data['sensors']['temperature'] ?? ($latestTemp->temperature ?? 0.0),
-                'humidity' => $data['sensors']['humidity'] ?? ($latestTemp->humidity ?? 0.0),
-                'voltage' => $data['sensors']['voltage'] ?? ($latestPower->voltage ?? 0.0),
-                'current' => $data['sensors']['current'] ?? ($latestPower->current ?? 0.0),
-                'power' => $data['sensors']['power'] ?? ($latestPower->power ?? 0.0),
-                'energy' => $data['sensors']['energy'] ?? ($latestPower->energy ?? 0.0),
-                'updated_at' => $data['sensors']['updated_at'] ?? (isset($latestPower->recorded_at) ? $latestPower->recorded_at->timestamp : 0),
+                'temperature' => $isEsp32Online ? (float) ($data['sensors']['temperature'] ?? ($latestTemp->temperature ?? 0.0)) : 0.0,
+                'humidity' => $isEsp32Online ? (float) ($data['sensors']['humidity'] ?? ($latestTemp->humidity ?? 0.0)) : 0.0,
+                'voltage' => $isEsp32Online ? (float) ($data['sensors']['voltage'] ?? ($latestPower->voltage ?? 0.0)) : 0.0,
+                'current' => $isEsp32Online ? (float) ($data['sensors']['current'] ?? ($latestPower->current ?? 0.0)) : 0.0,
+                'power' => $isEsp32Online ? (float) ($data['sensors']['power'] ?? ($latestPower->power ?? 0.0)) : 0.0,
+                'energy' => (float) ($data['sensors']['energy'] ?? ($latestPower->energy ?? 0.0)),
+                'updated_at' => $sensorUpdatedAt,
             ],
             'timestamp' => now()->timestamp,
         ]);

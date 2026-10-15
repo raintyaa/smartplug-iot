@@ -12,14 +12,14 @@
         <div class="rounded-xl bg-surface border border-hairline p-5 text-center">
             <p class="text-xs font-medium text-neutral-300">Tegangan Listrik</p>
             <p id="sensor-page-volt" class="text-2xl font-bold font-mono tracking-tight text-white mt-2">
-                @if($latestPower && isset($latestPower->voltage))
+                @if(($isEsp32Online ?? false) && $latestPower && isset($latestPower->voltage))
                     {{ number_format($latestPower->voltage, 1) }} <span class="text-sm font-normal text-neutral-400">V</span>
                 @else
-                    <span class="text-neutral-500">—</span>
+                    0.0 <span class="text-sm font-normal text-neutral-400">V</span>
                 @endif
             </p>
-            <span class="mt-2.5 inline-block px-2.5 py-0.5 rounded bg-surface2 border border-hairline text-xs font-mono text-neutral-300">
-                {{ $latestPower ? 'AC 50Hz' : 'Belum ada data' }}
+            <span id="sensor-page-volt-badge" class="mt-2.5 inline-block px-2.5 py-0.5 rounded bg-surface2 border border-hairline text-xs font-mono text-neutral-300">
+                {{ ($isEsp32Online ?? false) ? 'AC 50Hz' : 'ESP32 Offline' }}
             </span>
         </div>
 
@@ -27,14 +27,14 @@
         <div class="rounded-xl bg-surface border border-hairline p-5 text-center">
             <p class="text-xs font-medium text-neutral-300">Arus Beban</p>
             <p id="sensor-page-curr" class="text-2xl font-bold font-mono tracking-tight text-white mt-2">
-                @if($latestPower && isset($latestPower->current))
+                @if(($isEsp32Online ?? false) && $latestPower && isset($latestPower->current))
                     {{ number_format($latestPower->current, 2) }} <span class="text-sm font-normal text-neutral-400">A</span>
                 @else
-                    <span class="text-neutral-500">—</span>
+                    0.00 <span class="text-sm font-normal text-neutral-400">A</span>
                 @endif
             </p>
-            <span class="mt-2.5 inline-block px-2.5 py-0.5 rounded bg-surface2 border border-hairline text-xs font-mono text-neutral-300">
-                {{ $latestPower ? 'Donat CT' : 'Belum ada data' }}
+            <span id="sensor-page-curr-badge" class="mt-2.5 inline-block px-2.5 py-0.5 rounded bg-surface2 border border-hairline text-xs font-mono text-neutral-300">
+                {{ ($isEsp32Online ?? false) ? 'Donat CT' : 'ESP32 Offline' }}
             </span>
         </div>
 
@@ -42,14 +42,14 @@
         <div class="rounded-xl bg-surface border border-hairline p-5 text-center">
             <p class="text-xs font-medium text-neutral-300">Daya Nyata</p>
             <p id="sensor-page-power" class="text-2xl font-bold font-mono tracking-tight text-mint mt-2">
-                @if($latestPower && isset($latestPower->power))
+                @if(($isEsp32Online ?? false) && $latestPower && isset($latestPower->power))
                     {{ number_format($latestPower->power, 1) }} <span class="text-sm font-normal text-neutral-400">W</span>
                 @else
-                    <span class="text-neutral-500">—</span>
+                    0.0 <span class="text-sm font-normal text-neutral-400">W</span>
                 @endif
             </p>
-            <span class="mt-2.5 inline-block px-2.5 py-0.5 rounded bg-surface2 border border-hairline text-xs font-mono text-neutral-300">
-                {{ $latestPower ? 'Beban Realtime' : 'Belum ada data' }}
+            <span id="sensor-page-power-badge" class="mt-2.5 inline-block px-2.5 py-0.5 rounded bg-surface2 border border-hairline text-xs font-mono text-neutral-300">
+                {{ ($isEsp32Online ?? false) ? 'Beban Realtime' : 'ESP32 Offline' }}
             </span>
         </div>
 
@@ -57,14 +57,14 @@
         <div class="rounded-xl bg-surface border border-hairline p-5 text-center">
             <p class="text-xs font-medium text-neutral-300">Suhu Box Internal</p>
             <p id="sensor-page-temp" class="text-2xl font-bold font-mono tracking-tight text-amber mt-2">
-                @if($latestTemp && isset($latestTemp->temperature))
+                @if(($isEsp32Online ?? false) && $latestTemp && isset($latestTemp->temperature))
                     {{ number_format($latestTemp->temperature, 1) }}<span class="text-sm font-normal text-neutral-400">°C</span>
                 @else
-                    <span class="text-neutral-500">—</span>
+                    0.0<span class="text-sm font-normal text-neutral-400">°C</span>
                 @endif
             </p>
-            <span class="mt-2.5 inline-block px-2.5 py-0.5 rounded bg-surface2 border border-hairline text-xs font-mono text-neutral-300">
-                {{ $latestTemp ? 'Sensor DHT22' : 'Belum ada data' }}
+            <span id="sensor-page-temp-badge" class="mt-2.5 inline-block px-2.5 py-0.5 rounded bg-surface2 border border-hairline text-xs font-mono text-neutral-300">
+                {{ ($isEsp32Online ?? false) ? 'Sensor DHT22' : 'ESP32 Offline' }}
             </span>
         </div>
 
@@ -72,14 +72,14 @@
         <div class="rounded-xl bg-surface border border-hairline p-5 text-center col-span-2 md:col-span-1">
             <p class="text-xs font-medium text-neutral-300">Kelembaban Udara</p>
             <p id="sensor-page-humid" class="text-2xl font-bold font-mono tracking-tight text-white mt-2">
-                @if($latestTemp && isset($latestTemp->humidity))
+                @if(($isEsp32Online ?? false) && $latestTemp && isset($latestTemp->humidity))
                     {{ number_format($latestTemp->humidity, 0) }}<span class="text-sm font-normal text-neutral-400">%</span>
                 @else
-                    <span class="text-neutral-500">—</span>
+                    0<span class="text-sm font-normal text-neutral-400">%</span>
                 @endif
             </p>
-            <span class="mt-2.5 inline-block px-2.5 py-0.5 rounded bg-surface2 border border-hairline text-xs font-mono text-neutral-300">
-                {{ $latestTemp ? 'Udara Box' : 'Belum ada data' }}
+            <span id="sensor-page-humid-badge" class="mt-2.5 inline-block px-2.5 py-0.5 rounded bg-surface2 border border-hairline text-xs font-mono text-neutral-300">
+                {{ ($isEsp32Online ?? false) ? 'Udara Box' : 'ESP32 Offline' }}
             </span>
         </div>
     </div>
