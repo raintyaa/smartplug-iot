@@ -90,7 +90,7 @@
                         @php
                             $activeDur = (int) ($slot['active_duration'] ?? $slot['duration_seconds'] ?? 0);
                         @endphp
-                        <p class="mt-1 font-mono text-4xl font-bold tracking-tight text-neutral-300" id="countdown-slot-{{ $i }}">
+                        <p class="mt-1 font-mono text-4xl font-bold tracking-tight text-neutral-300" id="countdown-slot-{{ $i }}" aria-live="off" aria-atomic="true">
                             @if ($status === 'ACTIVE')
                                 {{ $activeDur == 0 ? 'Menghitung…' : '--:--' }}
                             @elseif ($status === 'WAITING_PAYMENT')
@@ -100,7 +100,7 @@
                             @endif
                         </p>
                         <!-- Indikator Beban Listrik (Idle / Terhubung) -->
-                        <div id="load-status-slot-{{ $i }}" class="mt-2 min-h-[24px]">
+                        <div id="load-status-slot-{{ $i }}" class="mt-2 min-h-[24px]" aria-live="polite" aria-atomic="true">
                             @if ($status === 'ACTIVE')
                                 @php
                                     $pzemPower = (float) ($firebaseData['sensors']['power'] ?? 0);
@@ -200,28 +200,28 @@
             <div class="px-4 py-2 md:py-0 first:pl-0">
                 <p class="text-xs text-neutral-300 font-medium">Tegangan</p>
                 <p class="font-mono text-lg text-white font-semibold mt-1" id="sensor-volt">
-                    {{ number_format($firebaseData['sensors']['voltage'] ?? 0, 1) }} <span class="text-xs font-normal text-neutral-400">V</span>
+                    {{ number_format($firebaseData['sensors']['voltage'] ?? 0, 1) }} <span class="text-xs font-normal text-neutral-300">V</span>
                 </p>
             </div>
             <!-- Arus -->
             <div class="px-4 py-2 md:py-0">
                 <p class="text-xs text-neutral-300 font-medium">Arus</p>
                 <p class="font-mono text-lg text-white font-semibold mt-1" id="sensor-curr">
-                    {{ number_format($firebaseData['sensors']['current'] ?? 0, 2) }} <span class="text-xs font-normal text-neutral-400">A</span>
+                    {{ number_format($firebaseData['sensors']['current'] ?? 0, 2) }} <span class="text-xs font-normal text-neutral-300">A</span>
                 </p>
             </div>
             <!-- Daya Aktif -->
             <div class="px-4 py-2 md:py-0">
                 <p class="text-xs text-neutral-300 font-medium">Daya Aktif</p>
                 <p class="font-mono text-lg text-white font-semibold mt-1" id="sensor-power">
-                    {{ number_format($firebaseData['sensors']['power'] ?? 0, 1) }} <span class="text-xs font-normal text-neutral-400">W</span>
+                    {{ number_format($firebaseData['sensors']['power'] ?? 0, 1) }} <span class="text-xs font-normal text-neutral-300">W</span>
                 </p>
             </div>
             <!-- Energi Kumulatif -->
             <div class="px-4 py-2 md:py-0">
                 <p class="text-xs text-neutral-300 font-medium">Energi Kumulatif</p>
                 <p class="font-mono text-lg text-white font-semibold mt-1">
-                    <span id="sensor-energy">{{ number_format($firebaseData['sensors']['energy'] ?? 0, 4) }}</span> <span class="text-xs font-normal text-neutral-400">kWh</span>
+                    <span id="sensor-energy">{{ number_format($firebaseData['sensors']['energy'] ?? 0, 4) }}</span> <span class="text-xs font-normal text-neutral-300">kWh</span>
                 </p>
             </div>
             <!-- Suhu Box Internal -->
@@ -328,7 +328,7 @@
     function setEsp32Online() {
         const badge = getEsp32Badge();
         if (badge) {
-            badge.className = 'font-mono text-xs font-medium px-2.5 sm:px-3 py-1.5 rounded-lg bg-mint/10 border border-mint/25 text-mint';
+            badge.className = 'inline-flex items-center font-mono text-xs font-medium px-2.5 sm:px-3 py-1 rounded-md bg-mint/10 text-mint';
             badge.setAttribute('title', 'ESP32 online — telemetri realtime');
             badge.innerHTML = '<span aria-hidden="true">●</span><span class="hidden sm:inline ml-1.5">ESP32</span><span class="sr-only">ESP32 online</span>';
         }
@@ -337,7 +337,7 @@
     function setEsp32Offline() {
         const badge = getEsp32Badge();
         if (badge) {
-            badge.className = 'font-mono text-xs font-medium px-2.5 sm:px-3 py-1.5 rounded-lg bg-surface2 border border-hairline text-neutral-400';
+            badge.className = 'inline-flex items-center font-mono text-xs font-medium px-2.5 sm:px-3 py-1 rounded-md bg-surface2 text-neutral-400';
             badge.setAttribute('title', 'ESP32 offline — data sensor basi');
             badge.innerHTML = '<span aria-hidden="true">●</span><span class="hidden sm:inline ml-1.5">ESP32 Offline</span><span class="sr-only">ESP32 offline</span>';
         }

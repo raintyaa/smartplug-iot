@@ -57,23 +57,79 @@
     <!-- Grafik 1: Daya Listrik (Watt) & Tegangan (Volt) -->
     <div class="rounded-xl bg-surface border border-hairline p-6">
         <h2 class="text-base font-semibold text-white tracking-tight mb-5 flex items-center space-x-2">
-            <i class="fa-solid fa-bolt text-mint text-sm"></i>
+            <i class="fa-solid fa-bolt text-mint text-sm" aria-hidden="true"></i>
             <span>Histori Daya Nyata (Watt) &amp; Tegangan (PZEM-004T)</span>
         </h2>
         <div class="h-64">
-            <canvas id="powerTimelineChart"></canvas>
+            <canvas id="powerTimelineChart" role="img" aria-label="Grafik garis histori daya dalam Watt dan tegangan dalam Volt dari sensor PZEM-004T. Ringkasan data tersedia pada tabel berikut."></canvas>
         </div>
+        <details class="mt-4">
+            <summary class="text-xs font-mono text-neutral-300 cursor-pointer hover:text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint focus-visible:ring-offset-2 focus-visible:ring-offset-base rounded w-fit px-1 py-1">Tampilkan ringkasan data daya (teks)</summary>
+            <div class="mt-3 overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <caption class="sr-only">Ringkasan 10 catatan terakhir daya dan tegangan</caption>
+                    <thead class="border-b border-hairline uppercase tracking-wider text-neutral-300 font-mono font-medium">
+                        <tr><th class="pb-2 px-3" scope="col">Waktu</th><th class="pb-2 px-3" scope="col">Daya (W)</th><th class="pb-2 px-3" scope="col">Tegangan (V)</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-hairline font-mono text-neutral-200">
+                        @php
+                            $pLabels = collect($powerChartLabels ?? [])->toArray();
+                            $pWatts  = collect($powerChartWatts ?? [])->toArray();
+                            $pVolts  = collect($powerChartVolts ?? [])->toArray();
+                            $powerRows = [];
+                            foreach ($pLabels as $idx => $lbl) {
+                                $powerRows[] = [$lbl, $pWatts[$idx] ?? 0, $pVolts[$idx] ?? 0];
+                            }
+                            $powerSlice = array_slice($powerRows, -10);
+                        @endphp
+                        @forelse($powerSlice as $row)
+                            <tr><td class="py-2 px-3">{{ $row[0] }}</td><td class="py-2 px-3">{{ $row[1] }}</td><td class="py-2 px-3">{{ $row[2] }}</td></tr>
+                        @empty
+                            <tr><td colspan="3" class="py-4 px-3 text-neutral-300">Belum ada data daya tercatat.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </details>
     </div>
 
     <!-- Grafik 2: Suhu & Kelembaban (DHT22) -->
     <div class="rounded-xl bg-surface border border-hairline p-6">
         <h2 class="text-base font-semibold text-white tracking-tight mb-5 flex items-center space-x-2">
-            <i class="fa-solid fa-temperature-half text-amber text-sm"></i>
+            <i class="fa-solid fa-temperature-half text-amber text-sm" aria-hidden="true"></i>
             <span>Histori Suhu &amp; Kelembaban Udara Internal Box (DHT22)</span>
         </h2>
         <div class="h-64">
-            <canvas id="tempTimelineChart"></canvas>
+            <canvas id="tempTimelineChart" role="img" aria-label="Grafik garis histori suhu dalam derajat Celcius dan kelembaban dalam persen dari sensor DHT22. Ringkasan data tersedia pada tabel berikut."></canvas>
         </div>
+        <details class="mt-4">
+            <summary class="text-xs font-mono text-neutral-300 cursor-pointer hover:text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint focus-visible:ring-offset-2 focus-visible:ring-offset-base rounded w-fit px-1 py-1">Tampilkan ringkasan data suhu (teks)</summary>
+            <div class="mt-3 overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <caption class="sr-only">Ringkasan 10 catatan terakhir suhu dan kelembaban</caption>
+                    <thead class="border-b border-hairline uppercase tracking-wider text-neutral-300 font-mono font-medium">
+                        <tr><th class="pb-2 px-3" scope="col">Waktu</th><th class="pb-2 px-3" scope="col">Suhu (°C)</th><th class="pb-2 px-3" scope="col">Kelembaban (%)</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-hairline font-mono text-neutral-200">
+                        @php
+                            $tLabels = collect($tempChartLabels ?? [])->toArray();
+                            $tVals   = collect($tempChartValues ?? [])->toArray();
+                            $tHums   = collect($humidityChartValues ?? [])->toArray();
+                            $tempRows = [];
+                            foreach ($tLabels as $idx => $lbl) {
+                                $tempRows[] = [$lbl, $tVals[$idx] ?? 0, $tHums[$idx] ?? 0];
+                            }
+                            $tempSlice = array_slice($tempRows, -10);
+                        @endphp
+                        @forelse($tempSlice as $row)
+                            <tr><td class="py-2 px-3">{{ $row[0] }}</td><td class="py-2 px-3">{{ $row[1] }}</td><td class="py-2 px-3">{{ $row[2] }}</td></tr>
+                        @empty
+                            <tr><td colspan="3" class="py-4 px-3 text-neutral-300">Belum ada data suhu tercatat.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </details>
     </div>
 
 </div>

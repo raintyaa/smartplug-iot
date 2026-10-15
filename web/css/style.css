@@ -2,11 +2,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-    --bg-main: #0b0f19;
-    --card-bg: #111827;
-    --border-color: #1f2937;
-    --brand-primary: #6366f1;
-    --brand-secondary: #a855f7;
+    --bg-main: #0A0A0D;
+    --card-bg: #131318;
+    --border-color: #282832;
+    --brand-primary: #10b981;
+    --brand-secondary: #f59e0b;
 }
 
 body {
@@ -16,19 +16,25 @@ body {
     overflow-x: hidden;
 }
 
+/* Harden: hormati pengguna sensitif gerak */
+@media (prefers-reduced-motion: reduce) {
+    .card-glow, .card-glow:hover { transition: none; box-shadow: none; }
+    .animate-pulse, .animate-ping { animation: none !important; }
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
 }
 ::-webkit-scrollbar-track {
-    background: #0b0f19;
+    background: #0A0A0D;
 }
 ::-webkit-scrollbar-thumb {
-    background: #1f2937;
+    background: #282832;
     border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #374151;
+    background: #3a3a46;
 }
 
 /* Card Glow Effect */
@@ -37,8 +43,8 @@ body {
     transition: all 0.3s ease;
 }
 .card-glow:hover {
-    border-color: rgba(99, 102, 241, 0.4);
-    box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.1);
+    border-color: rgba(16, 185, 129, 0.4);
+    box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.1);
 }
 
 /* Status Badges */
@@ -56,8 +62,6 @@ body {
 
 /* Glassmorphism Effect */
 .glass-nav {
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    background-color: rgba(11, 15, 25, 0.85);
-    border-bottom: 1px solid rgba(31, 41, 55, 0.8);
+    background-color: rgba(10, 10, 13, 0.85);
+    border-bottom: 1px solid rgba(40, 40, 50, 0.8);
 }

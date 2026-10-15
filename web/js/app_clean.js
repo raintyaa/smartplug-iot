@@ -31,15 +31,15 @@ function simulateToggle(slotNumber) {
         badge.innerText = "AKTIF (TERBAYAR)";
 
         timer.innerText = formatTime(slot.secondsLeft);
-        timer.className = "text-xl font-black text-white";
+        timer.className = "text-xl font-black font-mono tabular-nums text-white";
 
         watt.innerText = `${slot.watt} W`;
         current.innerText = `${slot.current} A`;
 
         button.innerText = "Nonaktifkan / Reset Slot";
-        button.className = "mt-5 w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition";
+        button.className = "mt-5 w-full py-2.5 min-h-[44px] rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition";
 
-        alert(`[SIMULASI WEBHOOK SUKSES]\n\nPembayaran QRIS Rp 2.000 terdeteksi untuk Slot ${slotNumber}!\nRelay aktif, stop kontak menyala selama 30 menit.`);
+        if (typeof showSimNotice === 'function') { showSimNotice(`[SIMULASI WEBHOOK SUKSES] Pembayaran QRIS Rp 2.000 terdeteksi untuk Slot ${slotNumber}. Relay aktif 30 menit.`); }
     } else {
 
         slot.active = false;
@@ -51,13 +51,13 @@ function simulateToggle(slotNumber) {
         badge.innerText = "STANDBY / MATI";
 
         timer.innerText = "00:00";
-        timer.className = "text-xl font-black text-slate-500";
+        timer.className = "text-xl font-black font-mono tabular-nums text-slate-500";
 
         watt.innerText = "0.0 W";
         current.innerText = "0.00 A";
 
         button.innerText = `Simulasi Pembayaran Slot ${slotNumber} (+Rp 2.000)`;
-        button.className = "mt-5 w-full py-2.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 text-xs font-semibold border border-indigo-500/30 transition";
+        button.className = "mt-5 w-full py-2.5 min-h-[44px] rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 text-xs font-semibold border border-emerald-500/30 transition";
     }
 }
 

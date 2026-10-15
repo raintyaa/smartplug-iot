@@ -44,7 +44,7 @@
         <!-- Logo & Title -->
         <div class="text-center mb-6">
             <div class="inline-flex items-center justify-center w-14 h-14 rounded-xl border border-hairline bg-surface2 mb-3 p-1">
-                <img src="{{ asset('images/logo.png') }}" alt="Logo" class="w-full h-full object-contain">
+                <img src="{{ asset('images/logo.png') }}" alt="Logo RANOVA Smart Plug" class="w-full h-full object-contain">
             </div>
             <h1 class="text-xl font-bold tracking-tight text-white">SMART PLUG SYSTEM</h1>
             <p class="text-xs text-neutral-400 mt-1">Operator Console</p>
@@ -67,8 +67,8 @@
                         <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-neutral-500 text-sm">
                             <i class="fa-solid fa-envelope"></i>
                         </span>
-                        <input type="email" name="email" id="email" value="{{ old('email', 'admin@ranova.id') }}" required
-                            class="w-full pl-10 pr-4 py-2.5 bg-surface2 border border-hairline rounded-lg text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-mint/50 focus:ring-1 focus:ring-mint/20 transition">
+                        <input type="email" name="email" id="email" value="{{ old('email', 'admin@ranova.id') }}" required autocomplete="username"
+                            class="w-full pl-10 pr-4 py-2.5 bg-surface2 border border-hairline rounded-lg text-sm text-white placeholder-neutral-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint focus-visible:ring-offset-2 focus-visible:ring-offset-base focus:border-mint/50 focus:ring-1 focus:ring-mint/20 transition">
                     </div>
                 </div>
 
@@ -78,8 +78,8 @@
                         <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-neutral-500 text-sm">
                             <i class="fa-solid fa-lock"></i>
                         </span>
-                        <input type="password" name="password" id="password" value="admin123" required
-                            class="w-full pl-10 pr-4 py-2.5 bg-surface2 border border-hairline rounded-lg text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-mint/50 focus:ring-1 focus:ring-mint/20 transition">
+                        <input type="password" name="password" id="password" value="admin123" required autocomplete="current-password"
+                            class="w-full pl-10 pr-4 py-2.5 bg-surface2 border border-hairline rounded-lg text-sm text-white placeholder-neutral-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint focus-visible:ring-offset-2 focus-visible:ring-offset-base focus:border-mint/50 focus:ring-1 focus:ring-mint/20 transition">
                     </div>
                 </div>
 
@@ -91,7 +91,7 @@
                     <span class="text-neutral-400 font-mono text-[11px]">Default: admin123</span>
                 </div>
 
-                <button type="submit" class="w-full py-2.5 px-4 rounded-lg bg-mint hover:bg-mint-hover text-[#0A0A0D] font-semibold text-xs transition-colors flex items-center justify-center space-x-2 mt-2">
+                <button type="submit" class="w-full min-h-[44px] py-2.5 px-4 rounded-lg bg-mint hover:bg-mint-hover text-[#0A0A0D] font-semibold text-xs transition-colors flex items-center justify-center space-x-2 mt-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint focus-visible:ring-offset-2 focus-visible:ring-offset-base">
                     <span>Masuk ke Dashboard</span>
                     <i class="fa-solid fa-arrow-right text-[11px]"></i>
                 </button>

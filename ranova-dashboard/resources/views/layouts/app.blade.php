@@ -56,6 +56,15 @@
             background-color: #131318;
             border: 1px solid #282832;
         }
+        /* Harden: hormati pengguna sensitif gerak — matikan pulse/ping, pertahankan makna via warna + teks */
+        @media (prefers-reduced-motion: reduce) {
+            .animate-pulse, .animate-ping, .pulse-amber {
+                animation: none !important;
+            }
+            *, *::before, *::after {
+                scroll-behavior: auto !important;
+            }
+        }
     </style>
     @stack('styles')
 </head>
@@ -66,7 +75,7 @@
         <div>
             <!-- Brand Logo -->
             <div class="h-16 flex items-center px-6 border-b border-hairline space-x-3">
-                <img src="{{ asset('images/logo.png') }}" alt="Logo" class="w-9 h-9 rounded-lg border border-hairline object-contain bg-base">
+                <img src="{{ asset('images/logo.png') }}" alt="Logo RANOVA Smart Plug" class="w-9 h-9 rounded-lg border border-hairline object-contain bg-base">
                 <div>
                     <span class="font-bold text-base tracking-tight text-white">SMART PLUG</span>
                     <span class="block text-xs tracking-wider text-neutral-300 font-medium">Operator Console</span>
@@ -111,7 +120,7 @@
                     </div>
                     <div class="overflow-hidden">
                         <p class="text-xs font-semibold text-white truncate">{{ Auth::user()->name ?? 'Operator' }}</p>
-                        <p class="text-xs text-neutral-300 truncate">Online via Local</p>
+                        <p class="text-xs text-neutral-300 truncate">Operator lokal</p>
                     </div>
                 </div>
             </div>
@@ -134,7 +143,7 @@
                     <i class="fa-solid fa-bars text-sm" aria-hidden="true"></i>
                 </button>
                 <h1 class="text-lg sm:text-2xl font-bold text-white tracking-tight truncate">@yield('page_title', 'Dashboard')</h1>
-                <button id="legend-open-btn" type="button" class="ml-1 inline-flex items-center justify-center w-[32px] h-[32px] sm:w-auto sm:h-auto sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-mono text-neutral-300 bg-surface2 border border-hairline hover:text-white hover:border-mint/40 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint focus-visible:ring-offset-2 focus-visible:ring-offset-base" title="Panduan status operator" aria-label="Buka panduan status operator" aria-haspopup="dialog">
+                <button id="legend-open-btn" type="button" class="ml-1 inline-flex items-center justify-center min-w-[44px] min-h-[44px] sm:w-auto sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-mono text-neutral-300 bg-surface2 border border-hairline hover:text-white hover:border-mint/40 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint focus-visible:ring-offset-2 focus-visible:ring-offset-base" title="Panduan status operator" aria-label="Buka panduan status operator" aria-haspopup="dialog">
                     <i class="fa-solid fa-circle-question" aria-hidden="true"></i>
                     <span class="hidden sm:inline ml-1.5">Panduan</span>
                 </button>
@@ -142,17 +151,17 @@
 
             <div class="flex items-center gap-2 sm:space-x-3 flex-shrink-0">
                 <!-- Sync Clock -->
-                <span id="last-sync-time" class="hidden md:inline-block font-mono text-xs text-neutral-300 px-2.5 py-1.5 rounded-lg bg-surface2 border border-hairline" title="Waktu sinkronisasi terakhir dengan server">
+                <span id="last-sync-time" class="hidden md:inline-flex items-center font-mono text-xs text-neutral-300 px-2.5 py-1 rounded-md bg-surface2/80" title="Waktu sinkronisasi terakhir dengan server">
                     Sinkron: {{ date('H:i:s') }}
                 </span>
 
                 <!-- Status ESP32 Badge (Dynamic JS) -->
-                <span id="esp32-badge" class="font-mono text-xs font-medium px-2.5 sm:px-3 py-1.5 rounded-lg bg-surface2 border border-hairline text-neutral-300" title="Status koneksi mikrokontroler ESP32">
+                <span id="esp32-badge" class="inline-flex items-center font-mono text-xs font-medium px-2.5 sm:px-3 py-1 rounded-md bg-surface2 text-neutral-300" title="Status koneksi mikrokontroler ESP32">
                     <span class="sm:hidden" aria-hidden="true">●</span><span class="hidden sm:inline">ESP32</span><span class="sm:hidden sr-only">ESP32</span>
                 </span>
 
                 <!-- Status Koneksi Firebase -->
-                <div id="connection-status" class="font-mono text-xs font-medium px-2.5 sm:px-3 py-1.5 rounded-lg bg-mint/10 border border-mint/25 text-mint" title="Status koneksi Firebase Realtime Database">
+                <div id="connection-status" class="inline-flex items-center font-mono text-xs font-medium px-2.5 sm:px-3 py-1 rounded-md bg-mint/10 text-mint" title="Status koneksi Firebase Realtime Database">
                     <span aria-hidden="true">●</span><span class="hidden sm:inline ml-1.5">Firebase</span><span class="sr-only">Firebase terhubung</span>
                 </div>
 
@@ -199,7 +208,7 @@
     <!-- Global Accessible Confirm Modal -->
     <div id="ranova-confirm-modal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="ranova-confirm-title" aria-describedby="ranova-confirm-message">
         <div class="absolute inset-0 bg-black/70" data-confirm-close></div>
-        <div class="relative w-full max-w-md rounded-xl bg-surface border border-hairline p-6 shadow-2xl">
+        <div class="relative w-full max-w-md rounded-xl bg-surface border border-hairline p-6 shadow-xl">
             <div class="flex items-start gap-3">
                 <div id="ranova-confirm-icon" class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-crimson/15 border border-crimson/30 text-crimson">
                     <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
@@ -223,7 +232,7 @@
     <!-- Operator Legend / Panduan Status Modal -->
     <div id="ranova-legend-modal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="ranova-legend-title">
         <div class="absolute inset-0 bg-black/70" data-legend-close></div>
-        <div class="relative w-full max-w-lg rounded-xl bg-surface border border-hairline p-6 shadow-2xl max-h-[85vh] overflow-y-auto">
+        <div class="relative w-full max-w-lg rounded-xl bg-surface border border-hairline p-6 shadow-xl max-h-[85vh] overflow-y-auto">
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <h2 id="ranova-legend-title" class="text-base font-semibold text-white tracking-tight">Panduan Status Operator</h2>
@@ -293,7 +302,7 @@
             function setEsp32BadgeOnline() {
                 var badge = document.getElementById('esp32-badge');
                 if (badge) {
-                    badge.className = 'font-mono text-xs font-medium px-2.5 sm:px-3 py-1.5 rounded-lg bg-mint/10 border border-mint/25 text-mint';
+                    badge.className = 'inline-flex items-center font-mono text-xs font-medium px-2.5 sm:px-3 py-1 rounded-md bg-mint/10 text-mint';
                     badge.setAttribute('title', 'ESP32 online — telemetri realtime');
                     badge.innerHTML = '<span aria-hidden="true">●</span><span class="hidden sm:inline ml-1.5">ESP32</span><span class="sr-only">ESP32 online</span>';
                 }
@@ -302,7 +311,7 @@
             function setEsp32BadgeOffline() {
                 var badge = document.getElementById('esp32-badge');
                 if (badge) {
-                    badge.className = 'font-mono text-xs font-medium px-2.5 sm:px-3 py-1.5 rounded-lg bg-surface2 border border-hairline text-neutral-400';
+                    badge.className = 'inline-flex items-center font-mono text-xs font-medium px-2.5 sm:px-3 py-1 rounded-md bg-surface2 text-neutral-400';
                     badge.setAttribute('title', 'ESP32 offline — data sensor basi');
                     badge.innerHTML = '<span aria-hidden="true">●</span><span class="hidden sm:inline ml-1.5">ESP32 Offline</span><span class="sr-only">ESP32 offline</span>';
                 }

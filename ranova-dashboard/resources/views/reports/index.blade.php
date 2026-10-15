@@ -12,9 +12,9 @@
             Perbandingan omzet sewa QRIS terhadap estimasi biaya listrik PLN golongan tarif R-1/TR 1.300 VA.
         </p>
         <div class="flex items-center space-x-2">
-            <a href="{{ route('reports.index', ['days' => 7]) }}" class="px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition {{ $days == 7 ? 'bg-mint/15 text-mint border border-mint/30' : 'bg-surface2 text-neutral-300 hover:text-white border border-hairline' }}">7 Hari</a>
-            <a href="{{ route('reports.index', ['days' => 14]) }}" class="px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition {{ $days == 14 ? 'bg-mint/15 text-mint border border-mint/30' : 'bg-surface2 text-neutral-300 hover:text-white border border-hairline' }}">14 Hari</a>
-            <a href="{{ route('reports.index', ['days' => 30]) }}" class="px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition {{ $days == 30 ? 'bg-mint/15 text-mint border border-mint/30' : 'bg-surface2 text-neutral-300 hover:text-white border border-hairline' }}">30 Hari</a>
+            <a href="{{ route('reports.index', ['days' => 7]) }}" class="inline-flex items-center min-h-[44px] px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint focus-visible:ring-offset-2 focus-visible:ring-offset-base {{ $days == 7 ? 'bg-mint/15 text-mint border border-mint/30' : 'bg-surface2 text-neutral-300 hover:text-white border border-hairline' }}">7 Hari</a>
+            <a href="{{ route('reports.index', ['days' => 14]) }}" class="inline-flex items-center min-h-[44px] px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint focus-visible:ring-offset-2 focus-visible:ring-offset-base {{ $days == 14 ? 'bg-mint/15 text-mint border border-mint/30' : 'bg-surface2 text-neutral-300 hover:text-white border border-hairline' }}">14 Hari</a>
+            <a href="{{ route('reports.index', ['days' => 30]) }}" class="inline-flex items-center min-h-[44px] px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint focus-visible:ring-offset-2 focus-visible:ring-offset-base {{ $days == 30 ? 'bg-mint/15 text-mint border border-mint/30' : 'bg-surface2 text-neutral-300 hover:text-white border border-hairline' }}">30 Hari</a>
         </div>
     </div>
 
@@ -80,8 +80,34 @@
                 </h2>
             </div>
             <div class="h-64">
-                <canvas id="revenueChart"></canvas>
+                <canvas id="revenueChart" role="img" aria-label="Grafik batang tren pendapatan harian selama {{ $days }} hari terakhir. Ringkasan angka tersedia pada tabel berikut."></canvas>
             </div>
+            <details class="mt-4">
+                <summary class="text-xs font-mono text-neutral-300 cursor-pointer hover:text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint focus-visible:ring-offset-2 focus-visible:ring-offset-base rounded w-fit px-1 py-1">Tampilkan ringkasan pendapatan (teks)</summary>
+                <div class="mt-3 overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <caption class="sr-only">Ringkasan pendapatan harian {{ $days }} hari terakhir</caption>
+                        <thead class="border-b border-hairline uppercase tracking-wider text-neutral-300 font-mono font-medium">
+                            <tr><th class="pb-2 px-3" scope="col">Tanggal</th><th class="pb-2 px-3" scope="col">Pendapatan (Rp)</th></tr>
+                        </thead>
+                        <tbody class="divide-y divide-hairline font-mono text-neutral-200">
+                            @php
+                                $cLabels = collect($chartLabels ?? [])->toArray();
+                                $cRevs   = collect($chartRevenues ?? [])->toArray();
+                                $revRows = [];
+                                foreach ($cLabels as $idx => $lbl) {
+                                    $revRows[] = [$lbl, $cRevs[$idx] ?? 0];
+                                }
+                            @endphp
+                            @forelse($revRows as $row)
+                                <tr><td class="py-2 px-3">{{ $row[0] }}</td><td class="py-2 px-3">Rp {{ number_format($row[1] ?? 0, 0, ',', '.') }}</td></tr>
+                            @empty
+                                <tr><td colspan="2" class="py-4 px-3 text-neutral-300">Belum ada data pendapatan pada periode ini.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </details>
         </div>
 
         <!-- Distribusi Pendapatan per Slot -->
@@ -93,8 +119,9 @@
                 </h2>
             </div>
             <div class="h-52 relative flex items-center justify-center">
-                <canvas id="slotChart"></canvas>
+                <canvas id="slotChart" role="img" aria-label="Grafik donat kontribusi pendapatan per stop kontak. Slot 1 Rp {{ number_format($slotDistribution['Slot 1'], 0, ',', '.') }}, Slot 2 Rp {{ number_format($slotDistribution['Slot 2'], 0, ',', '.') }}, Slot 3 Rp {{ number_format($slotDistribution['Slot 3'], 0, ',', '.') }}."></canvas>
             </div>
+            <p class="sr-only">Kontribusi pendapatan: Slot 1 Rp {{ number_format($slotDistribution['Slot 1'], 0, ',', '.') }}, Slot 2 Rp {{ number_format($slotDistribution['Slot 2'], 0, ',', '.') }}, Slot 3 Rp {{ number_format($slotDistribution['Slot 3'], 0, ',', '.') }}.</p>
             <div class="grid grid-cols-3 gap-4 mt-5 pt-4 border-t border-hairline text-center">
                 <div>
                     <span class="font-mono text-xs font-semibold text-mint block">SLOT 01</span>
