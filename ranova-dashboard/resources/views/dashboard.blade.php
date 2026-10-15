@@ -356,10 +356,36 @@
         }
     }
 
+    let isDashboardPolling = false;
+    let dashboardBackoffMs = 2000;
+    let dashboardPollTimer = null;
+
+    function scheduleNextDashboardPoll(delay) {
+        if (dashboardPollTimer) clearTimeout(dashboardPollTimer);
+        dashboardPollTimer = setTimeout(updateDashboard, delay);
+    }
+
     function updateDashboard() {
-        fetch('{{ route('dashboard.realtime') }}')
-            .then(res => res.json())
+        if (isDashboardPolling) {
+            scheduleNextDashboardPoll(dashboardBackoffMs);
+            return;
+        }
+        isDashboardPolling = true;
+
+        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const timeoutId = controller ? setTimeout(() => controller.abort(), 8000) : null;
+        const fetchOpts = controller ? { signal: controller.signal } : {};
+
+        fetch('{{ route('dashboard.realtime') }}', fetchOpts)
+            .then(res => {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.json();
+            })
             .then(data => {
+                if (timeoutId) clearTimeout(timeoutId);
+                isDashboardPolling = false;
+                dashboardBackoffMs = 2000; // Reset backoff on success
+
                 const now = new Date();
                 const timeStr = now.toTimeString().split(' ')[0];
                 const syncEl = document.getElementById('last-sync-time');
@@ -519,17 +545,22 @@
                         }
                     }
                 }
+                scheduleNextDashboardPoll(dashboardBackoffMs);
             })
             .catch(err => {
-                console.warn('Realtime sync pause:', err);
+                if (timeoutId) clearTimeout(timeoutId);
+                isDashboardPolling = false;
+                // Exponential backoff 2s -> 4s -> 8s max
+                dashboardBackoffMs = Math.min(dashboardBackoffMs * 2, 8000);
+                console.warn('Realtime sync pause, backoff ' + dashboardBackoffMs + 'ms:', err.name === 'AbortError' ? 'Timeout' : err.message);
                 const syncEl = document.getElementById('last-sync-time');
                 if (syncEl) syncEl.innerText = 'Koneksi terputus...';
+                scheduleNextDashboardPoll(dashboardBackoffMs);
             });
     }
 
     document.addEventListener('DOMContentLoaded', () => {
         updateDashboard();
-        setInterval(updateDashboard, 2000);
     });
 </script>
 @endpush

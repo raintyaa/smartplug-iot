@@ -1,42 +1,8 @@
 <!DOCTYPE html>
 <html lang="id" class="h-full bg-base text-neutral-200">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login Operator | Smart Plug System</title>
-    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
-    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        base: '#0A0A0D',
-                        surface: '#131318',
-                        surface2: '#181820',
-                        hairline: '#282832',
-                        mint: '#05DF72',
-                        'mint-hover': '#04C966',
-                        amber: '#F59E0B',
-                        crimson: '#EF4444',
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        mono: ['"JetBrains Mono"', 'monospace'],
-                    }
-                }
-            }
-        }
-    </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #0A0A0D; }
-    </style>
+    @include('layouts.head')
 </head>
 <body class="h-full flex items-center justify-center p-4 bg-base text-neutral-200 antialiased selection:bg-mint/30">
 

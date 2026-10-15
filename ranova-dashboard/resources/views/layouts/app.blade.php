@@ -1,74 +1,18 @@
 <!DOCTYPE html>
 <html lang="id" class="h-full bg-[#0A0A0D] text-neutral-200">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Dashboard') | Smart Plug System</title>
-    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
-    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        base: '#0A0A0D',
-                        surface: '#131318',
-                        surface2: '#181820',
-                        hairline: '#282832',
-                        mint: '#05DF72',
-                        amber: '#F59E0B',
-                        crimson: '#EF4444',
-                        brand: {
-                            500: '#05DF72',
-                            600: '#00C864',
-                            700: '#00A854',
-                        }
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        mono: ['"JetBrains Mono"', 'monospace'],
-                    }
-                }
-            }
-        }
-    </script>
-
-    <!-- Google Fonts: Inter & JetBrains Mono -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #0A0A0D; }
-        .font-mono { font-family: 'JetBrains Mono', monospace; }
-        .surface-card {
-            background-color: #131318;
-            border: 1px solid #282832;
-        }
-        /* Harden: hormati pengguna sensitif gerak — matikan pulse/ping, pertahankan makna via warna + teks */
-        @media (prefers-reduced-motion: reduce) {
-            .animate-pulse, .animate-ping, .pulse-amber {
-                animation: none !important;
-            }
-            *, *::before, *::after {
-                scroll-behavior: auto !important;
-            }
-        }
-    </style>
+    @include('layouts.head')
+    <!-- Chart.js (deferred for non-blocking first paint) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
     @stack('styles')
 </head>
 <body class="h-full flex overflow-hidden bg-base text-neutral-200 antialiased selection:bg-mint/30">
+
+    <!-- Skip-link to main content for keyboard / screen reader accessibility (WCAG 2.4.1) -->
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[999] focus:px-4 focus:py-2.5 focus:rounded-lg focus:bg-surface focus:border focus:border-mint focus:text-mint focus:font-semibold focus:text-xs focus:shadow-xl focus:outline-none focus:ring-2 focus:ring-mint">
+        Lewati ke konten utama
+    </a>
 
     <!-- Sidebar Navigation -->
     <aside id="app-sidebar" class="w-64 bg-surface border-r border-hairline flex flex-col justify-between flex-shrink-0 transition-all duration-300 ease-in-out">
@@ -135,7 +79,7 @@
     </aside>
 
     <!-- Main Content Area -->
-    <main class="flex-1 flex flex-col overflow-hidden bg-base">
+    <main id="main-content" tabindex="-1" class="flex-1 flex flex-col overflow-hidden bg-base outline-none">
         <!-- Topbar Header -->
         <header class="min-h-[4rem] border-b border-hairline bg-surface px-4 sm:px-8 py-2 flex items-center justify-between gap-2 flex-shrink-0 flex-wrap">
             <div class="flex items-center space-x-2 sm:space-x-3 min-w-0">
@@ -298,6 +242,8 @@
         (function() {
             var globalSyncTimer = null;
             var lastGlobalSensorUpdate = 0;
+            var isGlobalPolling = false;
+            var globalBackoffMs = 3000;
 
             function setEsp32BadgeOnline() {
                 var badge = document.getElementById('esp32-badge');
@@ -317,12 +263,33 @@
                 }
             }
 
+            function scheduleNextGlobalPoll(delay) {
+                if (globalSyncTimer) clearTimeout(globalSyncTimer);
+                globalSyncTimer = setTimeout(updateGlobalSync, delay);
+            }
+
             function updateGlobalSync() {
                 if (window.hasCustomDashboardLoop) return;
+                if (isGlobalPolling) {
+                    scheduleNextGlobalPoll(globalBackoffMs);
+                    return;
+                }
+                isGlobalPolling = true;
 
-                fetch("{{ route('dashboard.realtime') }}")
-                    .then(function(res) { return res.json(); })
+                var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+                var timeoutId = controller ? setTimeout(function() { controller.abort(); }, 8000) : null;
+                var fetchOpts = controller ? { signal: controller.signal } : {};
+
+                fetch("{{ route('dashboard.realtime') }}", fetchOpts)
+                    .then(function(res) {
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        return res.json();
+                    })
                     .then(function(data) {
+                        if (timeoutId) clearTimeout(timeoutId);
+                        isGlobalPolling = false;
+                        globalBackoffMs = 3000; // Reset backoff upon successful request
+
                         var now = new Date();
                         var timeStr = now.toTimeString().split(' ')[0];
                         var syncEl = document.getElementById('last-sync-time');
@@ -357,17 +324,22 @@
                             var elHumid = document.getElementById('sensor-page-humid');
                             if (elHumid) elHumid.innerHTML = parseFloat(data.sensors.humidity || 0).toFixed(0) + '<span class="text-sm font-normal text-neutral-400">%</span>';
                         }
+                        scheduleNextGlobalPoll(globalBackoffMs);
                     })
                     .catch(function(err) {
+                        if (timeoutId) clearTimeout(timeoutId);
+                        isGlobalPolling = false;
+                        // Exponential backoff 3s -> 6s -> 8s max
+                        globalBackoffMs = Math.min(globalBackoffMs * 2, 8000);
                         var syncEl = document.getElementById('last-sync-time');
                         if (syncEl) syncEl.innerText = 'Koneksi terputus...';
+                        scheduleNextGlobalPoll(globalBackoffMs);
                     });
             }
 
             document.addEventListener('DOMContentLoaded', function() {
                 if (!window.hasCustomDashboardLoop) {
                     updateGlobalSync();
-                    globalSyncTimer = setInterval(updateGlobalSync, 3000);
                 }
             });
         })();
@@ -395,6 +367,25 @@
                 return 'w-full min-h-[44px] px-4 py-2.5 rounded-lg text-xs font-semibold bg-crimson/15 border border-crimson/40 text-crimson hover:bg-crimson/25 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-crimson focus-visible:ring-offset-2 focus-visible:ring-offset-base';
             }
 
+            function trapFocus(modalEl, e) {
+                if (e.key !== 'Tab') return;
+                var focusables = modalEl.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])');
+                if (!focusables || focusables.length === 0) return;
+                var first = focusables[0];
+                var last = focusables[focusables.length - 1];
+                if (e.shiftKey) {
+                    if (document.activeElement === first) {
+                        e.preventDefault();
+                        last.focus();
+                    }
+                } else {
+                    if (document.activeElement === last) {
+                        e.preventDefault();
+                        first.focus();
+                    }
+                }
+            }
+
             function openConfirm(opts) {
                 els();
                 if (!modal) { if (opts.form) opts.form.submit(); return; }
@@ -417,6 +408,26 @@
                 modal.classList.remove('flex');
                 document.body.classList.remove('overflow-hidden');
                 pendingForm = null;
+                if (lastFocused && lastFocused.focus) lastFocused.focus();
+            }
+
+            function openLegend() {
+                var legend = document.getElementById('ranova-legend-modal');
+                if (!legend) return;
+                lastFocused = document.activeElement;
+                legend.classList.remove('hidden');
+                legend.classList.add('flex');
+                document.body.classList.add('overflow-hidden');
+                var c = legend.querySelector('[data-legend-close]');
+                if (c) c.focus();
+            }
+
+            function closeLegend() {
+                var legend = document.getElementById('ranova-legend-modal');
+                if (!legend) return;
+                legend.classList.add('hidden');
+                legend.classList.remove('flex');
+                document.body.classList.remove('overflow-hidden');
                 if (lastFocused && lastFocused.focus) lastFocused.focus();
             }
 
@@ -445,21 +456,33 @@
                     else closeConfirm();
                 }
                 // Legend modal
-                var legend = document.getElementById('ranova-legend-modal');
-                if (e.target.closest && e.target.closest('#legend-open-btn') && legend) {
-                    lastFocused = document.activeElement;
-                    legend.classList.remove('hidden'); legend.classList.add('flex');
-                    var c = legend.querySelector('[data-legend-close]'); if (c) c.focus();
+                if (e.target.closest && e.target.closest('#legend-open-btn')) {
+                    openLegend();
                 }
-                if (legend && (e.target.closest && (e.target.closest('[data-legend-close]')))) { legend.classList.add('hidden'); legend.classList.remove('flex'); if (lastFocused && lastFocused.focus) lastFocused.focus(); }
+                if (e.target.closest && e.target.closest('[data-legend-close]')) {
+                    closeLegend();
+                }
             });
 
             document.addEventListener('keydown', function (e) {
-                if (e.key !== 'Escape') return;
                 els();
-                if (modal && !modal.classList.contains('hidden')) closeConfirm();
+                var isConfirmOpen = modal && !modal.classList.contains('hidden');
                 var legend = document.getElementById('ranova-legend-modal');
-                if (legend && !legend.classList.contains('hidden')) { legend.classList.add('hidden'); legend.classList.remove('flex'); }
+                var isLegendOpen = legend && !legend.classList.contains('hidden');
+
+                if (e.key === 'Escape') {
+                    if (isConfirmOpen) closeConfirm();
+                    if (isLegendOpen) closeLegend();
+                    return;
+                }
+
+                if (e.key === 'Tab') {
+                    if (isConfirmOpen) {
+                        trapFocus(modal, e);
+                    } else if (isLegendOpen) {
+                        trapFocus(legend, e);
+                    }
+                }
             });
 
             document.addEventListener('DOMContentLoaded', function () {
