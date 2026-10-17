@@ -14,10 +14,10 @@
                 <p class="text-xs font-medium text-neutral-300">Pendapatan QRIS (Hari Ini)</p>
                 <i class="fa-solid fa-qrcode text-neutral-400 text-sm"></i>
             </div>
-            <p class="mt-3 font-mono text-2xl font-bold tracking-tight text-white">
+            <p class="mt-3 font-mono text-2xl font-bold tracking-tight text-white transition-all duration-300" id="stat-today-revenue">
                 Rp {{ number_format($todayRevenue, 0, ',', '.') }}
             </p>
-            <p class="mt-2 text-xs text-neutral-300">Total: <span class="font-mono text-white">Rp {{ number_format($totalRevenue, 0, ',', '.') }}</span></p>
+            <p class="mt-2 text-xs text-neutral-300">Total: <span class="font-mono text-white transition-all duration-300" id="stat-total-revenue">Rp {{ number_format($totalRevenue, 0, ',', '.') }}</span></p>
         </div>
 
         <!-- Total Konsumsi Energi -->
@@ -55,7 +55,7 @@
                 <p class="text-xs font-medium text-neutral-300">Estimasi Laba Bersih</p>
                 <i class="fa-solid fa-wallet text-neutral-400 text-sm"></i>
             </div>
-            <p class="mt-3 font-mono text-2xl font-bold tracking-tight text-mint">
+            <p class="mt-3 font-mono text-2xl font-bold tracking-tight text-mint transition-all duration-300" id="stat-net-profit">
                 Rp {{ number_format($netProfit, 0, ',', '.') }}
             </p>
             <p class="mt-2 text-xs text-neutral-300">Pendapatan dikurangi Biaya Listrik</p>
@@ -311,6 +311,91 @@
         const m = Math.floor((totalSec % 3600) / 60).toString().padStart(2, '0');
         const s = (totalSec % 60).toString().padStart(2, '0');
         return `${h}:${m}:${s}`;
+    }
+
+    // Pelacak Finansial Realtime
+    let currentTodayRevenue = {{ (int) $todayRevenue }};
+    let currentTotalRevenue = {{ (int) $totalRevenue }};
+    let currentNetProfit    = {{ (int) $netProfit }};
+    const processedPaymentIds = new Set();
+
+    function updateFinancialDisplay(fin) {
+        if (!fin) return;
+        currentTodayRevenue = parseInt(fin.today_revenue) || 0;
+        currentTotalRevenue = parseInt(fin.total_revenue) || 0;
+        currentNetProfit    = parseInt(fin.net_profit) || 0;
+
+        const todayEl = document.getElementById('stat-today-revenue');
+        if (todayEl) todayEl.innerText = 'Rp ' + currentTodayRevenue.toLocaleString('id-ID');
+
+        const totalEl = document.getElementById('stat-total-revenue');
+        if (totalEl) totalEl.innerText = 'Rp ' + currentTotalRevenue.toLocaleString('id-ID');
+
+        const energyEl = document.getElementById('stat-energy');
+        if (energyEl && fin.total_kwh !== undefined) {
+            energyEl.innerHTML = Number(fin.total_kwh).toLocaleString('id-ID', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' <span class="text-sm font-normal text-neutral-300">kWh</span>';
+        }
+
+        const plnEl = document.getElementById('stat-pln-cost');
+        if (plnEl && fin.total_pln_cost !== undefined) {
+            plnEl.innerText = 'Rp ' + Number(fin.total_pln_cost).toLocaleString('id-ID');
+        }
+
+        const profitEl = document.getElementById('stat-net-profit');
+        if (profitEl) profitEl.innerText = 'Rp ' + currentNetProfit.toLocaleString('id-ID');
+    }
+
+    function handleIncomingPayment(amount, slot, txId) {
+        const amt = parseInt(amount) || 0;
+        if (amt <= 0) return;
+
+        // Idempotency guard: mencegah penambahan ganda jika menerima dari command & slot state bersamaan
+        const dedupeKey = txId ? `tx_${txId}` : `slot_${slot}_${amt}_${Math.floor(Date.now() / 5000)}`;
+        if (processedPaymentIds.has(dedupeKey)) return;
+        processedPaymentIds.add(dedupeKey);
+        if (processedPaymentIds.size > 20) {
+            const first = processedPaymentIds.values().next().value;
+            processedPaymentIds.delete(first);
+        }
+
+        // 1. Optimistic UI update: tambah angka seketika (< 50ms)
+        currentTodayRevenue += amt;
+        currentTotalRevenue += amt;
+        currentNetProfit += amt;
+
+        const todayEl = document.getElementById('stat-today-revenue');
+        if (todayEl) {
+            todayEl.innerText = 'Rp ' + currentTodayRevenue.toLocaleString('id-ID');
+            todayEl.classList.add('text-mint', 'animate-pulse');
+            setTimeout(() => todayEl.classList.remove('animate-pulse'), 3000);
+        }
+
+        const totalEl = document.getElementById('stat-total-revenue');
+        if (totalEl) {
+            totalEl.innerText = 'Rp ' + currentTotalRevenue.toLocaleString('id-ID');
+        }
+
+        const profitEl = document.getElementById('stat-net-profit');
+        if (profitEl) {
+            profitEl.innerText = 'Rp ' + currentNetProfit.toLocaleString('id-ID');
+            profitEl.classList.add('animate-pulse');
+            setTimeout(() => profitEl.classList.remove('animate-pulse'), 3000);
+        }
+
+        // 2. Notifikasi Toast Realtime
+        if (typeof window.showToast === 'function') {
+            window.showToast(`Pembayaran QRIS Rp ${amt.toLocaleString('id-ID')} diterima (Slot 0${slot || 1})! Pendapatan terupdate otomatis.`, 'success', 4500);
+        }
+
+        // 3. Fast-fetch sync ke backend dengan ?sync=1 untuk konfirmasi database
+        setTimeout(() => {
+            fetch('{{ route('dashboard.realtime') }}?sync=1')
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.financials) updateFinancialDisplay(data.financials);
+                })
+                .catch(() => {});
+        }, 1500);
     }
 
     function tickSlotCountdowns() {
@@ -569,6 +654,9 @@
                 countdown.className = 'mt-1 font-mono text-4xl font-bold tracking-tight text-mint';
                 duration.innerText = Math.round(durationSec / 60) + ' Menit';
                 paid.innerText = 'Rp ' + (slotData.amount ? Number(slotData.amount).toLocaleString('id-ID') : '1.000');
+                if (slotData.amount && parseInt(slotData.amount) > 0) {
+                    handleIncomingPayment(slotData.amount, slotNum, slotData.started_at);
+                }
             }
             renderSlotActions(slotNum, status);
         }
@@ -700,6 +788,12 @@
                         setEsp32Online();
                         if (payload.status === 'WAITING_PAYMENT' && payload.slot_num >= 1 && payload.slot_num <= 3) {
                             applyMqttSlotState(payload.slot_num, { status: 'WAITING_PAYMENT' });
+                        }
+                    }
+                    // 5. Perintah Start / Notifikasi Pembayaran QRIS dari Webhook
+                    else if (topic === 'ranova/device_001/command') {
+                        if (payload.action === 'START' && payload.amount > 0) {
+                            handleIncomingPayment(payload.amount, payload.slot, payload.timestamp);
                         }
                     }
                 } catch (err) {
@@ -861,6 +955,11 @@
                 const timeStr = now.toTimeString().split(' ')[0];
                 const syncEl = document.getElementById('last-sync-time');
                 if (syncEl) syncEl.innerText = 'Sinkron: ' + timeStr;
+
+                // SELALU Perbarui Ringkasan Finansial Realtime di Background tanpa Refresh
+                if (data.financials) {
+                    updateFinancialDisplay(data.financials);
+                }
 
                 // Cek apakah MQTT WebSocket sedang aktif streaming (< 15 detik terakhir)
                 const isMqttStreaming = (mqttWssClient && mqttWssClient.connected && (Date.now() - lastMqttPacketTime < 15000));

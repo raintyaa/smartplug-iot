@@ -73,8 +73,15 @@ class DashboardController extends Controller
     /**
      * Endpoint API JSON untuk update realtime di browser (polling setiap 2 detik)
      */
-    public function apiRealtime()
+    public function apiRealtime(Request $request)
     {
+        // 0. Sinkronkan transaksi dari Firebase ke database lokal jika diminta (?sync=1) atau tiap >=10s
+        $lastSync = (int) cache()->get('last_tx_sync_time', 0);
+        if ($request->boolean('sync') || (now()->timestamp - $lastSync >= 10)) {
+            $this->firebase->syncTransactions();
+            cache()->put('last_tx_sync_time', now()->timestamp, 60);
+        }
+
         $data = $this->firebase->getSystemData();
         $sensorUpdatedAt = (int) ($data['sensors']['updated_at'] ?? 0);
         $isEsp32Online = ($sensorUpdatedAt > 0) && ((now()->timestamp - $sensorUpdatedAt) <= 40);
@@ -104,10 +111,30 @@ class DashboardController extends Controller
             unset($s);
         }
 
+        // 3. Kalkulasi Ringkasan Finansial Realtime
+        $todayRevenue = Transaction::whereDate('created_at', Carbon::today())
+            ->whereIn('status', ['completed', 'active'])
+            ->sum('nominal_paid');
+
+        $totalRevenue = Transaction::whereIn('status', ['completed', 'active'])
+            ->sum('nominal_paid');
+
+        $totalKwh = $latestPower ? (float) $latestPower->energy : (float) ($data['sensors']['energy'] ?? 0.0);
+        $plnTariff = (float) Setting::get('tariff_pln_per_kwh', 1444.70);
+        $totalPlnCost = $totalKwh * $plnTariff;
+        $netProfit = $totalRevenue - $totalPlnCost;
+
         return response()->json([
             'slots' => $slots,
             'active_selection' => $data['active_selection'] ?? 'IDLE',
             'is_esp32_online' => $isEsp32Online,
+            'financials' => [
+                'today_revenue' => (int) $todayRevenue,
+                'total_revenue' => (int) $totalRevenue,
+                'total_kwh' => (float) $totalKwh,
+                'total_pln_cost' => (int) round($totalPlnCost),
+                'net_profit' => (int) round($netProfit),
+            ],
             'sensors' => [
                 'temperature' => $isEsp32Online ? (float) ($data['sensors']['temperature'] ?? ($latestTemp->temperature ?? 0.0)) : 0.0,
                 'humidity' => $isEsp32Online ? (float) ($data['sensors']['humidity'] ?? ($latestTemp->humidity ?? 0.0)) : 0.0,
