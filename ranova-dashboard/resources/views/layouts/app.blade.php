@@ -460,7 +460,10 @@
             document.addEventListener('submit', function (e) {
                 var form = e.target && e.target.closest ? e.target.closest('form.js-confirm-form') : null;
                 if (!form) return;
-                if (form.dataset.confirmed === '1') { form.dataset.confirmed = ''; return; }
+                if (form.dataset.confirmed === '1') {
+                    setTimeout(function () { if (form) form.dataset.confirmed = ''; }, 500);
+                    return;
+                }
                 e.preventDefault();
                 openConfirm({
                     title: form.dataset.confirmTitle,

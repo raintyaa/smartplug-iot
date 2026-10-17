@@ -654,10 +654,19 @@
         }
     }
 
-    // Pasang listener intersep pada form kontrol admin untuk publish MQTT langsung
+    // Pasang listener intersep pada form kontrol admin untuk publish MQTT langsung HANYA setelah dikonfirmasi
     document.addEventListener('submit', (e) => {
+        // Jika aksi dicegah oleh modal konfirmasi sebelum diklik 'Ya', jangan kirim perintah MQTT!
+        if (e.defaultPrevented) return;
+
         const form = e.target.closest('form');
         if (!form) return;
+
+        // Jangan kirim perintah MQTT jika form membutuhkan konfirmasi dan belum dikonfirmasi oleh pengguna
+        if (form.classList.contains('js-confirm-form') && form.dataset.confirmed !== '1') {
+            return;
+        }
+
         const actionUrl = form.getAttribute('action') || '';
 
         const startMatch = actionUrl.match(/\/dashboard\/slots\/(\d+)\/start/);
@@ -670,6 +679,10 @@
         if (stopMatch) {
             const slotNum = parseInt(stopMatch[1], 10);
             sendMqttCommand('STOP', slotNum);
+        }
+
+        if (actionUrl.includes('emergency-stop') || actionUrl.includes('emergency_stop')) {
+            sendMqttCommand('EMERGENCY', 0);
         }
     });
 
