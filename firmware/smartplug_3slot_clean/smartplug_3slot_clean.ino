@@ -101,6 +101,20 @@ bool fbPut(const String& path, const String& body) {
   return (code >= 200 && code < 300);
 }
 
+String fbGet(const String& path) {
+  if (WiFi.status() != WL_CONNECTED) return "";
+  HTTPClient http;
+  http.begin(fbNetClient, String(FIREBASE_HOST) + "/" + path + ".json");
+  http.setTimeout(1500);
+  int code = http.GET();
+  String res = "";
+  if (code >= 200 && code < 300) {
+    res = http.getString();
+  }
+  http.end();
+  return res;
+}
+
 enum SlotState { STANDBY, WAITING_PAYMENT, ACTIVE, PAUSED_OVERHEAT, EMERGENCY_STOP };
 
 struct Slot {
@@ -522,8 +536,44 @@ void updateTimers() {
   unsigned long now = millis();
 
   for (int i = 0; i < NUM_SLOTS; i++) {
-    // Timeout 5 menit saat menunggu pembayaran QRIS
+    // Saat menunggu pembayaran QRIS:
     if (slots[i].state == WAITING_PAYMENT) {
+      // 1. Dual-Path Fallback: Cek konfirmasi pembayaran di Firebase RTDB setiap 2 detik
+      // Menjamin slot 100% aktif jika Webhook Vercel telah mengonfirmasi pembayaran
+      static unsigned long lastFbCheck = 0;
+      if (now - lastFbCheck >= 2000) {
+        lastFbCheck = now;
+        String slotKey = "slot" + String(i + 1);
+        String fbStatus = fbGet("slots/" + slotKey + "/status");
+
+        if (fbStatus.indexOf("ACTIVE") >= 0) {
+          Serial.printf("\n[FIREBASE DETECTED] Pembayaran QRIS Slot %d terkonfirmasi di Firebase!\n", i + 1);
+
+          // Baca durasi sewa yang ditetapkan Webhook
+          String durStr = fbGet("slots/" + slotKey + "/duration_seconds");
+          unsigned long durSec = durStr.toInt();
+          if (durSec == 0) durSec = 900; // Default 15 menit jika nilai belum terbaca
+
+          slots[i].state = ACTIVE;
+          slots[i].durationSec = durSec;
+          slots[i].activeStart = millis();
+
+          digitalWrite(PIN_RELAY[i], LOW); // Nyalakan Relay fisik!
+          digitalWrite(PIN_LED[i], HIGH);   // Nyalakan LED Ring!
+
+          successSlot = i;
+          tSuccess = millis();
+
+          publishSlotState(i);
+          publishSelectionClear();
+
+          Serial.println("=================================================");
+          Serial.printf("  [QRIS SUKSES] RELAY %d ON! Durasi: %lu detik (%lu menit)\n", i + 1, durSec, durSec / 60);
+          Serial.println("=================================================\n");
+        }
+      }
+
+      // 2. Timeout 5 menit saat menunggu pembayaran QRIS
       if (now - slots[i].waitStart >= QRIS_TIMEOUT_MS) {
         Serial.printf("[TIMEOUT] Slot %d: 5 menit tanpa bayar. Reset.\n", i + 1);
         setSlotStandby(i);
