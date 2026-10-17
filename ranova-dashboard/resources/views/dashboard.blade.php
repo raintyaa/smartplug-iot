@@ -287,8 +287,8 @@
 @endsection
 
 @push('scripts')
-<script src="https://unpkg.com/mqtt@5.3.5/dist/mqtt.min.js"></script>
 <script>
+    window.isRanovaDashboardPage = true;
     window.hasCustomDashboardLoop = true;
     const OVERHEAT_LIMIT = {{ $overheatThreshold }};
     const CSRF_TOKEN = '{{ csrf_token() }}';
@@ -299,11 +299,66 @@
     let isEsp32CurrentlyOnline = {{ ($isEsp32Online ?? false) ? 'true' : 'false' }};
     const lastSlotStatus = { 1: null, 2: null, 3: null };
 
+    // Engine Pelacak Countdown Timer Realtime Sub-Detik untuk 3 Slot
+    const slotCountdownTimers = {
+        1: { status: 'STANDBY', remainingSec: 0, durationSec: 0, startedAt: 0, nominalPaid: 0 },
+        2: { status: 'STANDBY', remainingSec: 0, durationSec: 0, startedAt: 0, nominalPaid: 0 },
+        3: { status: 'STANDBY', remainingSec: 0, durationSec: 0, startedAt: 0, nominalPaid: 0 }
+    };
+
     function fmtElapsed(totalSec) {
         const h = Math.floor(totalSec / 3600).toString().padStart(2, '0');
         const m = Math.floor((totalSec % 3600) / 60).toString().padStart(2, '0');
         const s = (totalSec % 60).toString().padStart(2, '0');
         return `${h}:${m}:${s}`;
+    }
+
+    function tickSlotCountdowns() {
+        if (!isEsp32CurrentlyOnline) return;
+
+        for (let i = 1; i <= 3; i++) {
+            const timer = slotCountdownTimers[i];
+            const countdownEl = document.getElementById('countdown-slot-' + i);
+            if (!countdownEl) continue;
+
+            if (timer.status === 'ACTIVE') {
+                if (timer.durationSec === 0) {
+                    // Mode manual gratis kontinu (menghitung maju durasi nyala)
+                    const nowSec = Math.floor(Date.now() / 1000);
+                    const safeStartedAt = timer.startedAt > 0 ? timer.startedAt : nowSec;
+                    const elapsed = Math.max(0, nowSec - safeStartedAt);
+                    countdownEl.innerText = 'Menyala: ' + fmtElapsed(elapsed) + ' (Manual)';
+                    countdownEl.className = 'mt-1 font-mono text-2xl font-bold tracking-tight text-amber';
+                } else {
+                    // Mode sewa berbayar QRIS (hitung mundur per detik)
+                    if (timer.remainingSec > 0) {
+                        timer.remainingSec--;
+                    }
+                    const m = Math.floor(timer.remainingSec / 60).toString().padStart(2, '0');
+                    const s = (timer.remainingSec % 60).toString().padStart(2, '0');
+                    countdownEl.innerText = `${m}:${s}`;
+                    countdownEl.className = 'mt-1 font-mono text-4xl font-bold tracking-tight text-mint';
+                }
+            } else if (timer.status === 'PAUSED_OVERHEAT') {
+                if (timer.remainingSec > 0) {
+                    const m = Math.floor(timer.remainingSec / 60).toString().padStart(2, '0');
+                    const s = (timer.remainingSec % 60).toString().padStart(2, '0');
+                    countdownEl.innerText = `${m}:${s} [PAUSED]`;
+                } else {
+                    countdownEl.innerText = 'DIJEDA [SUHU]';
+                }
+                countdownEl.className = 'mt-1 font-mono text-2xl font-bold tracking-tight text-amber';
+            } else if (timer.status === 'WAITING_PAYMENT') {
+                countdownEl.innerText = 'SCAN QR';
+                countdownEl.className = 'mt-1 font-mono text-4xl font-bold tracking-tight text-amber';
+            } else if (timer.status === 'OFFLINE') {
+                countdownEl.innerText = '--:--';
+                countdownEl.className = 'mt-1 font-mono text-4xl font-bold tracking-tight text-neutral-400';
+            } else {
+                countdownEl.innerText = '00:00';
+                countdownEl.className = 'mt-1 font-mono text-4xl font-bold tracking-tight text-neutral-300';
+            }
+        }
     }
 
     function slotActionTemplate(i, status) {
@@ -412,6 +467,8 @@
 
     function setSlotsOffline() {
         for (let i = 1; i <= 3; i++) {
+            slotCountdownTimers[i].status = 'OFFLINE';
+            slotCountdownTimers[i].remainingSec = 0;
             const card = document.getElementById('card-slot-' + i);
             const badge = document.getElementById('badge-slot-' + i);
             const countdown = document.getElementById('countdown-slot-' + i);
@@ -491,8 +548,17 @@
             const remainingSec = parseInt(slotData.remaining_sec) || 0;
             const durationSec = parseInt(slotData.duration_sec) || 0;
 
+            slotCountdownTimers[slotNum].status = 'ACTIVE';
+            slotCountdownTimers[slotNum].durationSec = durationSec;
+            slotCountdownTimers[slotNum].remainingSec = remainingSec;
+
             if (durationSec === 0) {
-                countdown.innerText = 'Menyala (Manual)';
+                if (!slotCountdownTimers[slotNum].startedAt || slotCountdownTimers[slotNum].startedAt === 0) {
+                    slotCountdownTimers[slotNum].startedAt = parseInt(slotData.started_at) || Math.floor(Date.now() / 1000);
+                }
+                const nowSec = Math.floor(Date.now() / 1000);
+                const elapsed = Math.max(0, nowSec - slotCountdownTimers[slotNum].startedAt);
+                countdown.innerText = 'Menyala: ' + fmtElapsed(elapsed) + ' (Manual)';
                 countdown.className = 'mt-1 font-mono text-2xl font-bold tracking-tight text-amber';
                 duration.innerText = 'Kontinu (Tanpa Batas)';
                 paid.innerText = 'Gratis (Rp 0)';
@@ -512,6 +578,10 @@
             card.className = 'rounded-xl bg-surface2 border border-amber/40 p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300';
 
             const remainingSec = parseInt(slotData.remaining_sec) || parseInt(slotData.duration_sec) || 0;
+            slotCountdownTimers[slotNum].status = 'PAUSED_OVERHEAT';
+            slotCountdownTimers[slotNum].durationSec = parseInt(slotData.duration_sec) || 0;
+            slotCountdownTimers[slotNum].remainingSec = remainingSec;
+
             if (remainingSec > 0) {
                 const m = Math.floor(remainingSec / 60).toString().padStart(2, '0');
                 const s = (remainingSec % 60).toString().padStart(2, '0');
@@ -533,6 +603,9 @@
             renderSlotActions(slotNum, status);
         }
         else if (status === 'WAITING_PAYMENT') {
+            slotCountdownTimers[slotNum].status = 'WAITING_PAYMENT';
+            slotCountdownTimers[slotNum].remainingSec = 0;
+            slotCountdownTimers[slotNum].durationSec = 0;
             if (loadStatusEl) loadStatusEl.innerHTML = '';
             badge.className = 'pulse-amber font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-amber/10 border border-amber/25 text-amber uppercase tracking-wide';
             badge.innerText = 'MENUNGGU BAYAR';
@@ -544,6 +617,10 @@
             renderSlotActions(slotNum, status);
         }
         else {
+            slotCountdownTimers[slotNum].status = 'STANDBY';
+            slotCountdownTimers[slotNum].remainingSec = 0;
+            slotCountdownTimers[slotNum].durationSec = 0;
+            slotCountdownTimers[slotNum].startedAt = 0;
             if (loadStatusEl) loadStatusEl.innerHTML = '';
             badge.className = 'font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-surface2 border border-hairline text-neutral-300 uppercase tracking-wide';
             badge.innerText = 'SIAP';
@@ -864,6 +941,9 @@
                         const elapsed = nowSec - startedAt;
 
                         if (durationSec === 0) {
+                            slotCountdownTimers[i].status = 'ACTIVE';
+                            slotCountdownTimers[i].durationSec = 0;
+                            slotCountdownTimers[i].startedAt = startedAt;
                             const safeStartedAt = startedAt > 0 ? startedAt : nowSec;
                             const manualElapsed = Math.max(0, nowSec - safeStartedAt);
                             countdown.innerText = 'Menyala: ' + fmtElapsed(manualElapsed) + ' (Manual)';
@@ -879,6 +959,9 @@
                             }
                         } else {
                             const remaining = Math.max(0, durationSec - elapsed);
+                            slotCountdownTimers[i].status = 'ACTIVE';
+                            slotCountdownTimers[i].durationSec = durationSec;
+                            slotCountdownTimers[i].remainingSec = remaining;
                             const m = Math.floor(remaining / 60).toString().padStart(2, '0');
                             const s = (remaining % 60).toString().padStart(2, '0');
                             countdown.innerText = `${m}:${s}`;
@@ -893,6 +976,10 @@
                         card.className = 'rounded-xl bg-surface2 border border-amber/40 p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300';
 
                         const remainingSec = parseInt(slot.remaining_sec) || parseInt(slot.duration_sec) || parseInt(slot.active_duration) || 0;
+                        slotCountdownTimers[i].status = 'PAUSED_OVERHEAT';
+                        slotCountdownTimers[i].durationSec = parseInt(slot.duration_sec || slot.active_duration) || 0;
+                        slotCountdownTimers[i].remainingSec = remainingSec;
+
                         if (remainingSec > 0) {
                             const m = Math.floor(remainingSec / 60).toString().padStart(2, '0');
                             const s = (remainingSec % 60).toString().padStart(2, '0');
@@ -914,6 +1001,9 @@
                         renderSlotActions(i, status);
                     }
                     else if (status === 'WAITING_PAYMENT') {
+                        slotCountdownTimers[i].status = 'WAITING_PAYMENT';
+                        slotCountdownTimers[i].remainingSec = 0;
+                        slotCountdownTimers[i].durationSec = 0;
                         if (loadStatusEl) loadStatusEl.innerHTML = '';
                         badge.className = 'pulse-amber font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-amber/10 border border-amber/25 text-amber uppercase tracking-wide';
                         badge.innerText = 'MENUNGGU BAYAR';
@@ -928,6 +1018,10 @@
                         setSlotsOffline();
                     }
                     else {
+                        slotCountdownTimers[i].status = 'STANDBY';
+                        slotCountdownTimers[i].remainingSec = 0;
+                        slotCountdownTimers[i].durationSec = 0;
+                        slotCountdownTimers[i].startedAt = 0;
                         if (loadStatusEl) loadStatusEl.innerHTML = '';
                         badge.className = 'font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-surface2 border border-hairline text-neutral-300 uppercase tracking-wide';
                         badge.innerText = 'SIAP';
@@ -963,6 +1057,27 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        @for ($i = 1; $i <= 3; $i++)
+            @php
+                $sKey = 'slot' . $i;
+                $sl = $firebaseData[$sKey] ?? [];
+                $sStatus = strtoupper($sl['status'] ?? 'STANDBY');
+                $sDur = (int) ($sl['active_duration'] ?? $sl['duration_seconds'] ?? 0);
+                $sStarted = (int) ($sl['started_at'] ?? 0);
+                $sRem = ($sDur > 0 && $sStarted > 0) ? max(0, $sDur - (time() - $sStarted)) : $sDur;
+            @endphp
+            slotCountdownTimers[{{ $i }}] = {
+                status: '{{ ($isEsp32Online ?? false) ? $sStatus : "OFFLINE" }}',
+                remainingSec: {{ $sRem }},
+                durationSec: {{ $sDur }},
+                startedAt: {{ $sStarted }},
+                nominalPaid: {{ (int) ($sl['nominal_paid'] ?? 0) }}
+            };
+        @endfor
+
+        // Jalankan interval per detik untuk countdown realtime
+        setInterval(tickSlotCountdowns, 1000);
+
         initMqttWss();
         updateDashboard();
     });

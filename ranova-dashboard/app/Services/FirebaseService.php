@@ -169,8 +169,22 @@ class FirebaseService
                  return 0;
              }
 
+             // Ambil status live slot saat ini dari Firebase untuk sinkronisasi akurat
+             $slotsResponse = Http::timeout(3)->get("{$this->databaseUrl}/slots.json");
+             $liveSlots = ($slotsResponse->successful()) ? ($slotsResponse->json() ?? []) : [];
+
              $transactions = $response->json();
              $syncedCount = 0;
+
+             // Identifikasi transaksi terbaru untuk tiap slot dari data push keys Firebase
+             $latestTxKeyPerSlot = [];
+             foreach ($transactions as $key => $item) {
+                 if (!is_array($item)) continue;
+                 $sNum = (int) str_replace('slot', '', $item['slot'] ?? '1');
+                 if ($sNum >= 1 && $sNum <= 3) {
+                     $latestTxKeyPerSlot[$sNum] = $key;
+                 }
+             }
 
              foreach ($transactions as $key => $item) {
                  if (!is_array($item)) continue;
@@ -183,10 +197,27 @@ class FirebaseService
                  $paidAtMs = $item['paid_at'] ?? null;
                  $startedAt = $paidAtMs ? Carbon::createFromTimestampMs($paidAtMs) : now();
                  $endedAt = (clone $startedAt)->addSeconds($duration);
-                 $status = ($endedAt->isPast()) ? 'completed' : 'active';
+
+                 // Cek apakah slot fisik ini sedang aktif di Firebase
+                 $slotKey = 'slot' . $slotNumber;
+                 $isSlotCurrentlyActive = false;
+                 if (isset($liveSlots[$slotKey])) {
+                     $slotStatus = strtoupper($liveSlots[$slotKey]['status'] ?? '');
+                     $isSlotCurrentlyActive = ($slotStatus === 'ACTIVE' || $slotStatus === 'PAUSED_OVERHEAT');
+                 }
+
+                 // Jika transaksi ini adalah transaksi terbaru untuk slot tersebut dan slot fisik masih ACTIVE,
+                 // maka statusnya tetap 'active' dan tidak diubah prematur menjadi 'completed'
+                 $isLatestForSlot = isset($latestTxKeyPerSlot[$slotNumber]) && $latestTxKeyPerSlot[$slotNumber] === $key;
+                 if ($isLatestForSlot && $isSlotCurrentlyActive) {
+                     $status = 'active';
+                 } else {
+                     $status = ($endedAt->isPast()) ? 'completed' : 'active';
+                 }
+
                  $ref = $item['event_raw'] ?? $key;
 
-                 Transaction::updateOrCreate(
+                 $tx = Transaction::updateOrCreate(
                      ['payment_reference' => $ref],
                      [
                          'slot_number' => $slotNumber,
@@ -200,6 +231,13 @@ class FirebaseService
                          'updated_at' => now(),
                      ]
                  );
+
+                 // Pastikan created_at mencerminkan waktu pembayaran asli
+                 if ($tx->created_at && $tx->created_at->timestamp !== $startedAt->timestamp) {
+                     $tx->created_at = $startedAt;
+                     $tx->save();
+                 }
+
                  $syncedCount++;
              }
 

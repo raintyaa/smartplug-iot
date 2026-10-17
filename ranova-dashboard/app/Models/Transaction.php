@@ -18,6 +18,7 @@ class Transaction extends Model
         'status',
         'payment_reference',
         'customer_name',
+        'created_at',
     ];
 
     protected $casts = [

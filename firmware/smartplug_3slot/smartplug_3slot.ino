@@ -636,6 +636,17 @@ void updateTelemetry() {
       lastFbTelemetry = millis();
       fbPut("sensors", buf);
     }
+
+    // Broadcast status & sisa durasi slot aktif tiap ~5 detik agar timer web client selalu sinkron presisi
+    static unsigned long lastActiveSlotSync = 0;
+    if (millis() - lastActiveSlotSync >= 5000) {
+      lastActiveSlotSync = millis();
+      for (int s = 0; s < NUM_SLOTS; s++) {
+        if (slots[s].state == ACTIVE) {
+          publishSlotState(s);
+        }
+      }
+    }
   }
 }
 

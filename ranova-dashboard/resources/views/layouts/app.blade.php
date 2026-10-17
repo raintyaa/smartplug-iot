@@ -3,8 +3,9 @@
 <head>
     <title>@yield('title', 'Dashboard') | Smart Plug System</title>
     @include('layouts.head')
-    <!-- Chart.js (deferred for non-blocking first paint) -->
+    <!-- Chart.js & MQTT.js (deferred for non-blocking first paint, MQTT global for status badges) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <script src="https://unpkg.com/mqtt@5.3.5/dist/mqtt.min.js"></script>
     @stack('styles')
 </head>
 <body class="h-full flex overflow-hidden bg-base text-neutral-200 antialiased selection:bg-mint/30">
@@ -573,6 +574,88 @@
                     var collapsed = document.getElementById('app-sidebar').classList.contains('-ml-64');
                     t.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
                 });
+            });
+        })();
+    </script>
+
+    <!-- Global MQTT Status Handler for Navigation Badges on Non-Dashboard Pages -->
+    <script>
+        (function() {
+            var MQTT_WSS_URL = 'wss://o2f6eb8b.ala.asia-southeast1.emqxsl.com:8084/mqtt';
+
+            function updateMqttBadge(connected, errorMsg) {
+                var badge = document.getElementById('mqtt-badge');
+                if (!badge) return;
+                if (connected) {
+                    badge.className = 'inline-flex items-center font-mono text-xs font-medium px-2.5 sm:px-3 py-1 rounded-md bg-mint/10 text-mint';
+                    badge.setAttribute('title', 'MQTT Broker (EMQX Cloud) terhubung');
+                    badge.innerHTML = '<span aria-hidden="true">●</span><span class="hidden sm:inline ml-1.5">MQTT</span><span class="sr-only">MQTT terhubung</span>';
+                } else {
+                    badge.className = 'inline-flex items-center font-mono text-xs font-medium px-2.5 sm:px-3 py-1 rounded-md bg-surface2 text-neutral-400';
+                    badge.setAttribute('title', errorMsg || 'MQTT Broker terputus');
+                    badge.innerHTML = '<span aria-hidden="true">●</span><span class="hidden sm:inline ml-1.5">MQTT</span><span class="sr-only">MQTT terputus</span>';
+                }
+            }
+
+            function updateEsp32Badge(online) {
+                var badge = document.getElementById('esp32-badge');
+                if (!badge) return;
+                if (online) {
+                    badge.className = 'inline-flex items-center font-mono text-xs font-medium px-2.5 sm:px-3 py-1 rounded-md bg-mint/10 text-mint';
+                    badge.setAttribute('title', 'ESP32 mikrokontroler online');
+                    badge.innerHTML = '<span class="sm:hidden" aria-hidden="true">●</span><span class="hidden sm:inline">● ESP32</span><span class="sm:hidden sr-only">ESP32 online</span>';
+                } else {
+                    badge.className = 'inline-flex items-center font-mono text-xs font-medium px-2.5 sm:px-3 py-1 rounded-md bg-surface2 text-neutral-300';
+                    badge.setAttribute('title', 'Status koneksi mikrokontroler ESP32');
+                    badge.innerHTML = '<span class="sm:hidden" aria-hidden="true">●</span><span class="hidden sm:inline">ESP32</span><span class="sm:hidden sr-only">ESP32</span>';
+                }
+            }
+
+            window.updateRanovaMqttBadge = updateMqttBadge;
+            window.updateRanovaEsp32Badge = updateEsp32Badge;
+
+            document.addEventListener('DOMContentLoaded', function () {
+                // Jangan jalankan klien duplikat di halaman Dashboard (Dashboard memiliki full-duplex MQTT client sendiri)
+                if (window.isRanovaDashboardPage) return;
+                if (typeof mqtt === 'undefined') return;
+
+                try {
+                    var navClient = mqtt.connect(MQTT_WSS_URL, {
+                        username: 'ranova_esp32',
+                        password: '02082006',
+                        clientId: 'ranova_nav_' + Math.random().toString(16).substring(2, 8),
+                        clean: true,
+                        connectTimeout: 5000,
+                        reconnectPeriod: 4000
+                    });
+
+                    navClient.on('connect', function () {
+                        updateMqttBadge(true);
+                        navClient.subscribe('ranova/device_001/status', { qos: 0 });
+                        navClient.subscribe('ranova/device_001/telemetry', { qos: 0 });
+                    });
+
+                    navClient.on('message', function (topic, message) {
+                        try {
+                            var payload = JSON.parse(message.toString());
+                            if (topic === 'ranova/device_001/status') {
+                                updateEsp32Badge(payload.state === 'online');
+                            } else if (topic === 'ranova/device_001/telemetry') {
+                                updateEsp32Badge(true);
+                            }
+                        } catch (e) {}
+                    });
+
+                    navClient.on('error', function (err) {
+                        updateMqttBadge(false, err.message);
+                    });
+
+                    navClient.on('offline', function () {
+                        updateMqttBadge(false);
+                    });
+                } catch (e) {
+                    console.warn('[Global MQTT Client Error]:', e);
+                }
             });
         })();
     </script>

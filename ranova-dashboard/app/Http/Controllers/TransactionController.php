@@ -20,7 +20,7 @@ class TransactionController extends Controller
         // Sinkronkan data transaksi dari Firebase RTDB ke MySQL
         $this->firebase->syncTransactions();
 
-        $query = Transaction::query()->latest();
+        $query = Transaction::query()->latest('id');
 
         if ($request->filled('slot')) {
             $query->where('slot_number', $request->slot);
