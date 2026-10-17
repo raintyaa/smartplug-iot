@@ -1,25 +1,31 @@
 // ============================================================
 // RANOVA Smart Plug - Mayar QRIS Webhook Handler
-// Vercel Serverless Function
+// Vercel Serverless Function (Full-MQTT + Firebase Arch)
 // ============================================================
 // Alur:
 // 1. Mayar mengirim POST ke sini setiap pembayaran QRIS berhasil
-// 2. Kita baca slot mana yang sedang menunggu pembayaran di Firebase
-// 3. Kita aktifkan slot tersebut sesuai nominal yang dibayar
+// 2. Baca slot yang sedang menunggu pembayaran (dari Firebase/MQTT)
+// 3. Publish perintah aktivasi "START" via MQTT langsung ke ESP32 (sub-detik)
+// 4. Catat transaksi ke Firebase/database untuk histori keuangan
 // ============================================================
 
 const admin = require("firebase-admin");
+const mqtt = require("mqtt");
 
-// --- KONFIGURASI ---
-// Rp 1.000 = berapa detik durasi sewa?
-// Default: Rp 1.000 = 15 menit (900 detik)
-const DETIK_PER_SERIBU = 15 * 60; // 900 detik
+// --- KONFIGURASI TARIF DEFAULT ---
+// Rp 1.000 = 15 menit (900 detik)
+const DETIK_PER_SERIBU = 15 * 60;
 
-// Timeout: berapa lama (detik) kita tunggu pembayaran setelah tombol ditekan?
-const TIMEOUT_MENUNGGU_DETIK = 300; // 5 menit
+// --- KONFIGURASI BROKER MQTT (EMQX Cloud Serverless) ---
+const MQTT_BROKER_URL = process.env.MQTT_BROKER_URL || "mqtts://o2f6eb8b.ala.asia-southeast1.emqxsl.com:8883";
+const MQTT_OPTIONS = {
+  username: process.env.MQTT_USER || "ranova_esp32",
+  password: process.env.MQTT_PASSWORD || "02082006",
+  connectTimeout: 5000,
+  rejectUnauthorized: false,
+};
 
 // --- INISIALISASI FIREBASE ADMIN SDK ---
-// Hanya inisialisasi sekali (penting untuk serverless/Vercel)
 if (!admin.apps.length) {
   try {
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
@@ -34,9 +40,57 @@ if (!admin.apps.length) {
 
 const db = admin.database();
 
+/**
+ * Helper untuk mem-publish perintah aktivasi ke ESP32 via EMQX Broker
+ */
+function publishMqttCommand(slotNumber, durationSec, amount) {
+  return new Promise((resolve) => {
+    try {
+      const client = mqtt.connect(MQTT_BROKER_URL, MQTT_OPTIONS);
+      const timeout = setTimeout(() => {
+        console.warn("[MQTT] Timeout koneksi ke broker EMQX.");
+        client.end(true);
+        resolve(false);
+      }, 4000);
+
+      client.on("connect", () => {
+        const payload = JSON.stringify({
+          action: "START",
+          slot: slotNumber,
+          duration: durationSec,
+          amount: amount,
+          timestamp: Math.floor(Date.now() / 1000),
+        });
+
+        client.publish("ranova/device_001/command", payload, { qos: 1 }, (err) => {
+          clearTimeout(timeout);
+          client.end(false, () => {
+            if (err) {
+              console.error("[MQTT] Gagal publish command:", err.message);
+              resolve(false);
+            } else {
+              console.log(`[MQTT OK] Perintah START terkirim ke Slot ${slotNumber} (Durasi: ${durationSec}s)!`);
+              resolve(true);
+            }
+          });
+        });
+      });
+
+      client.on("error", (err) => {
+        console.error("[MQTT ERROR]:", err.message);
+        clearTimeout(timeout);
+        client.end(true);
+        resolve(false);
+      });
+    } catch (e) {
+      console.error("[MQTT EXCEPTION]:", e.message);
+      resolve(false);
+    }
+  });
+}
+
 // --- MAIN HANDLER ---
 module.exports = async (req, res) => {
-  // Hanya terima POST request
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
@@ -57,7 +111,6 @@ module.exports = async (req, res) => {
       10
     );
 
-    // Log lengkap untuk debugging
     console.log(`Event: "${event}" | Status: "${status}" | Amount: Rp ${amount}`);
 
     // Abaikan event testing dari Mayar
@@ -65,7 +118,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ message: "Testing event diabaikan" });
     }
 
-    // Proses jika status SUCCESS dan ada amount (berlaku untuk semua jenis event Mayar)
+    // Validasi pembayaran sukses
     const isPaymentSuccess =
       (status === "success" || status === "paid" || status === "completed") &&
       amount > 0;
@@ -96,7 +149,6 @@ module.exports = async (req, res) => {
       console.log("Menggunakan fallback tarif default:", errConfig.message);
     }
 
-    // Hitung durasi proporsional berdasarkan kelipatan nominal pembayaran
     const durasiDetik = Math.floor((amount / basePrice) * baseDurationSeconds);
     console.log(`Durasi akhir dihitung: ${durasiDetik} detik (${durasiDetik / 60} menit)`);
 
@@ -110,7 +162,7 @@ module.exports = async (req, res) => {
     if (selection && selection.status === "WAITING_PAYMENT" && selection.slot && selection.slot !== "none") {
       slotKey = selection.slot;
     } else {
-      // Fallback cerdas: cari slot mana yang sedang berstatus WAITING_PAYMENT di Firebase
+      // Fallback: cari slot mana yang sedang berstatus WAITING_PAYMENT di Firebase
       for (const s of ["slot1", "slot2", "slot3"]) {
         const snap = await db.ref(s).once("value");
         const val = snap.val();
@@ -137,7 +189,12 @@ module.exports = async (req, res) => {
       });
     }
 
-    // --- AKTIFKAN SLOT DI FIREBASE ---
+    const slotNumber = parseInt(slotKey.replace("slot", ""), 10);
+
+    // --- 1. PUBLISH PERINTAH START KE ESP32 VIA MQTT (SUB-DETIK) ---
+    const mqttOk = await publishMqttCommand(slotNumber, durasiDetik, amount);
+
+    // --- 2. SINKRONKAN DAN CATAT KE FIREBASE (AUDIT & HISTORI) ---
     const waktuAktif = Date.now();
     const slotUpdateData = {
       status:           "ACTIVE",
@@ -150,7 +207,6 @@ module.exports = async (req, res) => {
       expires_at:       waktuAktif + durasiDetik * 1000,
     };
 
-    // Update node slots/slotX dan slotX untuk kompatibilitas penuh
     await db.ref(`slots/${slotKey}`).update(slotUpdateData);
     await db.ref(`${slotKey}`).update(slotUpdateData);
 
@@ -161,6 +217,7 @@ module.exports = async (req, res) => {
       duration_sec: durasiDetik,
       paid_at:      waktuAktif,
       event_raw:    payload.data?.id || payload.id || "unknown",
+      delivery_mqtt: mqttOk,
     });
 
     // Reset active_selection ke IDLE
@@ -170,14 +227,16 @@ module.exports = async (req, res) => {
       timestamp: 0,
     });
 
-    console.log(`✅ Slot ${slotKey} berhasil diaktifkan! Durasi: ${durasiDetik} detik`);
+    console.log(`✅ Slot ${slotKey} berhasil diaktifkan! Durasi: ${durasiDetik}s | MQTT Delivery: ${mqttOk}`);
 
     return res.status(200).json({
       success:          true,
       slot:             slotKey,
+      slot_number:      slotNumber,
       amount:           amount,
       duration_seconds: durasiDetik,
       duration_minutes: durasiDetik / 60,
+      mqtt_published:   mqttOk,
     });
 
   } catch (error) {

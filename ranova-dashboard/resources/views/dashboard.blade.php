@@ -71,30 +71,44 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             @for ($i = 1; $i <= 3; $i++)
                 @php
+                    $isOnline = $isEsp32Online ?? false;
                     $slotKey = 'slot' . $i;
                     $slot = $firebaseData[$slotKey] ?? ['status' => 'STANDBY', 'active_duration' => 0, 'started_at' => 0];
-                    $status = strtoupper($slot['status'] ?? 'STANDBY');
+                    $rawStatus = strtoupper($slot['status'] ?? 'STANDBY');
+                    $status = $isOnline ? $rawStatus : 'OFFLINE';
+                    $activeDur = (int) ($slot['active_duration'] ?? $slot['duration_seconds'] ?? 0);
                 @endphp
-                <div class="rounded-xl bg-surface border border-hairline p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300" id="card-slot-{{ $i }}">
+                <div class="rounded-xl bg-surface border border-hairline p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300 {{ $status === 'ACTIVE' ? 'border-mint/40 bg-surface2' : ($status === 'PAUSED_OVERHEAT' ? 'border-amber/40 bg-surface2' : '') }}" id="card-slot-{{ $i }}">
                     <!-- Header Slot -->
                     <div class="flex items-center justify-between">
                         <p class="font-mono text-sm font-semibold text-white tracking-wide">SLOT 0{{ $i }}</p>
-                        <span class="font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-surface2 border border-hairline text-neutral-300 uppercase tracking-wide" id="badge-slot-{{ $i }}">
-                            {{ $status === 'ACTIVE' ? 'AKTIF' : ($status === 'WAITING_PAYMENT' ? 'MENUNGGU BAYAR' : 'SIAP') }}
+                        <span class="font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md uppercase tracking-wide {{ $status === 'ACTIVE' ? 'bg-mint/10 border border-mint/25 text-mint' : ($status === 'WAITING_PAYMENT' ? 'bg-amber/10 border border-amber/25 text-amber pulse-amber' : ($status === 'PAUSED_OVERHEAT' ? 'bg-amber/15 border border-amber/35 text-amber pulse-amber' : 'bg-surface2 border border-hairline text-neutral-300')) }}" id="badge-slot-{{ $i }}">
+                            @if ($status === 'ACTIVE')
+                                AKTIF
+                            @elseif ($status === 'WAITING_PAYMENT')
+                                MENUNGGU BAYAR
+                            @elseif ($status === 'PAUSED_OVERHEAT')
+                                DIJEDA (SUHU TINGGI)
+                            @elseif ($status === 'OFFLINE')
+                                OFFLINE
+                            @else
+                                SIAP
+                            @endif
                         </span>
                     </div>
 
                     <!-- Center Countdown Display -->
                     <div class="my-3 text-center">
                         <p class="font-mono text-[11px] font-medium uppercase tracking-widest text-neutral-300">Sisa Waktu Sewa</p>
-                        @php
-                            $activeDur = (int) ($slot['active_duration'] ?? $slot['duration_seconds'] ?? 0);
-                        @endphp
-                        <p class="mt-1 font-mono text-4xl font-bold tracking-tight text-neutral-300" id="countdown-slot-{{ $i }}" aria-live="off" aria-atomic="true">
+                        <p class="mt-1 font-mono text-4xl font-bold tracking-tight {{ $status === 'ACTIVE' ? 'text-mint' : ($status === 'PAUSED_OVERHEAT' || $status === 'WAITING_PAYMENT' ? 'text-amber' : 'text-neutral-300') }}" id="countdown-slot-{{ $i }}" aria-live="off" aria-atomic="true">
                             @if ($status === 'ACTIVE')
                                 {{ $activeDur == 0 ? 'Menghitung…' : '--:--' }}
                             @elseif ($status === 'WAITING_PAYMENT')
                                 SCAN QR
+                            @elseif ($status === 'PAUSED_OVERHEAT')
+                                DIJEDA
+                            @elseif ($status === 'OFFLINE')
+                                --:--
                             @else
                                 00:00
                             @endif
@@ -114,6 +128,14 @@
                                         <i class="fa-solid fa-bolt mr-1.5 text-xs" aria-hidden="true"></i> Total Stasiun: {{ number_format($pzemPower, 1) }} W (Agregat)
                                     </span>
                                 @endif
+                            @elseif ($status === 'PAUSED_OVERHEAT')
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-amber/15 text-amber border border-amber/30 animate-pulse">
+                                    <i class="fa-solid fa-temperature-arrow-down mr-1.5 text-xs" aria-hidden="true"></i> Pendinginan Termal (Relay OFF)
+                                </span>
+                            @elseif ($status === 'OFFLINE')
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono text-neutral-400 border border-hairline">
+                                    <i class="fa-solid fa-power-off mr-1.5 text-xs" aria-hidden="true"></i> Steker Terputus
+                                </span>
                             @endif
                         </div>
                     </div>
@@ -125,8 +147,12 @@
                             <span class="font-mono text-white font-medium" id="duration-slot-{{ $i }}">
                                 @if ($status === 'ACTIVE')
                                     {{ $activeDur == 0 ? 'Kontinu (Tanpa Batas)' : round($activeDur / 60) . ' Menit' }}
+                                @elseif ($status === 'PAUSED_OVERHEAT')
+                                    Dibekukan
                                 @elseif ($status === 'WAITING_PAYMENT')
                                     Menunggu
+                                @elseif ($status === 'OFFLINE')
+                                    Perangkat Terputus
                                 @else
                                     Standby
                                 @endif
@@ -137,8 +163,12 @@
                             <span class="font-mono text-white font-medium" id="paid-slot-{{ $i }}">
                                 @if ($status === 'ACTIVE')
                                     {{ $activeDur == 0 ? 'Bypass (Rp 0)' : 'Rp ' . (isset($slot['nominal_paid']) ? number_format($slot['nominal_paid'], 0, ',', '.') : '1.000') }}
+                                @elseif ($status === 'PAUSED_OVERHEAT')
+                                    Tersimpan
                                 @elseif ($status === 'WAITING_PAYMENT')
                                     Menunggu
+                                @elseif ($status === 'OFFLINE')
+                                    -
                                 @else
                                     Rp 0
                                 @endif
@@ -148,7 +178,7 @@
 
                     <!-- Action Buttons: Kontrol Admin (Nyalakan Manual / Matikan) -->
                     <div class="mt-4" id="slot-actions-{{ $i }}">
-                        @if ($status === 'ACTIVE')
+                        @if ($status === 'ACTIVE' || $status === 'PAUSED_OVERHEAT')
                             <form action="{{ route('dashboard.slots.stop', $i) }}" method="POST" class="js-confirm-form" data-confirm-title="Matikan Slot {{ $i }}?" data-confirm-message="Relay Slot {{ $i }} akan dimatikan. Sisa waktu sewa pelanggan ikut terhenti." data-confirm-text="Ya, Matikan" data-confirm-tone="crimson">
                                 @csrf
                                 <button type="submit" id="btn-action-slot-{{ $i }}"
@@ -173,6 +203,11 @@
                                     </button>
                                 </form>
                             </div>
+                        @elseif ($status === 'OFFLINE')
+                            <button type="button" disabled class="w-full min-h-[44px] text-xs font-semibold py-2.5 px-4 rounded-lg bg-surface2/60 border border-hairline text-neutral-400 cursor-not-allowed flex items-center justify-center space-x-1.5">
+                                <i class="fa-solid fa-plug-circle-xmark" aria-hidden="true"></i>
+                                <span>ESP32 Tidak Terhubung</span>
+                            </button>
                         @else
                             <form action="{{ route('dashboard.slots.start', $i) }}" method="POST" class="js-confirm-form" data-confirm-title="Nyalakan gratis Slot {{ $i }}?" data-confirm-message="Slot {{ $i }} akan ON terus TANPA BAYAR dan TANPA BATAS WAKTU (Rp 0) sampai dimatikan manual. Lanjut?" data-confirm-text="Ya, Nyalakan Gratis" data-confirm-tone="mint">
                                 @csrf
@@ -252,17 +287,16 @@
 @endsection
 
 @push('scripts')
+<script src="https://unpkg.com/mqtt@5.3.5/dist/mqtt.min.js"></script>
 <script>
     window.hasCustomDashboardLoop = true;
-    // Polling Realtime Engine (setiap 2 detik sinkron dengan Firebase & Database)
     const OVERHEAT_LIMIT = {{ $overheatThreshold }};
     const CSRF_TOKEN = '{{ csrf_token() }}';
-    const ESP32_OFFLINE_THRESHOLD_MS = 25000; // 25 detik tanpa update = offline (sinkron dengan diff > 25)
+    const ESP32_OFFLINE_THRESHOLD_MS = 25000;
     const ESP32_OFFLINE_THRESHOLD_S = Math.round(ESP32_OFFLINE_THRESHOLD_MS / 1000);
 
-    // Menyimpan Unix timestamp (seconds) dari updated_at terakhir yang diterima
     let lastSensorUpdatedAt = 0;
-    // Cache status slot agar actionsEl.innerHTML HANYA di-rebuild saat status berubah (anti DOM-thrash, jaga fokus Alex)
+    let isEsp32CurrentlyOnline = {{ ($isEsp32Online ?? false) ? 'true' : 'false' }};
     const lastSlotStatus = { 1: null, 2: null, 3: null };
 
     function fmtElapsed(totalSec) {
@@ -275,7 +309,17 @@
     function slotActionTemplate(i, status) {
         const focusMint = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint focus-visible:ring-offset-2 focus-visible:ring-offset-base';
         const focusCrimson = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-crimson focus-visible:ring-offset-2 focus-visible:ring-offset-base';
-        if (status === 'ACTIVE') {
+
+        if (status === 'OFFLINE') {
+            return `
+                <button type="button" disabled class="w-full min-h-[44px] text-xs font-semibold py-2.5 px-4 rounded-lg bg-surface2/60 border border-hairline text-neutral-400 cursor-not-allowed flex items-center justify-center space-x-1.5">
+                    <i class="fa-solid fa-plug-circle-xmark" aria-hidden="true"></i>
+                    <span>ESP32 Tidak Terhubung</span>
+                </button>
+            `;
+        }
+
+        if (status === 'ACTIVE' || status === 'PAUSED_OVERHEAT') {
             return `
                 <form action="/dashboard/slots/${i}/stop" method="POST" class="js-confirm-form" data-confirm-title="Matikan Slot ${i}?" data-confirm-message="Relay Slot ${i} akan dimatikan. Sisa waktu sewa pelanggan ikut terhenti." data-confirm-text="Ya, Matikan" data-confirm-tone="crimson">
                     <input type="hidden" name="_token" value="${CSRF_TOKEN}">
@@ -287,6 +331,7 @@
                 </form>
             `;
         }
+
         if (status === 'WAITING_PAYMENT') {
             return `
                 <div class="grid grid-cols-2 gap-2">
@@ -306,6 +351,7 @@
                 </div>
             `;
         }
+
         return `
             <form action="/dashboard/slots/${i}/start" method="POST" class="js-confirm-form" data-confirm-title="Nyalakan gratis Slot ${i}?" data-confirm-message="Slot ${i} akan ON terus TANPA BAYAR dan TANPA BATAS WAKTU (Rp 0) sampai dimatikan manual. Lanjut?" data-confirm-text="Ya, Nyalakan Gratis" data-confirm-tone="mint">
                 <input type="hidden" name="_token" value="${CSRF_TOKEN}">
@@ -319,7 +365,7 @@
     }
 
     function renderSlotActions(i, status) {
-        if (lastSlotStatus[i] === status) return; // status sama -> biarkan DOM utuh, fokus tidak hilang
+        if (lastSlotStatus[i] === status) return;
         lastSlotStatus[i] = status;
         const actionsEl = document.getElementById('slot-actions-' + i);
         if (actionsEl) actionsEl.innerHTML = slotActionTemplate(i, status);
@@ -330,22 +376,24 @@
     }
 
     function setEsp32Online() {
+        isEsp32CurrentlyOnline = true;
         const badge = getEsp32Badge();
         if (badge) {
             badge.className = 'inline-flex items-center font-mono text-xs font-medium px-2.5 sm:px-3 py-1 rounded-md bg-mint/10 text-mint';
-            badge.setAttribute('title', 'ESP32 online — telemetri realtime');
+            badge.setAttribute('title', 'ESP32 online — telemetri realtime MQTT');
             badge.innerHTML = '<span aria-hidden="true">●</span><span class="hidden sm:inline ml-1.5">ESP32</span><span class="sr-only">ESP32 online</span>';
         }
     }
 
     function setEsp32Offline() {
+        isEsp32CurrentlyOnline = false;
         const badge = getEsp32Badge();
         if (badge) {
             badge.className = 'inline-flex items-center font-mono text-xs font-medium px-2.5 sm:px-3 py-1 rounded-md bg-surface2 text-neutral-400';
-            badge.setAttribute('title', 'ESP32 offline — data sensor basi');
+            badge.setAttribute('title', 'ESP32 offline — data sensor basi / steker terputus');
             badge.innerHTML = '<span aria-hidden="true">●</span><span class="hidden sm:inline ml-1.5">ESP32 Offline</span><span class="sr-only">ESP32 offline</span>';
         }
-        // Nol-kan semua nilai sensor
+        // Nol-kan seluruh nilai telemetri sensor
         if (document.getElementById('sensor-temp')) {
             document.getElementById('sensor-temp').innerText = '0.0°C';
             document.getElementById('sensor-hum').innerText = '0%';
@@ -358,8 +406,255 @@
                 tempBadge.innerHTML = '<span class="inline-block font-mono text-[11px] font-medium px-1.5 py-0.5 rounded bg-surface2 text-neutral-300 border border-hairline">Offline</span>';
             }
         }
+        // Matikan seluruh slot dan timer runaway saat steker dicabut
+        setSlotsOffline();
     }
 
+    function setSlotsOffline() {
+        for (let i = 1; i <= 3; i++) {
+            const card = document.getElementById('card-slot-' + i);
+            const badge = document.getElementById('badge-slot-' + i);
+            const countdown = document.getElementById('countdown-slot-' + i);
+            const duration = document.getElementById('duration-slot-' + i);
+            const paid = document.getElementById('paid-slot-' + i);
+            const loadStatusEl = document.getElementById('load-status-slot-' + i);
+
+            if (!card) continue;
+
+            card.className = 'rounded-xl bg-surface border border-hairline p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300 opacity-75';
+            if (badge) {
+                badge.className = 'font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-surface2 border border-hairline text-neutral-400 uppercase tracking-wide';
+                badge.innerText = 'OFFLINE';
+            }
+            if (countdown) {
+                countdown.innerText = '--:--';
+                countdown.className = 'mt-1 font-mono text-4xl font-bold tracking-tight text-neutral-400';
+            }
+            if (duration) duration.innerText = 'Perangkat Terputus';
+            if (paid) paid.innerText = '-';
+            if (loadStatusEl) {
+                loadStatusEl.innerHTML = '<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono text-neutral-400 border border-hairline"><i class="fa-solid fa-power-off mr-1.5 text-xs" aria-hidden="true"></i> Steker Terputus</span>';
+            }
+            renderSlotActions(i, 'OFFLINE');
+        }
+    }
+
+    function updateSensorDisplay(sensors) {
+        if (!sensors || !document.getElementById('sensor-temp')) return;
+
+        const temp = parseFloat(sensors.temperature || 0);
+        const hum  = parseFloat(sensors.humidity || 0);
+        const volt = parseFloat(sensors.voltage || 0);
+        const curr = parseFloat(sensors.current || 0);
+        const pwr  = parseFloat(sensors.power || 0);
+        const enrg = parseFloat(sensors.energy || 0);
+
+        document.getElementById('sensor-temp').innerText = temp.toFixed(1) + '°C';
+        document.getElementById('sensor-hum').innerText = Math.round(hum) + '%';
+        document.getElementById('sensor-volt').innerHTML = volt.toFixed(1) + ' <span class="text-xs text-neutral-400 font-normal">V</span>';
+        document.getElementById('sensor-curr').innerHTML = curr.toFixed(2) + ' <span class="text-xs text-neutral-400 font-normal">A</span>';
+        document.getElementById('sensor-power').innerHTML = pwr.toFixed(1) + ' <span class="text-xs text-neutral-400 font-normal">W</span>';
+        document.getElementById('sensor-energy').innerText = enrg.toFixed(4);
+
+        const tempBadge = document.getElementById('temp-badge');
+        if (tempBadge) {
+            if (temp >= OVERHEAT_LIMIT && OVERHEAT_LIMIT > 0) {
+                tempBadge.innerHTML = '<span class="inline-block font-mono text-[11px] font-bold px-1.5 py-0.5 rounded bg-crimson/20 text-crimson border border-crimson/30">OVERHEAT!</span>';
+            } else if (temp > 0) {
+                tempBadge.innerHTML = '<span class="inline-block font-mono text-[11px] font-semibold px-1.5 py-0.5 rounded bg-mint/10 text-mint border border-mint/25">Normal &lt; ' + Math.round(OVERHEAT_LIMIT) + '°C</span>';
+            } else {
+                tempBadge.innerHTML = '<span class="inline-block font-mono text-[11px] font-semibold px-1.5 py-0.5 rounded bg-surface2 text-neutral-300 border border-hairline">Standby</span>';
+            }
+        }
+    }
+
+    function applyMqttSlotState(slotNum, slotData) {
+        if (!isEsp32CurrentlyOnline) return;
+
+        const status = (slotData.status || 'STANDBY').toUpperCase();
+        const card = document.getElementById('card-slot-' + slotNum);
+        const badge = document.getElementById('badge-slot-' + slotNum);
+        const countdown = document.getElementById('countdown-slot-' + slotNum);
+        const duration = document.getElementById('duration-slot-' + slotNum);
+        const paid = document.getElementById('paid-slot-' + slotNum);
+        const loadStatusEl = document.getElementById('load-status-slot-' + slotNum);
+
+        if (!card) return;
+
+        if (status === 'ACTIVE') {
+            badge.className = 'font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-mint/10 border border-mint/25 text-mint uppercase tracking-wide';
+            badge.innerText = 'AKTIF';
+            card.className = 'rounded-xl bg-surface2 border border-mint/40 p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300';
+
+            const remainingSec = parseInt(slotData.remaining_sec) || 0;
+            const durationSec = parseInt(slotData.duration_sec) || 0;
+
+            if (durationSec === 0) {
+                countdown.innerText = 'Menyala (Manual)';
+                countdown.className = 'mt-1 font-mono text-2xl font-bold tracking-tight text-amber';
+                duration.innerText = 'Kontinu (Tanpa Batas)';
+                paid.innerText = 'Gratis (Rp 0)';
+            } else {
+                const m = Math.floor(remainingSec / 60).toString().padStart(2, '0');
+                const s = (remainingSec % 60).toString().padStart(2, '0');
+                countdown.innerText = `${m}:${s}`;
+                countdown.className = 'mt-1 font-mono text-4xl font-bold tracking-tight text-mint';
+                duration.innerText = Math.round(durationSec / 60) + ' Menit';
+                paid.innerText = 'Rp ' + (slotData.amount ? Number(slotData.amount).toLocaleString('id-ID') : '1.000');
+            }
+            renderSlotActions(slotNum, status);
+        }
+        else if (status === 'PAUSED_OVERHEAT') {
+            badge.className = 'pulse-amber font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-amber/15 border border-amber/35 text-amber uppercase tracking-wide';
+            badge.innerText = 'DIJEDA (SUHU TINGGI)';
+            card.className = 'rounded-xl bg-surface2 border border-amber/40 p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300';
+
+            const remainingSec = parseInt(slotData.remaining_sec) || parseInt(slotData.duration_sec) || 0;
+            if (remainingSec > 0) {
+                const m = Math.floor(remainingSec / 60).toString().padStart(2, '0');
+                const s = (remainingSec % 60).toString().padStart(2, '0');
+                countdown.innerText = `${m}:${s} [PAUSED]`;
+            } else {
+                countdown.innerText = 'DIJEDA [SUHU]';
+            }
+            countdown.className = 'mt-1 font-mono text-2xl font-bold tracking-tight text-amber';
+            duration.innerText = (slotData.duration_sec ? Math.round(slotData.duration_sec / 60) + ' Menit' : 'Kontinu') + ' (Dibekukan)';
+            paid.innerText = 'Tersimpan';
+
+            if (loadStatusEl) {
+                loadStatusEl.innerHTML = `
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-amber/15 text-amber border border-amber/30 animate-pulse" title="Relay dimatikan sementara untuk pendinginan termal.">
+                        <i class="fa-solid fa-temperature-arrow-down mr-1.5 text-xs" aria-hidden="true"></i> Pendinginan Termal (Relay OFF)
+                    </span>
+                `;
+            }
+            renderSlotActions(slotNum, status);
+        }
+        else if (status === 'WAITING_PAYMENT') {
+            if (loadStatusEl) loadStatusEl.innerHTML = '';
+            badge.className = 'pulse-amber font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-amber/10 border border-amber/25 text-amber uppercase tracking-wide';
+            badge.innerText = 'MENUNGGU BAYAR';
+            card.className = 'rounded-xl bg-surface border border-amber/30 p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300';
+            countdown.innerText = 'SCAN QR';
+            countdown.className = 'mt-1 font-mono text-4xl font-bold tracking-tight text-amber';
+            duration.innerText = 'Menunggu';
+            paid.innerText = 'Menunggu';
+            renderSlotActions(slotNum, status);
+        }
+        else {
+            if (loadStatusEl) loadStatusEl.innerHTML = '';
+            badge.className = 'font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-surface2 border border-hairline text-neutral-300 uppercase tracking-wide';
+            badge.innerText = 'SIAP';
+            card.className = 'rounded-xl bg-surface border border-hairline p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300';
+            countdown.innerText = '00:00';
+            countdown.className = 'mt-1 font-mono text-4xl font-bold tracking-tight text-neutral-300';
+            duration.innerText = 'Standby';
+            paid.innerText = 'Rp 0';
+            renderSlotActions(slotNum, status);
+        }
+    }
+
+    // ============================================================
+    // EMQX CLOUD MQTT WEBSOCKET CLIENT (REALTIME SUB-DETIK)
+    // ============================================================
+    const MQTT_WSS_URL = 'wss://o2f6eb8b.ala.asia-southeast1.emqxsl.com:8084/mqtt';
+    let mqttWssClient = null;
+
+    function initMqttWss() {
+        if (typeof mqtt === 'undefined') {
+            console.warn('[MQTT WSS] Library mqtt.js belum termuat, mengandalkan HTTP fallback');
+            return;
+        }
+
+        try {
+            mqttWssClient = mqtt.connect(MQTT_WSS_URL, {
+                username: 'ranova_esp32',
+                password: '02082006',
+                clientId: 'ranova_web_' + Math.random().toString(16).substring(2, 8),
+                clean: true,
+                connectTimeout: 5000,
+                reconnectPeriod: 4000
+            });
+
+            mqttWssClient.on('connect', () => {
+                console.log('[MQTT WSS] Terhubung ke EMQX Broker (WebSocket 8084)');
+                mqttWssClient.subscribe('ranova/device_001/#', { qos: 0 });
+            });
+
+            mqttWssClient.on('message', (topic, message) => {
+                try {
+                    const payload = JSON.parse(message.toString());
+
+                    // 1. Status ESP32 Online / Offline (LWT)
+                    if (topic === 'ranova/device_001/status') {
+                        if (payload.state === 'offline') {
+                            setEsp32Offline();
+                        } else if (payload.state === 'online') {
+                            setEsp32Online();
+                        }
+                    }
+                    // 2. Telemetri Sensor Realtime
+                    else if (topic === 'ranova/device_001/telemetry') {
+                        setEsp32Online();
+                        lastSensorUpdatedAt = payload.updated_at || Math.floor(Date.now() / 1000);
+                        updateSensorDisplay(payload);
+                    }
+                    // 3. Status Tiap Slot Stop Kontak
+                    else if (topic.startsWith('ranova/device_001/slots/')) {
+                        const parts = topic.split('/');
+                        const slotNum = parseInt(parts[3], 10);
+                        if (slotNum >= 1 && slotNum <= 3) {
+                            applyMqttSlotState(slotNum, payload);
+                        }
+                    }
+                } catch (err) {
+                    console.error('[MQTT Message Error]:', err);
+                }
+            });
+
+            mqttWssClient.on('error', (err) => {
+                console.warn('[MQTT WSS Error]:', err.message);
+            });
+
+            mqttWssClient.on('offline', () => {
+                console.warn('[MQTT WSS] Offline, beralih ke HTTP polling fallback...');
+            });
+        } catch (e) {
+            console.warn('[MQTT WSS Init Exception]:', e);
+        }
+    }
+
+    // Helper untuk mem-publish perintah MQTT seketika dari tombol Dashboard
+    function sendMqttCommand(action, slot, duration = 0) {
+        if (mqttWssClient && mqttWssClient.connected) {
+            const cmd = JSON.stringify({ action, slot, duration });
+            mqttWssClient.publish('ranova/device_001/command', cmd, { qos: 1 });
+            console.log('[MQTT WSS Published Command]:', cmd);
+        }
+    }
+
+    // Pasang listener intersep pada form kontrol admin untuk publish MQTT langsung
+    document.addEventListener('submit', (e) => {
+        const form = e.target.closest('form');
+        if (!form) return;
+        const actionUrl = form.getAttribute('action') || '';
+
+        const startMatch = actionUrl.match(/\/dashboard\/slots\/(\d+)\/start/);
+        if (startMatch) {
+            const slotNum = parseInt(startMatch[1], 10);
+            sendMqttCommand('START', slotNum, 0);
+        }
+
+        const stopMatch = actionUrl.match(/\/dashboard\/slots\/(\d+)\/stop/);
+        if (stopMatch) {
+            const slotNum = parseInt(stopMatch[1], 10);
+            sendMqttCommand('STOP', slotNum);
+        }
+    });
+
+    // ============================================================
+    // HTTP POLLING FALLBACK (Setiap 2 Detik - Menjamin Sinkronisasi)
+    // ============================================================
     let isDashboardPolling = false;
     let dashboardBackoffMs = 2000;
     let dashboardPollTimer = null;
@@ -388,14 +683,23 @@
             .then(data => {
                 if (timeoutId) clearTimeout(timeoutId);
                 isDashboardPolling = false;
-                dashboardBackoffMs = 2000; // Reset backoff on success
+                dashboardBackoffMs = 2000;
 
                 const now = new Date();
                 const timeStr = now.toTimeString().split(' ')[0];
                 const syncEl = document.getElementById('last-sync-time');
                 if (syncEl) syncEl.innerText = 'Sinkron: ' + timeStr;
 
-                // 1. Update 3 Slot Stop Kontak
+                // 1. Cek Apakah ESP32 Sedang Offline (Steker dicabut)
+                if (data.is_esp32_online === false) {
+                    setEsp32Offline();
+                    scheduleNextDashboardPoll(dashboardBackoffMs);
+                    return;
+                }
+
+                setEsp32Online();
+
+                // 2. Update 3 Slot Stop Kontak
                 let activeSlotsCount = 0;
                 for (let k = 1; k <= 3; k++) {
                     const s = data.slots['slot' + k] || {};
@@ -414,20 +718,16 @@
                     const paid = document.getElementById('paid-slot-' + i);
                     const card = document.getElementById('card-slot-' + i);
                     const loadStatusEl = document.getElementById('load-status-slot-' + i);
-                    const actionsEl = document.getElementById('slot-actions-' + i);
 
                     if (!card) continue;
 
-                    // Styling badge sesuai status
                     if (status === 'ACTIVE') {
                         badge.className = 'font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-mint/10 border border-mint/25 text-mint uppercase tracking-wide';
                         badge.innerText = 'AKTIF';
                         card.className = 'rounded-xl bg-surface2 border border-mint/40 p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300';
 
-                        // Tombol Aksi Admin: hanya render ulang jika status berubah (anti DOM-thrash)
                         renderSlotActions(i, status);
 
-                        // Indikator Status Beban Listrik — jujur: 1 sensor PZEM total busbar, bukan per-slot
                         if (loadStatusEl) {
                             if (currentPzemPower < 2.0 && currentPzemCurr < 0.03) {
                                 loadStatusEl.innerHTML = `
@@ -438,13 +738,13 @@
                             } else {
                                 if (activeSlotsCount === 1) {
                                     loadStatusEl.innerHTML = `
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-mint/15 text-mint border border-mint/30" title="Hanya 1 slot aktif, angka ini milik slot tersebut (sensor utama).">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-mint/15 text-mint border border-mint/30" title="Hanya 1 slot aktif, angka ini milik slot tersebut.">
                                             <i class="fa-solid fa-bolt mr-1.5 text-xs" aria-hidden="true"></i> Beban Slot: ${currentPzemPower.toFixed(1)} W (Tunggal)
                                         </span>
                                     `;
                                 } else {
                                     loadStatusEl.innerHTML = `
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-mint/15 text-mint border border-mint/30" title="Daya terukur adalah total gabungan seluruh slot aktif pada sensor utama.">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-mint/15 text-mint border border-mint/30" title="Daya total gabungan seluruh slot aktif.">
                                             <i class="fa-solid fa-bolt mr-1.5 text-xs" aria-hidden="true"></i> Total Stasiun: ${currentPzemPower.toFixed(1)} W (Agregat ${activeSlotsCount} Slot)
                                         </span>
                                     `;
@@ -452,28 +752,24 @@
                             }
                         }
 
-                        // Hitung Countdown atau Mode Kontinu
                         const startedAt = parseInt(slot.started_at) || 0;
                         const durationSec = parseInt(slot.active_duration) || 0;
                         const nowSec = Math.floor(Date.now() / 1000);
                         const elapsed = nowSec - startedAt;
 
                         if (durationSec === 0) {
-                            // Mode Manual Kontinu (Tanpa Batas Durasi) + elapsed timer + hazard > 1 jam
                             const safeStartedAt = startedAt > 0 ? startedAt : nowSec;
                             const manualElapsed = Math.max(0, nowSec - safeStartedAt);
                             countdown.innerText = 'Menyala: ' + fmtElapsed(manualElapsed) + ' (Manual)';
                             countdown.className = 'mt-1 font-mono text-2xl font-bold tracking-tight text-amber';
                             duration.innerText = 'Kontinu (Tanpa Batas)';
                             paid.innerText = 'Gratis (Rp 0)';
-                            if (loadStatusEl) {
-                                if (manualElapsed > 3600) {
-                                    loadStatusEl.innerHTML += `
-                                        <span class="mt-1 inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-amber/15 text-amber border border-amber/40 animate-pulse" role="alert" title="Slot manual menyala lebih dari 1 jam. Periksa beban dan matikan bila tidak dipakai.">
-                                            <i class="fa-solid fa-triangle-exclamation mr-1.5 text-xs" aria-hidden="true"></i> Menyala &gt; 1 Jam (Periksa Beban)
-                                        </span>
-                                    `;
-                                }
+                            if (loadStatusEl && manualElapsed > 3600) {
+                                loadStatusEl.innerHTML += `
+                                    <span class="mt-1 inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-amber/15 text-amber border border-amber/40 animate-pulse" role="alert" title="Slot manual menyala lebih dari 1 jam.">
+                                        <i class="fa-solid fa-triangle-exclamation mr-1.5 text-xs" aria-hidden="true"></i> Menyala &gt; 1 Jam
+                                    </span>
+                                `;
                             }
                         } else {
                             const remaining = Math.max(0, durationSec - elapsed);
@@ -484,7 +780,34 @@
                             duration.innerText = Math.round(durationSec / 60) + ' Menit';
                             paid.innerText = 'Rp ' + (slot.nominal_paid ? Number(slot.nominal_paid).toLocaleString('id-ID') : '1.000');
                         }
-                    } else if (status === 'WAITING_PAYMENT') {
+                    }
+                    else if (status === 'PAUSED_OVERHEAT') {
+                        badge.className = 'pulse-amber font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-amber/15 border border-amber/35 text-amber uppercase tracking-wide';
+                        badge.innerText = 'DIJEDA (SUHU TINGGI)';
+                        card.className = 'rounded-xl bg-surface2 border border-amber/40 p-5 flex flex-col justify-between min-h-[250px] transition-all duration-300';
+
+                        const remainingSec = parseInt(slot.remaining_sec) || parseInt(slot.duration_sec) || parseInt(slot.active_duration) || 0;
+                        if (remainingSec > 0) {
+                            const m = Math.floor(remainingSec / 60).toString().padStart(2, '0');
+                            const s = (remainingSec % 60).toString().padStart(2, '0');
+                            countdown.innerText = `${m}:${s} [PAUSED]`;
+                        } else {
+                            countdown.innerText = 'DIJEDA [SUHU]';
+                        }
+                        countdown.className = 'mt-1 font-mono text-2xl font-bold tracking-tight text-amber';
+                        duration.innerText = (slot.duration_sec || slot.active_duration ? Math.round((slot.duration_sec || slot.active_duration) / 60) + ' Menit' : 'Kontinu') + ' (Dibekukan)';
+                        paid.innerText = 'Tersimpan';
+
+                        if (loadStatusEl) {
+                            loadStatusEl.innerHTML = `
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-amber/15 text-amber border border-amber/30 animate-pulse" title="Relay dimatikan sementara untuk pendinginan termal.">
+                                    <i class="fa-solid fa-temperature-arrow-down mr-1.5 text-xs" aria-hidden="true"></i> Pendinginan Termal (Relay OFF)
+                                </span>
+                            `;
+                        }
+                        renderSlotActions(i, status);
+                    }
+                    else if (status === 'WAITING_PAYMENT') {
                         if (loadStatusEl) loadStatusEl.innerHTML = '';
                         badge.className = 'pulse-amber font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-amber/10 border border-amber/25 text-amber uppercase tracking-wide';
                         badge.innerText = 'MENUNGGU BAYAR';
@@ -493,10 +816,12 @@
                         countdown.className = 'mt-1 font-mono text-4xl font-bold tracking-tight text-amber';
                         duration.innerText = 'Menunggu';
                         paid.innerText = 'Menunggu';
-
-                        // Tombol Batal & Nyalakan Gratis: hanya render ulang jika status berubah
                         renderSlotActions(i, status);
-                    } else {
+                    }
+                    else if (status === 'OFFLINE') {
+                        setSlotsOffline();
+                    }
+                    else {
                         if (loadStatusEl) loadStatusEl.innerHTML = '';
                         badge.className = 'font-mono text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-surface2 border border-hairline text-neutral-300 uppercase tracking-wide';
                         badge.innerText = 'SIAP';
@@ -505,56 +830,24 @@
                         countdown.className = 'mt-1 font-mono text-4xl font-bold tracking-tight text-neutral-300';
                         duration.innerText = 'Standby';
                         paid.innerText = 'Rp 0';
-
-                        // Tombol Nyalakan Gratis: hanya render ulang jika status berubah
                         renderSlotActions(i, status);
                     }
                 }
 
-                // 2. Update Sensor Fisik (dengan Deteksi Offline ESP32)
+                // 3. Update Sensor Fisik
                 if (data.sensors) {
                     const incomingUpdatedAt = parseInt(data.sensors.updated_at) || 0;
-
                     if (incomingUpdatedAt > lastSensorUpdatedAt) {
                         lastSensorUpdatedAt = incomingUpdatedAt;
                     }
-
-                    const nowUnix = Math.floor(Date.now() / 1000);
-                    const secondsSinceUpdate = (lastSensorUpdatedAt > 0) ? (nowUnix - lastSensorUpdatedAt) : 9999;
-
-                    if (lastSensorUpdatedAt === 0 || secondsSinceUpdate > ESP32_OFFLINE_THRESHOLD_S) {
-                        setEsp32Offline();
-                    } else {
-                        setEsp32Online();
-
-                        if (document.getElementById('sensor-temp')) {
-                            const temp = parseFloat(data.sensors.temperature || 0);
-                            const hum = parseFloat(data.sensors.humidity || 0);
-
-                            document.getElementById('sensor-temp').innerText = temp.toFixed(1) + '°C';
-                            document.getElementById('sensor-hum').innerText = Math.round(hum) + '%';
-                            document.getElementById('sensor-volt').innerHTML = parseFloat(data.sensors.voltage || 0).toFixed(1) + ' <span class="text-xs text-neutral-400 font-normal">V</span>';
-                            document.getElementById('sensor-curr').innerHTML = parseFloat(data.sensors.current || 0).toFixed(2) + ' <span class="text-xs text-neutral-400 font-normal">A</span>';
-                            document.getElementById('sensor-power').innerHTML = parseFloat(data.sensors.power || 0).toFixed(1) + ' <span class="text-xs text-neutral-400 font-normal">W</span>';
-                            document.getElementById('sensor-energy').innerText = parseFloat(data.sensors.energy || 0).toFixed(4);
-
-                            const tempBadge = document.getElementById('temp-badge');
-                            if (temp >= OVERHEAT_LIMIT && OVERHEAT_LIMIT > 0) {
-                                tempBadge.innerHTML = '<span class="inline-block font-mono text-[11px] font-bold px-1.5 py-0.5 rounded bg-crimson/20 text-crimson border border-crimson/30">OVERHEAT!</span>';
-                            } else if (temp > 0) {
-                                tempBadge.innerHTML = '<span class="inline-block font-mono text-[11px] font-semibold px-1.5 py-0.5 rounded bg-mint/10 text-mint border border-mint/25">Normal &lt; ' + Math.round(OVERHEAT_LIMIT) + '°C</span>';
-                            } else {
-                                tempBadge.innerHTML = '<span class="inline-block font-mono text-[11px] font-semibold px-1.5 py-0.5 rounded bg-surface2 text-neutral-300 border border-hairline">Standby</span>';
-                            }
-                        }
-                    }
+                    updateSensorDisplay(data.sensors);
                 }
+
                 scheduleNextDashboardPoll(dashboardBackoffMs);
             })
             .catch(err => {
                 if (timeoutId) clearTimeout(timeoutId);
                 isDashboardPolling = false;
-                // Exponential backoff 2s -> 4s -> 8s max
                 dashboardBackoffMs = Math.min(dashboardBackoffMs * 2, 8000);
                 console.warn('Realtime sync pause, backoff ' + dashboardBackoffMs + 'ms:', err.name === 'AbortError' ? 'Timeout' : err.message);
                 const syncEl = document.getElementById('last-sync-time');
@@ -564,6 +857,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        initMqttWss();
         updateDashboard();
     });
 </script>

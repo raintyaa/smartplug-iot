@@ -88,12 +88,24 @@ class DashboardController extends Controller
         $latestPower = PowerReading::latest('recorded_at')->first();
         $latestTemp = TemperatureReading::latest('recorded_at')->first();
 
+        // 1. Ekstrak data slot
+        $slots = [
+            'slot1' => $data['slot1'] ?? ['status' => 'STANDBY', 'active_duration' => 0, 'started_at' => 0],
+            'slot2' => $data['slot2'] ?? ['status' => 'STANDBY', 'active_duration' => 0, 'started_at' => 0],
+            'slot3' => $data['slot3'] ?? ['status' => 'STANDBY', 'active_duration' => 0, 'started_at' => 0],
+        ];
+
+        // 2. Jika ESP32 offline (steker dicabut / putus koneksi), tandai seluruh slot sebagai OFFLINE
+        // untuk mengeliminasi ghost active slot dan timer palsu di browser
+        if (!$isEsp32Online) {
+            foreach ($slots as $k => &$s) {
+                $s['status'] = 'OFFLINE';
+            }
+            unset($s);
+        }
+
         return response()->json([
-            'slots' => [
-                'slot1' => $data['slot1'] ?? ['status' => 'STANDBY', 'active_duration' => 0, 'started_at' => 0],
-                'slot2' => $data['slot2'] ?? ['status' => 'STANDBY', 'active_duration' => 0, 'started_at' => 0],
-                'slot3' => $data['slot3'] ?? ['status' => 'STANDBY', 'active_duration' => 0, 'started_at' => 0],
-            ],
+            'slots' => $slots,
             'active_selection' => $data['active_selection'] ?? 'IDLE',
             'is_esp32_online' => $isEsp32Online,
             'sensors' => [
