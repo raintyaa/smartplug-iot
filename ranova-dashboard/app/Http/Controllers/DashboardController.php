@@ -50,7 +50,7 @@ class DashboardController extends Controller
         $overheatThreshold = (float) Setting::get('overheat_threshold_c', 42.0);
 
         $sensorUpdatedAt = (int) ($firebaseData['sensors']['updated_at'] ?? 0);
-        $isEsp32Online = ($sensorUpdatedAt > 0) && ((now()->timestamp - $sensorUpdatedAt) <= 25);
+        $isEsp32Online = ($sensorUpdatedAt > 0) && ((now()->timestamp - $sensorUpdatedAt) <= 40);
 
         // 6. Transaksi aktif
         $activeTransactions = Transaction::where('status', 'active')->get();
@@ -77,7 +77,7 @@ class DashboardController extends Controller
     {
         $data = $this->firebase->getSystemData();
         $sensorUpdatedAt = (int) ($data['sensors']['updated_at'] ?? 0);
-        $isEsp32Online = ($sensorUpdatedAt > 0) && ((now()->timestamp - $sensorUpdatedAt) <= 25);
+        $isEsp32Online = ($sensorUpdatedAt > 0) && ((now()->timestamp - $sensorUpdatedAt) <= 40);
 
         // Rekam data sensor ke database lokal hanya jika ESP32 online
         if ($isEsp32Online && !empty($data['sensors'])) {

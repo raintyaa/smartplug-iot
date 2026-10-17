@@ -23,6 +23,7 @@
 #include <DHT.h>
 #include <PZEM004Tv30.h>
 #include <PubSubClient.h>
+#include <HTTPClient.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
@@ -85,6 +86,20 @@ PZEM004Tv30 pzem(Serial2, PZEM_RX, PZEM_TX);
 
 WiFiClientSecure mqttNetClient;
 PubSubClient mqttClient(mqttNetClient);
+
+const char* FIREBASE_HOST = "https://smartplug-4442d-default-rtdb.asia-southeast1.firebasedatabase.app";
+WiFiClientSecure fbNetClient;
+
+bool fbPut(const String& path, const String& body) {
+  if (WiFi.status() != WL_CONNECTED) return false;
+  HTTPClient http;
+  http.begin(fbNetClient, String(FIREBASE_HOST) + "/" + path + ".json");
+  http.addHeader("Content-Type", "application/json");
+  http.setTimeout(1500);
+  int code = http.PUT(body);
+  http.end();
+  return (code >= 200 && code < 300);
+}
 
 enum SlotState { STANDBY, WAITING_PAYMENT, ACTIVE, PAUSED_OVERHEAT, EMERGENCY_STOP };
 
@@ -303,8 +318,9 @@ void setup() {
   Serial2.begin(9600, SERIAL_8N1, PZEM_RX, PZEM_TX);
   Serial.println("[INIT] DHT22 GPIO4 | PZEM Serial2 RX16/TX17");
 
-  // Konfigurasi TLS Client untuk MQTT
+  // Konfigurasi TLS Client untuk MQTT & Firebase
   mqttNetClient.setInsecure();
+  fbNetClient.setInsecure();
   mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
   mqttClient.setCallback(mqttCallback);
   mqttClient.setBufferSize(512); // Buffer lega untuk JSON telemetri & command
@@ -549,6 +565,13 @@ void updateTelemetry() {
     char buf[256];
     serializeJson(doc, buf);
     mqttClient.publish(TOPIC_TELEMETRY, buf);
+
+    // Sync berkala ke Firebase RTDB (tiap ~6 detik) untuk histori database Laravel & SSR
+    static unsigned long lastFbTelemetry = 0;
+    if (millis() - lastFbTelemetry >= 6000) {
+      lastFbTelemetry = millis();
+      fbPut("sensors", buf);
+    }
   }
 }
 
@@ -633,6 +656,12 @@ void setSlotStandby(int idx) {
   publishSlotState(idx);
   publishSelectionClear();
 
+  // Sync status slot STANDBY ke Firebase RTDB
+  String slotKey = "slot" + String(idx + 1);
+  String body = "{\"status\":\"STANDBY\",\"duration_seconds\":0,\"active_duration\":0,\"amount_paid\":0,\"nominal_paid\":0,\"started_at\":0,\"activated_at\":0,\"expires_at\":0}";
+  fbPut(slotKey, body);
+  fbPut("slots/" + slotKey, body);
+
   Serial.printf("[SLOT %d] Reset -> STANDBY terkirim.\n", idx + 1);
 }
 
@@ -683,6 +712,12 @@ void publishSelection(int idx) {
   char buf[128];
   serializeJson(doc, buf);
   mqttClient.publish(TOPIC_SELECTION, buf, true);
+
+  // Sync ke Firebase RTDB untuk Mayar Webhook & Dashboard SSR
+  String slotKey = "slot" + String(idx + 1);
+  fbPut("system/active_selection", buf);
+  fbPut(slotKey + "/status", "\"WAITING_PAYMENT\"");
+  fbPut("slots/" + slotKey + "/status", "\"WAITING_PAYMENT\"");
 }
 
 void publishSelectionClear() {
@@ -697,6 +732,9 @@ void publishSelectionClear() {
   char buf[128];
   serializeJson(doc, buf);
   mqttClient.publish(TOPIC_SELECTION, buf, true);
+
+  // Sync ke Firebase RTDB
+  fbPut("system/active_selection", buf);
 }
 
 // ============================================================
@@ -746,6 +784,13 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
       publishSlotState(idx);
       publishSelectionClear();
+
+      // Sync status ACTIVE ke Firebase RTDB
+      String slotKey = "slot" + String(targetSlot);
+      unsigned long nowSec = (unsigned long)time(nullptr);
+      String body = "{\"status\":\"ACTIVE\",\"active_duration\":" + String(duration) + ",\"duration_seconds\":" + String(duration) + ",\"started_at\":" + String(nowSec) + ",\"activated_at\":" + String(nowSec) + "}";
+      fbPut(slotKey, body);
+      fbPut("slots/" + slotKey, body);
 
       Serial.println("\n=================================================");
       if (slots[idx].durationSec == 0) {

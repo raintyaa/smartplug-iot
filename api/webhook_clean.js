@@ -89,6 +89,47 @@ function publishMqttCommand(slotNumber, durationSec, amount) {
   });
 }
 
+/**
+ * Helper untuk membaca retained active selection langsung dari broker MQTT (Fallback)
+ */
+function fetchMqttActiveSelection() {
+  return new Promise((resolve) => {
+    try {
+      const client = mqtt.connect(MQTT_BROKER_URL, MQTT_OPTIONS);
+      const timeout = setTimeout(() => {
+        client.end(true);
+        resolve(null);
+      }, 1500);
+
+      client.on("connect", () => {
+        client.subscribe("ranova/device_001/selection", { qos: 0 });
+      });
+
+      client.on("message", (topic, message) => {
+        if (topic === "ranova/device_001/selection") {
+          try {
+            const data = JSON.parse(message.toString());
+            clearTimeout(timeout);
+            client.end(false, () => resolve(data));
+          } catch (e) {
+            clearTimeout(timeout);
+            client.end(true);
+            resolve(null);
+          }
+        }
+      });
+
+      client.on("error", () => {
+        clearTimeout(timeout);
+        client.end(true);
+        resolve(null);
+      });
+    } catch (e) {
+      resolve(null);
+    }
+  });
+}
+
 // --- MAIN HANDLER ---
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
@@ -178,6 +219,15 @@ module.exports = async (req, res) => {
           console.log(`Fallback mendeteksi slots/${s} berstatus WAITING_PAYMENT`);
           break;
         }
+      }
+    }
+
+    if (!slotKey) {
+      console.log("Mengecek active selection via MQTT broker retained message...");
+      const mqttSel = await fetchMqttActiveSelection();
+      if (mqttSel && mqttSel.status === "WAITING_PAYMENT" && mqttSel.slot && mqttSel.slot !== "none") {
+        slotKey = mqttSel.slot;
+        console.log(`MQTT retained selection mendeteksi: ${slotKey}`);
       }
     }
 

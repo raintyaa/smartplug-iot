@@ -469,7 +469,9 @@
     }
 
     function applyMqttSlotState(slotNum, slotData) {
-        if (!isEsp32CurrentlyOnline) return;
+        // Penerimaan status slot dari MQTT adalah bukti valid bahwa ESP32 menyala
+        setEsp32Online();
+        lastMqttPacketTime = Date.now();
 
         const status = (slotData.status || 'STANDBY').toUpperCase();
         const card = document.getElementById('card-slot-' + slotNum);
@@ -559,6 +561,7 @@
     // ============================================================
     const MQTT_WSS_URL = 'wss://o2f6eb8b.ala.asia-southeast1.emqxsl.com:8084/mqtt';
     let mqttWssClient = null;
+    let lastMqttPacketTime = 0; // Timestamp paket MQTT terakhir dari perangkat
 
     function initMqttWss() {
         if (typeof mqtt === 'undefined') {
@@ -584,6 +587,7 @@
             mqttWssClient.on('message', (topic, message) => {
                 try {
                     const payload = JSON.parse(message.toString());
+                    lastMqttPacketTime = Date.now();
 
                     // 1. Status ESP32 Online / Offline (LWT)
                     if (topic === 'ranova/device_001/status') {
@@ -607,6 +611,13 @@
                             applyMqttSlotState(slotNum, payload);
                         }
                     }
+                    // 4. Seleksi Tombol Fisik (Waiting Payment)
+                    else if (topic === 'ranova/device_001/selection') {
+                        setEsp32Online();
+                        if (payload.status === 'WAITING_PAYMENT' && payload.slot_num >= 1 && payload.slot_num <= 3) {
+                            applyMqttSlotState(payload.slot_num, { status: 'WAITING_PAYMENT' });
+                        }
+                    }
                 } catch (err) {
                     console.error('[MQTT Message Error]:', err);
                 }
@@ -623,6 +634,16 @@
             console.warn('[MQTT WSS Init Exception]:', e);
         }
     }
+
+    // Watchdog Timer: Jika tidak ada satupun pesan MQTT dari ESP32 selama >15 detik, tandai offline
+    setInterval(() => {
+        if (mqttWssClient && mqttWssClient.connected) {
+            if (isEsp32CurrentlyOnline && lastMqttPacketTime > 0 && (Date.now() - lastMqttPacketTime >= 15000)) {
+                console.warn('[MQTT Watchdog] Tidak ada data dari ESP32 selama >15 detik. Menandai ESP32 offline.');
+                setEsp32Offline();
+            }
+        }
+    }, 3000);
 
     // Helper untuk mem-publish perintah MQTT seketika dari tombol Dashboard
     function sendMqttCommand(action, slot, duration = 0) {
@@ -690,6 +711,17 @@
                 const syncEl = document.getElementById('last-sync-time');
                 if (syncEl) syncEl.innerText = 'Sinkron: ' + timeStr;
 
+                // Cek apakah MQTT WebSocket sedang aktif streaming (< 15 detik terakhir)
+                const isMqttStreaming = (mqttWssClient && mqttWssClient.connected && (Date.now() - lastMqttPacketTime < 15000));
+
+                if (isMqttStreaming) {
+                    // MQTT AKTIF: MQTT adalah Single Source of Truth untuk status perangkat & slot realtime.
+                    // Jangan biarkan polling HTTP menimpa status online atau slot menjadi OFFLINE!
+                    scheduleNextDashboardPoll(dashboardBackoffMs);
+                    return;
+                }
+
+                // JIKA MQTT TIDAK AKTIF / TERPUTUS (Fallback Polling Mode):
                 // 1. Cek Apakah ESP32 Sedang Offline (Steker dicabut)
                 if (data.is_esp32_online === false) {
                     setEsp32Offline();
