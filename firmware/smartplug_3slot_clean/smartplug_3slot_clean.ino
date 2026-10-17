@@ -367,6 +367,20 @@ void loop() {
 
       if (!isOverheated) {
         if (slots[i].state == STANDBY) {
+          // Mutual Exclusion: Hanya 1 slot yang boleh berada dalam fase WAITING_PAYMENT
+          int currentWaitingIdx = -1;
+          for (int k = 0; k < NUM_SLOTS; k++) {
+            if (slots[k].state == WAITING_PAYMENT) {
+              currentWaitingIdx = k;
+              break;
+            }
+          }
+
+          if (currentWaitingIdx >= 0) {
+            Serial.printf("[BTN %d] Ditolak: Slot %d sedang menunggu pembayaran QRIS!\n", i + 1, currentWaitingIdx + 1);
+            continue;
+          }
+
           Serial.printf("\n[BTN %d] Ditekan -> WAITING_PAYMENT\n", i + 1);
           slots[i].state = WAITING_PAYMENT;
           slots[i].waitStart = now;
@@ -654,7 +668,18 @@ void setSlotStandby(int idx) {
   digitalWrite(PIN_LED[idx], LOW);
 
   publishSlotState(idx);
-  publishSelectionClear();
+  
+  // Hanya bersihkan seleksi QRIS jika tidak ada slot lain yang sedang WAITING_PAYMENT
+  bool otherWaiting = false;
+  for (int s = 0; s < NUM_SLOTS; s++) {
+    if (s != idx && slots[s].state == WAITING_PAYMENT) {
+      otherWaiting = true;
+      break;
+    }
+  }
+  if (!otherWaiting) {
+    publishSelectionClear();
+  }
 
   // Sync status slot STANDBY ke Firebase RTDB
   String slotKey = "slot" + String(idx + 1);
@@ -783,7 +808,18 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
       tSuccess = millis();
 
       publishSlotState(idx);
-      publishSelectionClear();
+      
+      // Bersihkan seleksi jika slot yang aktif ini adalah yang sedang menunggu bayar, atau tidak ada slot lain yang menunggu
+      bool otherWaiting = false;
+      for (int s = 0; s < NUM_SLOTS; s++) {
+        if (s != idx && slots[s].state == WAITING_PAYMENT) {
+          otherWaiting = true;
+          break;
+        }
+      }
+      if (!otherWaiting) {
+        publishSelectionClear();
+      }
 
       // Sync status ACTIVE ke Firebase RTDB
       String slotKey = "slot" + String(targetSlot);

@@ -200,6 +200,9 @@
         </div>
     </div>
 
+    <!-- Global Floating Toast Notification Container -->
+    <div id="ranova-toast-container" class="fixed bottom-5 right-5 z-[120] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none px-4 sm:px-0" aria-live="polite" aria-atomic="true"></div>
+
     <script>
         (function () {
             var STORAGE_KEY = 'sidebar_collapsed';
@@ -511,6 +514,56 @@
                     }
                 }
             });
+
+            window.showToast = function (message, type, duration) {
+                type = type || 'success';
+                duration = duration || 3500;
+                var container = document.getElementById('ranova-toast-container');
+                if (!container) return;
+
+                var toast = document.createElement('div');
+                var iconClass = 'fa-solid fa-circle-check text-mint';
+                var bgBorder = 'bg-surface border-mint/40 text-neutral-200';
+
+                if (type === 'error' || type === 'crimson') {
+                    iconClass = 'fa-solid fa-circle-xmark text-crimson';
+                    bgBorder = 'bg-surface border-crimson/40 text-neutral-200';
+                } else if (type === 'warning' || type === 'amber') {
+                    iconClass = 'fa-solid fa-triangle-exclamation text-amber';
+                    bgBorder = 'bg-surface border-amber/40 text-neutral-200';
+                } else if (type === 'info' || type === 'sky') {
+                    iconClass = 'fa-solid fa-circle-info text-sky-400';
+                    bgBorder = 'bg-surface border-sky-400/40 text-neutral-200';
+                }
+
+                toast.className = 'pointer-events-auto flex items-start gap-3 p-3.5 rounded-xl border shadow-xl transition-all duration-300 transform translate-y-3 opacity-0 ' + bgBorder;
+                toast.innerHTML = '<div class="mt-0.5 flex-shrink-0 text-sm"><i class="' + iconClass + '" aria-hidden="true"></i></div>' +
+                    '<div class="flex-1 text-xs leading-relaxed font-medium">' + message + '</div>' +
+                    '<button type="button" class="text-neutral-400 hover:text-neutral-200 text-xs ml-1 flex-shrink-0 transition-colors" aria-label="Tutup notifikasi"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>';
+
+                var closeBtn = toast.querySelector('button');
+                var timer = null;
+                function dismiss() {
+                    if (timer) clearTimeout(timer);
+                    toast.classList.remove('opacity-100', 'translate-y-0');
+                    toast.classList.add('opacity-0', 'translate-y-2');
+                    setTimeout(function () {
+                        if (toast.parentNode) toast.parentNode.removeChild(toast);
+                    }, 300);
+                }
+
+                if (closeBtn) closeBtn.addEventListener('click', dismiss);
+
+                container.appendChild(toast);
+
+                requestAnimationFrame(function () {
+                    toast.classList.remove('opacity-0', 'translate-y-3');
+                    toast.classList.add('opacity-100', 'translate-y-0');
+                });
+
+                timer = setTimeout(dismiss, duration);
+            };
+            window.RanovaToast = { show: window.showToast };
 
             document.addEventListener('DOMContentLoaded', function () {
                 var t = document.getElementById('sidebar-toggle');

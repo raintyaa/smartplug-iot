@@ -654,7 +654,7 @@
         }
     }
 
-    // Pasang listener intersep pada form kontrol admin untuk publish MQTT langsung HANYA setelah dikonfirmasi
+    // Pasang listener intersep pada form kontrol admin untuk publish MQTT langsung & background AJAX
     document.addEventListener('submit', (e) => {
         // Jika aksi dicegah oleh modal konfirmasi sebelum diklik 'Ya', jangan kirim perintah MQTT!
         if (e.defaultPrevented) return;
@@ -662,7 +662,7 @@
         const form = e.target.closest('form');
         if (!form) return;
 
-        // Jangan kirim perintah MQTT jika form membutuhkan konfirmasi dan belum dikonfirmasi oleh pengguna
+        // Jangan kirim perintah jika form membutuhkan konfirmasi dan belum dikonfirmasi oleh pengguna
         if (form.classList.contains('js-confirm-form') && form.dataset.confirmed !== '1') {
             return;
         }
@@ -670,19 +670,61 @@
         const actionUrl = form.getAttribute('action') || '';
 
         const startMatch = actionUrl.match(/\/dashboard\/slots\/(\d+)\/start/);
-        if (startMatch) {
-            const slotNum = parseInt(startMatch[1], 10);
-            sendMqttCommand('START', slotNum, 0);
-        }
-
         const stopMatch = actionUrl.match(/\/dashboard\/slots\/(\d+)\/stop/);
-        if (stopMatch) {
-            const slotNum = parseInt(stopMatch[1], 10);
-            sendMqttCommand('STOP', slotNum);
-        }
+        const isEmergency = actionUrl.includes('emergency-stop') || actionUrl.includes('emergency_stop');
 
-        if (actionUrl.includes('emergency-stop') || actionUrl.includes('emergency_stop')) {
-            sendMqttCommand('EMERGENCY', 0);
+        if (startMatch || stopMatch || isEmergency) {
+            // Hentikan full-page browser reload!
+            e.preventDefault();
+
+            // 1. Jalur Cepat (Fast-Path) MQTT: Eksekusi fisik relay ESP32 dalam < 50ms
+            if (startMatch) {
+                const slotNum = parseInt(startMatch[1], 10);
+                sendMqttCommand('START', slotNum, 0);
+            } else if (stopMatch) {
+                const slotNum = parseInt(stopMatch[1], 10);
+                sendMqttCommand('STOP', slotNum);
+            } else if (isEmergency) {
+                sendMqttCommand('EMERGENCY', 0);
+            }
+
+            // 2. Jalur Latar Belakang (Background AJAX): Kirim ke Laravel & Firebase secara asinkron
+            const formData = new FormData(form);
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-60', 'cursor-not-allowed');
+            }
+
+            fetch(actionUrl, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.json();
+            })
+            .then(data => {
+                if (typeof window.showToast === 'function') {
+                    window.showToast(data.message || 'Perintah berhasil diproses.', data.success ? 'success' : 'error');
+                }
+            })
+            .catch(err => {
+                console.warn('[AJAX Background Sync Error]:', err);
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Perintah terkirim ke ESP32. (Sinkronisasi database sedang diproses)', 'info');
+                }
+            })
+            .finally(() => {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+                }
+            });
         }
     });
 

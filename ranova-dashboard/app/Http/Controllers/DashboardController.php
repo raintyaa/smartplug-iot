@@ -139,6 +139,15 @@ class DashboardController extends Controller
             'started_at' => now(),
         ]);
 
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => $success,
+                'message' => $success
+                    ? "Slot {$slotNumber} berhasil DINYALAKAN (Mode Kontinu / Tanpa Batas Waktu)."
+                    : "Gagal menghubungi Firebase untuk menyalakan Slot {$slotNumber}."
+            ], $success ? 200 : 500);
+        }
+
         if ($success) {
             return back()->with('success', "Slot {$slotNumber} berhasil DINYALAKAN (Mode Kontinu / Tanpa Batas Waktu).");
         }
@@ -160,6 +169,15 @@ class DashboardController extends Controller
                 'ended_at' => now(),
             ]);
 
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => $success,
+                'message' => $success
+                    ? "Slot {$slotNumber} berhasil dimatikan secara manual."
+                    : "Gagal menghubungi Firebase untuk mematikan Slot {$slotNumber}."
+            ], $success ? 200 : 500);
+        }
+
         if ($success) {
             return back()->with('success', "Slot {$slotNumber} berhasil dimatikan secara manual.");
         }
@@ -169,7 +187,7 @@ class DashboardController extends Controller
     /**
      * Emergency cutoff seluruh sistem
      */
-    public function emergencyStop()
+    public function emergencyStop(Request $request)
     {
         $this->firebase->triggerEmergencyStop();
 
@@ -178,6 +196,13 @@ class DashboardController extends Controller
                 'status' => 'emergency_stopped',
                 'ended_at' => now(),
             ]);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'EMERGENCY CUTOFF DIAKTIFKAN: Seluruh relay telah dimatikan seketika!'
+            ]);
+        }
 
         return back()->with('warning', 'EMERGENCY CUTOFF DIAKTIFKAN: Seluruh relay telah dimatikan seketika!');
     }
