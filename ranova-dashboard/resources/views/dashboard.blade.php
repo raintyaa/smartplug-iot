@@ -582,6 +582,13 @@
             mqttWssClient.on('connect', () => {
                 console.log('[MQTT WSS] Terhubung ke EMQX Broker (WebSocket 8084)');
                 mqttWssClient.subscribe('ranova/device_001/#', { qos: 0 });
+
+                const mqttBadge = document.getElementById('mqtt-badge');
+                if (mqttBadge) {
+                    mqttBadge.className = 'inline-flex items-center font-mono text-xs font-medium px-2.5 sm:px-3 py-1 rounded-md bg-mint/10 text-mint';
+                    mqttBadge.setAttribute('title', 'MQTT Broker (EMQX Cloud) terhubung');
+                    mqttBadge.innerHTML = '<span aria-hidden="true">●</span><span class="hidden sm:inline ml-1.5">MQTT</span><span class="sr-only">MQTT terhubung</span>';
+                }
             });
 
             mqttWssClient.on('message', (topic, message) => {
@@ -625,10 +632,22 @@
 
             mqttWssClient.on('error', (err) => {
                 console.warn('[MQTT WSS Error]:', err.message);
+                const mqttBadge = document.getElementById('mqtt-badge');
+                if (mqttBadge) {
+                    mqttBadge.className = 'inline-flex items-center font-mono text-xs font-medium px-2.5 sm:px-3 py-1 rounded-md bg-surface2 text-neutral-400';
+                    mqttBadge.setAttribute('title', 'MQTT Broker terputus: ' + err.message);
+                    mqttBadge.innerHTML = '<span aria-hidden="true">●</span><span class="hidden sm:inline ml-1.5">MQTT Terputus</span><span class="sr-only">MQTT terputus</span>';
+                }
             });
 
             mqttWssClient.on('offline', () => {
                 console.warn('[MQTT WSS] Offline, beralih ke HTTP polling fallback...');
+                const mqttBadge = document.getElementById('mqtt-badge');
+                if (mqttBadge) {
+                    mqttBadge.className = 'inline-flex items-center font-mono text-xs font-medium px-2.5 sm:px-3 py-1 rounded-md bg-surface2 text-neutral-400';
+                    mqttBadge.setAttribute('title', 'MQTT Broker terputus');
+                    mqttBadge.innerHTML = '<span aria-hidden="true">●</span><span class="hidden sm:inline ml-1.5">MQTT Terputus</span><span class="sr-only">MQTT terputus</span>';
+                }
             });
         } catch (e) {
             console.warn('[MQTT WSS Init Exception]:', e);

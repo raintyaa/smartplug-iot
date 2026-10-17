@@ -104,9 +104,9 @@
                     <span class="sm:hidden" aria-hidden="true">●</span><span class="hidden sm:inline">ESP32</span><span class="sm:hidden sr-only">ESP32</span>
                 </span>
 
-                <!-- Status Koneksi Firebase -->
-                <div id="connection-status" class="inline-flex items-center font-mono text-xs font-medium px-2.5 sm:px-3 py-1 rounded-md bg-mint/10 text-mint" title="Status koneksi Firebase Realtime Database">
-                    <span aria-hidden="true">●</span><span class="hidden sm:inline ml-1.5">Firebase</span><span class="sr-only">Firebase terhubung</span>
+                <!-- Status Koneksi MQTT Broker (Dynamic JS) -->
+                <div id="mqtt-badge" class="inline-flex items-center font-mono text-xs font-medium px-2.5 sm:px-3 py-1 rounded-md bg-surface2 text-neutral-400" title="Status koneksi MQTT Realtime Broker (EMQX Cloud)">
+                    <span aria-hidden="true">●</span><span class="hidden sm:inline ml-1.5">MQTT</span><span class="sr-only">MQTT</span>
                 </div>
 
                 <!-- Emergency Shutdown Button -->
