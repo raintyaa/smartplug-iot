@@ -25,7 +25,7 @@
                 </div>
             @endif
 
-            <form action="{{ route('login.post') }}" method="POST" class="space-y-4">
+            <form action="{{ route('login.post') }}" method="POST" autocomplete="off" class="space-y-4">
                 @csrf
                 <div>
                     <label for="email" class="block text-xs font-medium text-neutral-300 mb-1.5">Username atau Email Operator</label>
@@ -33,8 +33,8 @@
                         <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-neutral-500 text-sm">
                             <i class="fa-solid fa-user"></i>
                         </span>
-                        <input type="text" name="email" id="email" value="{{ old('email', 'rakha') }}" required autocomplete="username"
-                            placeholder="rakha"
+                        <input type="text" name="email" id="email" value="{{ old('email') }}" required autocomplete="off"
+                            placeholder="Masukkan username atau email"
                             class="w-full pl-10 pr-4 py-2.5 bg-surface2 border border-hairline rounded-lg text-sm text-white placeholder-neutral-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint focus-visible:ring-offset-2 focus-visible:ring-offset-base focus:border-mint/50 focus:ring-1 focus:ring-mint/20 transition">
                     </div>
                 </div>
@@ -45,7 +45,8 @@
                         <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-neutral-500 text-sm">
                             <i class="fa-solid fa-lock"></i>
                         </span>
-                        <input type="password" name="password" id="password" value="02082006" required autocomplete="current-password"
+                        <input type="password" name="password" id="password" value="" required autocomplete="new-password"
+                            placeholder="••••••••"
                             class="w-full pl-10 pr-4 py-2.5 bg-surface2 border border-hairline rounded-lg text-sm text-white placeholder-neutral-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-mint focus-visible:ring-offset-2 focus-visible:ring-offset-base focus:border-mint/50 focus:ring-1 focus:ring-mint/20 transition">
                     </div>
                 </div>
@@ -55,7 +56,6 @@
                         <input type="checkbox" name="remember" class="w-3.5 h-3.5 rounded border-hairline bg-surface2 accent-[#05DF72] mr-2">
                         <span>Ingat Sesi Ini</span>
                     </label>
-                    <span class="text-neutral-400 font-mono text-[11px]">Default: rakha / 02082006</span>
                 </div>
 
                 <button type="submit" class="w-full min-h-[44px] py-2.5 px-4 rounded-lg bg-mint hover:bg-mint-hover text-[#0A0A0D] font-semibold text-xs transition-colors flex items-center justify-center space-x-2 mt-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint focus-visible:ring-offset-2 focus-visible:ring-offset-base">
