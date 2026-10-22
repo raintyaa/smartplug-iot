@@ -25,7 +25,7 @@
                 </div>
             @endif
 
-            <form action="{{ route('login.post') }}" method="POST" autocomplete="off" class="space-y-4">
+            <form action="{{ route('login.post', [], false) }}" method="POST" autocomplete="off" class="space-y-4">
                 @csrf
                 <div>
                     <label for="email" class="block text-xs font-medium text-neutral-300 mb-1.5">Username atau Email Operator</label>

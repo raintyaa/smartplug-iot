@@ -17,6 +17,12 @@
 
     <!-- Sidebar Navigation -->
     <aside id="app-sidebar" class="w-64 bg-surface border-r border-hairline flex flex-col justify-between flex-shrink-0 transition-all duration-300 ease-in-out">
+        <script>
+            // Sembunyikan sidebar di awal khusus layar HP/tablet (< 1024px) agar tidak menutupi dashboard
+            if ((window.innerWidth || document.documentElement.clientWidth || 0) < 1024) {
+                document.currentScript.parentElement.classList.add('-ml-64');
+            }
+        </script>
         <div>
             <!-- Brand Logo -->
             <div class="h-16 flex items-center px-6 border-b border-hairline space-x-3">
@@ -209,33 +215,59 @@
             var STORAGE_KEY = 'sidebar_collapsed';
             var sidebar = document.getElementById('app-sidebar');
             var toggleBtn = document.getElementById('sidebar-toggle');
+            var mainContent = document.getElementById('main-content');
+
+            function isMobile() {
+                return (window.innerWidth || document.documentElement.clientWidth || 0) < 1024;
+            }
 
             function applySidebarState() {
+                if (!sidebar) sidebar = document.getElementById('app-sidebar');
                 if (!sidebar) return;
+
                 var collapsed = false;
-                try {
-                    collapsed = localStorage.getItem(STORAGE_KEY) === '1';
-                } catch (e) {
-                    collapsed = false;
+                if (isMobile()) {
+                    // Di layar HP/Tablet (<1024px), selalu sembunyikan terlebih dahulu secara default
+                    collapsed = true;
+                } else {
+                    // Di layar Desktop (>=1024px), gunakan preferensi tersimpan (default terbuka)
+                    try {
+                        collapsed = localStorage.getItem(STORAGE_KEY) === '1';
+                    } catch (e) {
+                        collapsed = false;
+                    }
                 }
+
                 sidebar.classList.toggle('-ml-64', collapsed);
             }
 
-            // Apply immediately (before paint) to prevent visual flickering on navigation.
+            // Jalankan segera sebelum render selesai
             applySidebarState();
 
             document.addEventListener('DOMContentLoaded', function () {
                 sidebar = document.getElementById('app-sidebar');
                 toggleBtn = document.getElementById('sidebar-toggle');
+                mainContent = document.getElementById('main-content');
                 applySidebarState();
 
                 if (toggleBtn && sidebar) {
-                    toggleBtn.addEventListener('click', function () {
+                    toggleBtn.addEventListener('click', function (e) {
+                        e.stopPropagation();
                         var isCollapsed = sidebar.classList.toggle('-ml-64');
-                        try {
-                            localStorage.setItem(STORAGE_KEY, isCollapsed ? '1' : '0');
-                        } catch (e) {
-                            /* storage unavailable: keep UI-only toggle */
+                        if (!isMobile()) {
+                            try {
+                                localStorage.setItem(STORAGE_KEY, isCollapsed ? '1' : '0');
+                            } catch (err) {}
+                        }
+                    });
+                }
+
+                // Di HP: Jika user mengetuk area konten utama saat sidebar sedang terbuka, otomatis tutup sidebar
+                if (mainContent && sidebar) {
+                    mainContent.addEventListener('click', function () {
+                        if (isMobile() && !sidebar.classList.contains('-ml-64')) {
+                            sidebar.classList.add('-ml-64');
+                            if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
                         }
                     });
                 }
