@@ -18,7 +18,16 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Akun Admin Operator
+        // 1. Akun Admin Operator & Rakha
+        User::updateOrCreate(
+            ['email' => 'rakha@ranova.id'],
+            [
+                'name' => 'rakha',
+                'password' => Hash::make('02082006'),
+                'email_verified_at' => now(),
+            ]
+        );
+
         User::updateOrCreate(
             ['email' => 'admin@ranova.id'],
             [
