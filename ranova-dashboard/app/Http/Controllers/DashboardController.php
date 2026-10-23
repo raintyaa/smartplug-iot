@@ -19,16 +19,44 @@ class DashboardController extends Controller
         $this->firebase = $firebase;
     }
 
-    public function index()
+    /**
+     * Evaluasi ketahanan status online ESP32 dari multi-sumber (Unix Timestamp, Histori Telemetri MySQL, Cache Heartbeat)
+     */
+    protected function checkEsp32Online(array $data): bool
     {
-        // 1. Sinkronkan transaksi dari Firebase ke database lokal & ambil data realtime
-        $this->firebase->syncTransactions();
-        $firebaseData = $this->firebase->getSystemData();
-        if (!empty($firebaseData['sensors'])) {
-            $this->firebase->recordSensorReadings($firebaseData['sensors']);
+        $sensorUpdatedAt = (int) ($data['sensors']['updated_at'] ?? 0);
+
+        // 1. Jika updated_at adalah Unix Epoch valid (> 1700000000)
+        if ($sensorUpdatedAt > 1700000000) {
+            if ((now()->timestamp - $sensorUpdatedAt) <= 75) {
+                return true;
+            }
         }
 
-        // 2. Kalkulasi Ringkasan Finansial Hari Ini
+        // 2. Jika ESP32 belum sync NTP (uptime seconds) atau nilai updated_at 0:
+        // Cek apakah ada telemetri PZEM atau DHT22 yang baru tersimpan di MySQL dalam 75 detik terakhir
+        $latestPower = PowerReading::latest('recorded_at')->first();
+        if ($latestPower && $latestPower->recorded_at && $latestPower->recorded_at->diffInSeconds(now()) <= 75) {
+            return true;
+        }
+
+        $latestTemp = TemperatureReading::latest('recorded_at')->first();
+        if ($latestTemp && $latestTemp->recorded_at && $latestTemp->recorded_at->diffInSeconds(now()) <= 75) {
+            return true;
+        }
+
+        // 3. Fallback: cek cache heartbeat dari ingest API / sensor updates
+        return (bool) cache()->get('esp32_last_heartbeat', false);
+    }
+
+    public function index()
+    {
+        // 1. Ambil data state sistem (Gunakan cache 5 detik atau fallback langsung agar tidak blocking HTTP ke Firebase)
+        $firebaseData = cache()->remember('firebase_system_data', 5, function () {
+            return $this->firebase->getSystemData();
+        });
+
+        // 2. Kalkulasi Ringkasan Finansial Hari Ini langsung dari database MySQL lokal (< 5ms)
         $todayRevenue = Transaction::whereDate('created_at', Carbon::today())
             ->whereIn('status', ['completed', 'active'])
             ->sum('nominal_paid');
@@ -49,8 +77,7 @@ class DashboardController extends Controller
         $latestTemp = TemperatureReading::latest('recorded_at')->first();
         $overheatThreshold = (float) Setting::get('overheat_threshold_c', 42.0);
 
-        $sensorUpdatedAt = (int) ($firebaseData['sensors']['updated_at'] ?? 0);
-        $isEsp32Online = ($sensorUpdatedAt > 0) && ((now()->timestamp - $sensorUpdatedAt) <= 40);
+        $isEsp32Online = $this->checkEsp32Online($firebaseData);
 
         // 6. Transaksi aktif
         $activeTransactions = Transaction::where('status', 'active')->get();
@@ -75,20 +102,28 @@ class DashboardController extends Controller
      */
     public function apiRealtime(Request $request)
     {
-        // 0. Sinkronkan transaksi dari Firebase ke database lokal jika diminta (?sync=1) atau tiap >=10s
+        // 0. Sinkronkan transaksi dari Firebase ke database lokal jika diminta (?sync=1) atau tiap >=30s
         $lastSync = (int) cache()->get('last_tx_sync_time', 0);
-        if ($request->boolean('sync') || (now()->timestamp - $lastSync >= 10)) {
-            $this->firebase->syncTransactions();
-            cache()->put('last_tx_sync_time', now()->timestamp, 60);
+        if ($request->boolean('sync') || (now()->timestamp - $lastSync >= 30)) {
+            if (cache()->add('sync_tx_lock', 1, 10)) {
+                $this->firebase->syncTransactions();
+                cache()->put('last_tx_sync_time', now()->timestamp, 120);
+                cache()->forget('sync_tx_lock');
+            }
         }
 
-        $data = $this->firebase->getSystemData();
+        // Cache ringan 2 detik agar request berulang tidak men-choke single-threaded PHP server
+        $data = cache()->remember('firebase_system_data', 2, function () {
+            return $this->firebase->getSystemData();
+        });
+
         $sensorUpdatedAt = (int) ($data['sensors']['updated_at'] ?? 0);
-        $isEsp32Online = ($sensorUpdatedAt > 0) && ((now()->timestamp - $sensorUpdatedAt) <= 40);
+        $isEsp32Online = $this->checkEsp32Online($data);
 
         // Rekam data sensor ke database lokal hanya jika ESP32 online
         if ($isEsp32Online && !empty($data['sensors'])) {
             $this->firebase->recordSensorReadings($data['sensors']);
+            cache()->put('esp32_last_heartbeat', true, 75);
         }
 
         // Ambil data sensor terbaru dari database

@@ -290,9 +290,10 @@
 <script>
     window.isRanovaDashboardPage = true;
     window.hasCustomDashboardLoop = true;
+    const pageLoadedAt = Date.now();
     const OVERHEAT_LIMIT = {{ $overheatThreshold }};
     const CSRF_TOKEN = '{{ csrf_token() }}';
-    const ESP32_OFFLINE_THRESHOLD_MS = 25000;
+    const ESP32_OFFLINE_THRESHOLD_MS = 60000;
     const ESP32_OFFLINE_THRESHOLD_S = Math.round(ESP32_OFFLINE_THRESHOLD_MS / 1000);
 
     let lastSensorUpdatedAt = 0;
@@ -825,15 +826,15 @@
         }
     }
 
-    // Watchdog Timer: Jika tidak ada satupun pesan MQTT dari ESP32 selama >15 detik, tandai offline
+    // Watchdog Timer: Jika tidak ada satupun pesan MQTT dari ESP32 selama >45 detik, tandai offline
     setInterval(() => {
         if (mqttWssClient && mqttWssClient.connected) {
-            if (isEsp32CurrentlyOnline && lastMqttPacketTime > 0 && (Date.now() - lastMqttPacketTime >= 15000)) {
-                console.warn('[MQTT Watchdog] Tidak ada data dari ESP32 selama >15 detik. Menandai ESP32 offline.');
+            if (isEsp32CurrentlyOnline && lastMqttPacketTime > 0 && (Date.now() - lastMqttPacketTime >= 45000)) {
+                console.warn('[MQTT Watchdog] Tidak ada data dari ESP32 selama >45 detik. Menandai ESP32 offline.');
                 setEsp32Offline();
             }
         }
-    }, 3000);
+    }, 5000);
 
     // Helper untuk mem-publish perintah MQTT seketika dari tombol Dashboard
     function sendMqttCommand(action, slot, duration = 0) {
@@ -846,26 +847,34 @@
 
     // Pasang listener intersep pada form kontrol admin untuk publish MQTT langsung & background AJAX
     document.addEventListener('submit', (e) => {
-        // Jika aksi dicegah oleh modal konfirmasi sebelum diklik 'Ya', jangan kirim perintah MQTT!
-        if (e.defaultPrevented) return;
-
         const form = e.target.closest('form');
         if (!form) return;
 
-        // Jangan kirim perintah jika form membutuhkan konfirmasi dan belum dikonfirmasi oleh pengguna
-        if (form.classList.contains('js-confirm-form') && form.dataset.confirmed !== '1') {
-            return;
-        }
-
         const actionUrl = form.getAttribute('action') || '';
-
         const startMatch = actionUrl.match(/\/dashboard\/slots\/(\d+)\/start/);
         const stopMatch = actionUrl.match(/\/dashboard\/slots\/(\d+)\/stop/);
         const isEmergency = actionUrl.includes('emergency-stop') || actionUrl.includes('emergency_stop');
 
         if (startMatch || stopMatch || isEmergency) {
-            // Hentikan full-page browser reload!
+            // Hentikan full-page browser reload SELALU!
             e.preventDefault();
+
+            // Jika form membutuhkan konfirmasi dan belum dikonfirmasi oleh pengguna, buka modal konfirmasi
+            if (form.classList.contains('js-confirm-form') && form.dataset.confirmed !== '1') {
+                if (window.RanovaConfirm && window.RanovaConfirm.open) {
+                    window.RanovaConfirm.open({
+                        title: form.dataset.confirmTitle,
+                        message: form.dataset.confirmMessage,
+                        confirmText: form.dataset.confirmText,
+                        tone: form.dataset.confirmTone || 'crimson',
+                        form: form
+                    });
+                }
+                return;
+            }
+
+            // Reset confirmed flag
+            form.dataset.confirmed = '';
 
             // 1. Jalur Cepat (Fast-Path) MQTT: Eksekusi fisik relay ESP32 dalam < 50ms
             if (startMatch) {
@@ -961,11 +970,12 @@
                     updateFinancialDisplay(data.financials);
                 }
 
-                // Cek apakah MQTT WebSocket sedang aktif streaming (< 15 detik terakhir)
-                const isMqttStreaming = (mqttWssClient && mqttWssClient.connected && (Date.now() - lastMqttPacketTime < 15000));
+                // Cek apakah MQTT WebSocket sedang aktif streaming (< 45 detik terakhir) atau masa startup browser
+                const isMqttStreaming = (mqttWssClient && mqttWssClient.connected && (Date.now() - lastMqttPacketTime < 45000));
+                const isInitialGrace = (Date.now() - pageLoadedAt < 10000); // 10s grace period saat startup page
 
-                if (isMqttStreaming) {
-                    // MQTT AKTIF: MQTT adalah Single Source of Truth untuk status perangkat & slot realtime.
+                if (isMqttStreaming || isInitialGrace) {
+                    // MQTT AKTIF atau fase handshake awal: MQTT adalah Single Source of Truth untuk status perangkat & slot realtime.
                     // Jangan biarkan polling HTTP menimpa status online atau slot menjadi OFFLINE!
                     scheduleNextDashboardPoll(dashboardBackoffMs);
                     return;

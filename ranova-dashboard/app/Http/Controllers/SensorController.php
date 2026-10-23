@@ -11,13 +11,28 @@ class SensorController extends Controller
 {
     public function index(FirebaseService $firebase)
     {
-        $firebaseData = $firebase->getSystemData();
+        $firebaseData = cache()->remember('firebase_system_data', 3, function () use ($firebase) {
+            return $firebase->getSystemData();
+        });
+
         $sensorUpdatedAt = (int) ($firebaseData['sensors']['updated_at'] ?? 0);
-        $isEsp32Online = ($sensorUpdatedAt > 0) && ((now()->timestamp - $sensorUpdatedAt) <= 25);
+        $isEsp32Online = false;
+
+        if ($sensorUpdatedAt > 1700000000) {
+            $isEsp32Online = ((now()->timestamp - $sensorUpdatedAt) <= 75);
+        } else {
+            $latestPowerCheck = PowerReading::latest('recorded_at')->first();
+            if ($latestPowerCheck && $latestPowerCheck->recorded_at && $latestPowerCheck->recorded_at->diffInSeconds(now()) <= 75) {
+                $isEsp32Online = true;
+            } elseif (cache()->get('esp32_last_heartbeat', false)) {
+                $isEsp32Online = true;
+            }
+        }
 
         // Hanya catat telemetri ke database jika ESP32 aktif online
         if ($isEsp32Online && !empty($firebaseData['sensors'])) {
             $firebase->recordSensorReadings($firebaseData['sensors']);
+            cache()->put('esp32_last_heartbeat', true, 75);
         }
 
         $latestPower = PowerReading::latest('recorded_at')->first();
@@ -66,6 +81,7 @@ class SensorController extends Controller
         ]);
 
         if (isset($validated['voltage']) || isset($validated['power'])) {
+            cache()->put('esp32_last_heartbeat', true, 75);
             PowerReading::create([
                 'voltage' => $validated['voltage'] ?? 0,
                 'current' => $validated['current'] ?? 0,

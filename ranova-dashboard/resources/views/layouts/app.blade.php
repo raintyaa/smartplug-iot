@@ -353,7 +353,9 @@
                             var elTempBadge = document.getElementById('sensor-page-temp-badge');
                             var elHumidBadge = document.getElementById('sensor-page-humid-badge');
 
-                            if (lastGlobalSensorUpdate === 0 || diff > 25) {
+                            var isOnline = (data.is_esp32_online !== undefined) ? !!data.is_esp32_online : (lastGlobalSensorUpdate > 0 && diff <= 75);
+
+                            if (!isOnline) {
                                 setEsp32BadgeOffline();
 
                                 // Samakan dengan dashboard: saat ESP32 offline, nol-kan seluruh telemetri sensor
@@ -515,7 +517,18 @@
                 if (e.target.closest && e.target.closest('[data-confirm-close]')) closeConfirm();
                 if (e.target.closest && e.target.closest('#ranova-confirm-cancel')) closeConfirm();
                 if (e.target.closest && e.target.closest('#ranova-confirm-ok')) {
-                    if (pendingForm) { var f = pendingForm; pendingForm = null; closeConfirm(); f.dataset.confirmed = '1'; f.requestSubmit ? f.requestSubmit() : f.submit(); }
+                    if (pendingForm) {
+                        var f = pendingForm;
+                        pendingForm = null;
+                        closeConfirm();
+                        f.dataset.confirmed = '1';
+                        if (typeof f.requestSubmit === 'function') {
+                            f.requestSubmit();
+                        } else {
+                            var submitEvt = new Event('submit', { bubbles: true, cancelable: true });
+                            f.dispatchEvent(submitEvt);
+                        }
+                    }
                     else closeConfirm();
                 }
                 // Legend modal

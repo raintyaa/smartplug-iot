@@ -624,7 +624,8 @@ void updateTelemetry() {
     doc["energy"]      = serialized(String(sensorEnergy, 4));
     doc["temperature"] = serialized(String(sensorTemp, 1));
     doc["humidity"]    = serialized(String(sensorHumid, 1));
-    doc["updated_at"]  = (unsigned long)time(nullptr);
+    time_t nowSec = time(nullptr);
+    doc["updated_at"]  = (nowSec > 1000000) ? (unsigned long)nowSec : 0;
 
     char buf[256];
     serializeJson(doc, buf);

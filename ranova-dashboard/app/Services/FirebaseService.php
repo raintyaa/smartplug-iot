@@ -261,8 +261,9 @@ class FirebaseService
         $energy = (float) ($sensorData['energy'] ?? 0);
         $temp = (float) ($sensorData['temperature'] ?? 0);
         $humidity = (float) ($sensorData['humidity'] ?? 0);
-        $updatedAt = isset($sensorData['updated_at']) && $sensorData['updated_at'] > 0
-            ? Carbon::createFromTimestamp($sensorData['updated_at'])
+        $rawTs = (int) ($sensorData['updated_at'] ?? 0);
+        $updatedAt = ($rawTs > 1700000000)
+            ? Carbon::createFromTimestamp($rawTs)
             : now();
 
         // Hanya catat jika data valid
